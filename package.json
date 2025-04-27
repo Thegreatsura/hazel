@@ -28,6 +28,7 @@
 		"tw-animate-css": "^1.2.8",
 		"typescript": "^5.7.2",
 		"vite": "^6.0.11",
-		"vite-plugin-solid": "^2.11.2"
+		"vite-plugin-solid": "^2.11.2",
+		"vite-tsconfig-paths": "^5.1.4"
 	}
 }
