@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as OnboardingImport } from './routes/onboarding'
 import { Route as AppLayoutImport } from './routes/_app/layout'
 import { Route as AppIndexImport } from './routes/_app/index'
 import { Route as AppServerIdLayoutImport } from './routes/_app/$serverId/layout'
@@ -18,6 +19,12 @@ import { Route as AppServerIdIndexImport } from './routes/_app/$serverId/index'
 import { Route as AppServerIdChatIdImport } from './routes/_app/$serverId/chat/$id'
 
 // Create/Update Routes
+
+const OnboardingRoute = OnboardingImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AppLayoutRoute = AppLayoutImport.update({
   id: '/_app',
@@ -57,6 +64,13 @@ declare module '@tanstack/solid-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AppLayoutImport
+      parentRoute: typeof rootRoute
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingImport
       parentRoute: typeof rootRoute
     }
     '/_app/$serverId': {
@@ -121,6 +135,7 @@ const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '': typeof AppLayoutRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/$serverId': typeof AppServerIdLayoutRouteWithChildren
   '/': typeof AppIndexRoute
   '/$serverId/': typeof AppServerIdIndexRoute
@@ -128,6 +143,7 @@ export interface FileRoutesByFullPath {
 }
 
 export interface FileRoutesByTo {
+  '/onboarding': typeof OnboardingRoute
   '/': typeof AppIndexRoute
   '/$serverId': typeof AppServerIdIndexRoute
   '/$serverId/chat/$id': typeof AppServerIdChatIdRoute
@@ -136,6 +152,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_app': typeof AppLayoutRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/_app/$serverId': typeof AppServerIdLayoutRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/$serverId/': typeof AppServerIdIndexRoute
@@ -144,12 +161,19 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/$serverId' | '/' | '/$serverId/' | '/$serverId/chat/$id'
+  fullPaths:
+    | ''
+    | '/onboarding'
+    | '/$serverId'
+    | '/'
+    | '/$serverId/'
+    | '/$serverId/chat/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$serverId' | '/$serverId/chat/$id'
+  to: '/onboarding' | '/' | '/$serverId' | '/$serverId/chat/$id'
   id:
     | '__root__'
     | '/_app'
+    | '/onboarding'
     | '/_app/$serverId'
     | '/_app/'
     | '/_app/$serverId/'
@@ -159,10 +183,12 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
 }
 
 export const routeTree = rootRoute
@@ -175,7 +201,8 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/_app"
+        "/_app",
+        "/onboarding"
       ]
     },
     "/_app": {
@@ -184,6 +211,9 @@ export const routeTree = rootRoute
         "/_app/$serverId",
         "/_app/"
       ]
+    },
+    "/onboarding": {
+      "filePath": "onboarding.tsx"
     },
     "/_app/$serverId": {
       "filePath": "_app/$serverId/layout.tsx",
