@@ -2,31 +2,32 @@ import { createFileRoute, useParams } from "@tanstack/solid-router"
 import { For, createMemo } from "solid-js"
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
-import { useChatMessages, type Message } from "~/lib/hooks/data/use-chat-messages"
+import { type Message, useChatMessages } from "~/lib/hooks/data/use-chat-messages"
 
 export const Route = createFileRoute("/_app/$serverId/chat/$id")({
 	component: RouteComponent,
 })
 
-
 function RouteComponent() {
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
-	
+
 	const messages = createMemo(() => useChatMessages(params.id))
 	const processedMessages = createMemo(() => {
-		const groupedMessages = messages().messages().reduce<Record<string, Message[]>>((groups, message) => {
-			const date = new Date(message.createdAt!).toLocaleDateString("en-US", {
-				year: "numeric",
-				month: "long",
-				day: "numeric",
-			})
+		const groupedMessages = messages()
+			.messages()
+			.reduce<Record<string, Message[]>>((groups, message) => {
+				const date = new Date(message.createdAt!).toLocaleDateString("en-US", {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				})
 
-			if (!groups[date]) {
-				groups[date] = [] as any
-			}
-			groups[date].push(message)
-			return groups
-		}, {})
+				if (!groups[date]) {
+					groups[date] = [] as any
+				}
+				groups[date].push(message)
+				return groups
+			}, {})
 
 		const sortedDates = Object.keys(groupedMessages).sort((a, b) => {
 			return new Date(a).getTime() - new Date(b).getTime()
@@ -78,31 +79,36 @@ function RouteComponent() {
 		return { processedGroupedMessages }
 	})
 
-	return <div>
-		<ChatTopbar />
-		<div class="flex-1 space-y-6 overflow-y-auto p-4 pl-0">
-			<For each={Object.entries(processedMessages().processedGroupedMessages)}>
-				{([date, messages], dateIndex) => <div class="flex flex-col">
-					<div class="py-2 text-center text-muted-foreground text-sm">
-						<span>{date}</span>
-					</div>
+	return (
+		<div>
+			<ChatTopbar />
+			<div class="flex-1 space-y-6 overflow-y-auto p-4 pl-0">
+				<For each={Object.entries(processedMessages().processedGroupedMessages)}>
+					{([date, messages], dateIndex) => (
+						<div class="flex flex-col">
+							<div class="py-2 text-center text-muted-foreground text-sm">
+								<span>{date}</span>
+							</div>
 
-					{messages.map(({ message, isGroupStart, isGroupEnd }, messageIndex) => {
-						const isLastMessage =
-							dateIndex() === Object.keys(processedMessages().processedGroupedMessages).length - 1 &&
-							messageIndex === messages.length - 1
+							{messages.map(({ message, isGroupStart, isGroupEnd }, messageIndex) => {
+								const isLastMessage =
+									dateIndex() ===
+										Object.keys(processedMessages().processedGroupedMessages).length - 1 &&
+									messageIndex === messages.length - 1
 
-						return (
-							<ChatMessage
-								message={message}
-								isLastMessage={isLastMessage}
-								isGroupStart={isGroupStart}
-								isGroupEnd={isGroupEnd}
-							/>
-						)
-					})}
-				</div>}
-			</For>
+								return (
+									<ChatMessage
+										message={message}
+										isLastMessage={isLastMessage}
+										isGroupStart={isGroupStart}
+										isGroupEnd={isGroupEnd}
+									/>
+								)
+							})}
+						</div>
+					)}
+				</For>
+			</div>
 		</div>
-	</div>
+	)
 }

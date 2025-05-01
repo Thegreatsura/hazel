@@ -1,11 +1,11 @@
-import { createMemo, Show } from "solid-js"
+import { For, Show, createMemo } from "solid-js"
 import { twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
+import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+import { Button } from "../ui/button"
 import { ChatImage } from "./chat-image"
 import { ReactionTags } from "./reaction-tags"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
-import { Button } from "../ui/button"
 import { UserTag } from "./user-tag"
 
 function extractTextFromJsonNodes(nodes: any[]): string {
@@ -27,7 +27,12 @@ function getPlainTextFromContent(content: string): string {
 	}
 }
 
-export function ChatMessage(props: { message: Message, isLastMessage: boolean, isGroupStart: boolean, isGroupEnd: boolean }) {
+export function ChatMessage(props: {
+	message: Message
+	isLastMessage: boolean
+	isGroupStart: boolean
+	isGroupEnd: boolean
+}) {
 	const showAvatar = props.isGroupStart
 
 	const messageTime = createMemo(() => {
@@ -42,75 +47,80 @@ export function ChatMessage(props: { message: Message, isLastMessage: boolean, i
 		return props.message.attachedFiles?.length ?? 0
 	})
 
-	const itemClass = createMemo(() => twMerge(
-		"relative overflow-hidden rounded-md",
-		attachedCount() === 1 ? "max-h-[300px]" : attachedCount() === 2 ? "aspect-video" : "aspect-square",
-	))
+	const itemClass = createMemo(() =>
+		twMerge(
+			"relative overflow-hidden rounded-md",
+			attachedCount() === 1 ? "max-h-[300px]" : attachedCount() === 2 ? "aspect-video" : "aspect-square",
+		),
+	)
 
-	return <div class={chatMessageStyles({
-		isGettingRepliedTo: false,
-		isGroupStart: props.isGroupStart,
-		isGroupEnd: props.isGroupEnd,
-	})}>
-		<Show when={props.message.replyToMessageId}>
-			<Button class="flex items-center gap-1 pl-12 text-left w-fit" intent="ghost">
-				<Avatar class="w-4 h-4">
-					<AvatarImage src={props.message.replyToMessage?.author?.avatarUrl} />
-					<AvatarFallback>
-						{props.message.replyToMessage?.author?.displayName.slice(0, 2)}
-					</AvatarFallback>
-				</Avatar>
-				<UserTag user={props.message.replyToMessage?.author!} />
-				<span class="text-ellipsis text-foreground text-xs">
-					{getPlainTextFromContent(props.message.replyToMessage?.content ?? "")}
-				</span>
-			</Button>
-		</Show>
-		<div class="flex gap-4">
-			<Show when={showAvatar}>
-				<Avatar>
-					<AvatarImage src={props.message.author?.avatarUrl} />
-					<AvatarFallback>
-						{props.message.author?.displayName.slice(0, 2)}
-					</AvatarFallback>
-				</Avatar>
+	return (
+		<div
+			class={chatMessageStyles({
+				isGettingRepliedTo: false,
+				isGroupStart: props.isGroupStart,
+				isGroupEnd: props.isGroupEnd,
+			})}
+		>
+			<Show when={props.message.replyToMessageId}>
+				<Button class="flex w-fit items-center gap-1 pl-12 text-left" intent="ghost">
+					<Avatar class="size-4">
+						<AvatarImage src={props.message.replyToMessage?.author?.avatarUrl} />
+						<AvatarFallback>{props.message.replyToMessage?.author?.displayName.slice(0, 2)}</AvatarFallback>
+					</Avatar>
+					<UserTag user={props.message.replyToMessage?.author!} />
+					<span class="text-ellipsis text-foreground text-xs">
+						{getPlainTextFromContent(props.message.replyToMessage?.content ?? "")}
+					</span>
+				</Button>
 			</Show>
-			<Show when={!showAvatar}>
-				<div class="w-10 items-center justify-end pr-1 text-[10px] text-muted-foreground leading-tight opacity-0 group-hover:opacity-100">
-					{messageTime()}
-				</div>
-			</Show>
-			<div class="min-w-0 flex-1">
+			<div class="flex gap-4">
 				<Show when={showAvatar}>
-					<div class="flex items-baseline gap-2">
-						<span class="font-semibold">{props.message.author?.displayName}</span>
-						<span class="text-muted-foreground text-xs">{messageTime()}</span>
+					<Avatar>
+						<AvatarImage src={props.message.author?.avatarUrl} />
+						<AvatarFallback>{props.message.author?.displayName.slice(0, 2)}</AvatarFallback>
+					</Avatar>
+				</Show>
+				<Show when={!showAvatar}>
+					<div class="w-10 items-center justify-end pr-1 text-[10px] text-muted-foreground leading-tight opacity-0 group-hover:opacity-100">
+						{messageTime()}
 					</div>
 				</Show>
-				{/* TODO: This should be a markdown viewer */}
-				<p class="text-sm">{props.message.content}</p>
-				<div class="flex flex-col gap-2 pt-2">
-					<Show when={attachedCount() > 0}>
-						<div class={twMerge(
-							"mt-2",
-							attachedCount() === 1
-								? "flex max-w-[400px]"
-								: `grid grid-cols-${attachedCount() === 3 ? 3 : 2} max-w-lg`,
-							"gap-1",
-						)}
-						>
-							{props.message.attachedFiles?.slice(0, 4).map((file) => (
-								<div class={itemClass()}>
-									<ChatImage src={`${import.meta.env.VITE_BUCKET_URL}/${file}`} alt={file} />
-								</div>
-							))}
+				<div class="min-w-0 flex-1">
+					<Show when={showAvatar}>
+						<div class="flex items-baseline gap-2">
+							<span class="font-semibold">{props.message.author?.displayName}</span>
+							<span class="text-muted-foreground text-xs">{messageTime()}</span>
 						</div>
 					</Show>
-					<ReactionTags message={props.message} />
+					{/* TODO: This should be a markdown viewer */}
+					<p class="text-sm">{props.message.content}</p>
+					<div class="flex flex-col gap-2 pt-2">
+						<Show when={attachedCount() > 0}>
+							<div
+								class={twMerge(
+									"mt-2",
+									attachedCount() === 1
+										? "flex max-w-[400px]"
+										: `grid grid-cols-${attachedCount() === 3 ? 3 : 2} max-w-lg`,
+									"gap-1",
+								)}
+							>
+								<For each={props.message.attachedFiles?.slice(0, 4)}>
+									{(file) => (
+										<div class={itemClass()}>
+											<ChatImage src={`${import.meta.env.VITE_BUCKET_URL}/${file}`} alt={file} />
+										</div>
+									)}
+								</For>
+							</div>
+						</Show>
+						<ReactionTags message={props.message} />
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	)
 }
 
 export const chatMessageStyles = tv({

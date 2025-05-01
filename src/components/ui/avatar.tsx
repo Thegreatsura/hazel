@@ -8,7 +8,7 @@ export const Avatar = (props: ArkAvatar.RootProps & { shape?: "circle" | "square
 			class={twMerge(
 				"relative flex h-10 w-10 shrink-0 overflow-hidden",
 				props.shape === "circle" ? "rounded-full" : "rounded-md",
-				props.class
+				props.class,
 			)}
 			{...props}
 		/>
