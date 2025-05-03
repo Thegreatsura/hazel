@@ -298,28 +298,34 @@ export function ChatMessage(props: {
 								when={a.popoverContent}
 								fallback={
 									<Tooltip lazyMount>
-										<Button intent="ghost" size="icon" onClick={() => handleAction(a)}>
-											{a.icon}
-										</Button>
-										<Tooltip.Content>
-											{a.label}
-											{a.hotkey && <span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>}
-										</Tooltip.Content>
+										<Tooltip.Trigger>
+											<Button intent="ghost" size="icon" onClick={() => handleAction(a)}>
+												{a.icon}
+											</Button>
+											<Tooltip.Content>
+												{a.label}
+												{a.hotkey && (
+													<span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>
+												)}
+											</Tooltip.Content>
+										</Tooltip.Trigger>
 									</Tooltip>
 								}
 							>
-								<Tooltip lazyMount>
-									<Popover>
-										<Button intent="ghost" size="icon">
-											{a.icon}
-										</Button>
+								<Popover lazyMount>
+									<Tooltip>
+										<Tooltip.Trigger>
+											<Button intent="ghost" size="icon">
+												{a.icon}
+											</Button>
+										</Tooltip.Trigger>
 										<Tooltip.Content>
 											{a.label}
 											{a.hotkey && <span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>}
 										</Tooltip.Content>
 										<Popover.Content>{a.popoverContent}</Popover.Content>
-									</Popover>
-								</Tooltip>
+									</Tooltip>
+								</Popover>
 							</Show>
 						)}
 					</For>
@@ -327,9 +333,10 @@ export function ChatMessage(props: {
 						<Menu.Trigger class={twMerge(buttonVariants({ intent: "ghost", size: "icon" }))}>
 							<IconDotsHorizontal class="size-4" />
 						</Menu.Trigger>
-						<Menu.Content>
+						<Menu.Content class="flex flex-col">
 							<For each={actions().filter((a) => a.showMenu)}>
 								{(a) => (
+									// TODO: Show hotkey here
 									<Menu.Item
 										value={a.label}
 										class={`flex justify-between ${a.isDanger ? "text-danger" : ""}`}
