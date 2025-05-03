@@ -1,11 +1,12 @@
 import { useAuth } from "clerk-solidjs"
+import { Show, createMemo } from "solid-js"
 import { twMerge } from "tailwind-merge"
-import { useZero } from "~/lib/zero-context"
-import { IconButton } from "../icon-button"
-import { newId } from "~/lib/id-helpers"
-import { createMemo, Show } from "solid-js"
 import { useChatMessage } from "~/lib/hooks/data/use-chat-message"
+import { newId } from "~/lib/id-helpers"
+import { useZero } from "~/lib/zero-context"
 import { chatStore$ } from "~/routes/_app/$serverId/chat/$id"
+import { IconButton } from "../icon-button"
+import { IconPlus } from "../icons/plus"
 
 export function FloatingBar(props: { channelId: string }) {
 	const auth = useAuth()
@@ -60,26 +61,6 @@ export function FloatingBar(props: { channelId: string }) {
 				</div>
 			</div>
 		</div>
-	)
-}
-
-export function IconPlus() {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class="lucide lucide-plus-icon lucide-plus"
-		>
-			<path d="M5 12h14" />
-			<path d="M12 5v14" />
-		</svg>
 	)
 }
 

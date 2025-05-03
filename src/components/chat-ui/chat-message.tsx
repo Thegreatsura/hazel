@@ -1,21 +1,26 @@
-import { For, Show, createMemo, createSignal, type Accessor, type JSX, type Signal } from "solid-js"
+import { useParams } from "@tanstack/solid-router"
+import { For, type JSX, Show, createMemo, createSignal } from "solid-js"
 import { twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 import type { Message } from "~/lib/hooks/data/use-chat-messages"
+import { newId } from "~/lib/id-helpers"
+import { useZero } from "~/lib/zero-context"
+import { chatStore$ } from "~/routes/_app/$serverId/chat/$id"
+import { IconCopy } from "../icons/copy"
+import { IconHorizontalDots } from "../icons/horizontal-dots"
+import { IconPin } from "../icons/pin"
+import { IconPlus } from "../icons/plus"
+import { IconReply } from "../icons/reply"
+import { IconTrash } from "../icons/trash"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Button, buttonVariants } from "../ui/button"
+import { Menu } from "../ui/menu"
+import { Popover } from "../ui/popover"
+import { Tooltip } from "../ui/tooltip"
 import { ChatImage } from "./chat-image"
+import { ConfirmDialog } from "./confirm-dialog"
 import { ReactionTags } from "./reaction-tags"
 import { UserTag } from "./user-tag"
-import { Tooltip } from "../ui/tooltip"
-import { IconPlus } from "./floating-bar"
-import { chatStore$ } from "~/routes/_app/$serverId/chat/$id"
-import { useZero } from "~/lib/zero-context"
-import { newId } from "~/lib/id-helpers"
-import { Popover } from "../ui/popover"
-import { Menu } from "../ui/menu"
-import { ConfirmDialog } from "./confirm-dialog"
-import { useParams } from "@tanstack/solid-router"
 
 function extractTextFromJsonNodes(nodes: any[]): string {
 	if (!Array.isArray(nodes)) return ""
@@ -208,7 +213,7 @@ export function ChatMessage(props: {
 		{
 			key: "pin",
 			label: isPinned() ? "Unpin" : "Pin",
-			icon: isPinned() ? <IconPin2 class="size-4" /> : <IconPin2 class="size-4" />,
+			icon: isPinned() ? <IconPin class="size-4" /> : <IconPin class="size-4" />,
 			onAction: async () => {
 				if (isPinned()) {
 					await z.mutate.pinnedMessages.delete({
@@ -229,7 +234,7 @@ export function ChatMessage(props: {
 		{
 			key: "copy-text",
 			label: "Copy Text",
-			icon: <IconPaper class="size-4" />,
+			icon: <IconCopy class="size-4" />,
 			onAction: () => navigator.clipboard.writeText(props.message.content),
 			hotkey: "c",
 			showMenu: true,
@@ -331,7 +336,7 @@ export function ChatMessage(props: {
 					</For>
 					<Menu open={open()} onOpenChange={() => setOpen((prev) => !prev)} lazyMount>
 						<Menu.Trigger class={twMerge(buttonVariants({ intent: "ghost", size: "icon" }))}>
-							<IconDotsHorizontal class="size-4" />
+							<IconHorizontalDots class="size-4" />
 						</Menu.Trigger>
 						<Menu.Content>
 							<For each={actions().filter((a) => a.showMenu)}>
@@ -438,26 +443,6 @@ export const chatMessageStyles = tv({
 	},
 })
 
-function IconReply(props: { class: string }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class={props.class}
-		>
-			<polyline points="9 17 4 12 9 7" />
-			<path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-		</svg>
-	)
-}
-
 function IconBrandLinear(props: { class: string }) {
 	return (
 		<svg
@@ -485,88 +470,6 @@ function IconBrandLinear(props: { class: string }) {
 				d="M5.66301 5.59517C9.18091 2.12137 14.8488 2.135 18.3498 5.63604C21.8508 9.13708 21.8645 14.8049 18.3907 18.3228L5.66301 5.59517Z"
 				fill="#000000"
 			/>
-		</svg>
-	)
-}
-
-export function IconPin2(props: { class?: string }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class={props.class}
-		>
-			<path d="M12 17v5" />
-			<path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
-		</svg>
-	)
-}
-
-export function IconPaper(props: { class: string }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class={props.class}
-		>
-			<rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-			<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-		</svg>
-	)
-}
-
-export function IconTrash(props: { class: string }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class={props.class}
-		>
-			<path d="M3 6h18" />
-			<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-			<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-		</svg>
-	)
-}
-
-function IconDotsHorizontal(props: { class: string }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			class={props.class}
-		>
-			<circle cx="12" cy="12" r="1" />
-			<circle cx="12" cy="19" r="1" />
-			<circle cx="12" cy="5" r="1" />
 		</svg>
 	)
 }

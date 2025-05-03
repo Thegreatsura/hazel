@@ -1,12 +1,13 @@
 import { useParams } from "@tanstack/solid-router"
-import { createMemo, For } from "solid-js"
+import { For, createMemo } from "solid-js"
+import { IconPin } from "~/components/icons/pin"
 import { usePinnedMessages } from "~/lib/hooks/data/use-pinned-messages"
 import { useZero } from "~/lib/zero-context"
-import { Popover } from "../ui/popover"
-import { Button } from "../ui/button"
-import { chatMessageStyles, IconPin2 } from "./chat-message"
-import { IconCircleXFill } from "./floating-bar"
 import { Avatar } from "../ui/avatar"
+import { Button } from "../ui/button"
+import { Popover } from "../ui/popover"
+import { chatMessageStyles } from "./chat-message"
+import { IconCircleXFill } from "./floating-bar"
 
 export function PinnedModal() {
 	const z = useZero()
@@ -34,13 +35,13 @@ export function PinnedModal() {
 	return (
 		<Popover>
 			<Popover.Trigger>
-				<Button>
-					<IconPin2 class="size-4" />
+				<Button size="icon" intent="ghost">
+					<IconPin class="size-4" />
 				</Button>
 			</Popover.Trigger>
 			<Popover.Content>
 				<Popover.Title class="mb-2 flex gap-2">
-					<IconPin2 /> Pinned Messages
+					<IconPin /> Pinned Messages
 				</Popover.Title>
 				<div class="flex flex-col gap-2">
 					<For each={sortedMessages()}>
