@@ -1,5 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/solid-router"
-import { type Accessor, For, createMemo, onMount } from "solid-js"
+import { type Accessor, For, createEffect, createMemo, on, onMount } from "solid-js"
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
@@ -29,8 +29,14 @@ function RouteComponent() {
 	})
 
 	// Scroll to the bottom of the messages when the component mounts
-	onMount(() => {
-		if (lastMessageId() && messagesRef) {
+	// createEffect(() => {
+	// 	if (lastMessageId() && messagesRef) {
+	// 		messagesRef.scrollTo({ top: messagesRef.scrollHeight, behavior: "instant" })
+	// 	}
+	// })
+
+	createEffect(() => {
+		if (params.id && messagesRef) {
 			messagesRef.scrollTo({ top: messagesRef.scrollHeight, behavior: "instant" })
 		}
 	})
