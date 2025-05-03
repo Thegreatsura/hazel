@@ -13,8 +13,7 @@ import { Tabs } from "~/components/ui/tabs"
 import { TextField } from "~/components/ui/text-field"
 import { Tooltip } from "~/components/ui/tooltip"
 
-import { For, Index, Show } from "solid-js"
-import { IconCheck } from "~/components/icons/check"
+import { For, Index } from "solid-js"
 import { IconChevronUpDown } from "~/components/icons/chevron-up-down"
 import { Combobox } from "~/components/ui/combo-box"
 

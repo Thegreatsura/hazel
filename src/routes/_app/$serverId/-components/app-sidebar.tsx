@@ -1,17 +1,20 @@
-import { Link, useNavigate, useParams } from "@tanstack/solid-router"
+import { Link, useParams } from "@tanstack/solid-router"
 import { useAuth } from "clerk-solidjs"
-import { For, createMemo } from "solid-js"
+import { For, createMemo, createSignal } from "solid-js"
 import { useDmChannels } from "~/lib/hooks/data/use-dm-channels"
 import { useServerChannels } from "~/lib/hooks/data/use-server-channels"
 import type { Channel } from "~/lib/schema"
-import { IconHashtag } from "./icons/hashtag"
-import { IconPlus } from "./icons/plus"
-import { IconPlusSmall } from "./icons/plus-small"
-import { Avatar } from "./ui/avatar"
-import { Button } from "./ui/button"
-import { Dialog } from "./ui/dialog"
-import { Sidebar } from "./ui/sidebar"
-import { Tabs } from "./ui/tabs"
+import { IconHashtag } from "../../../../components/icons/hashtag"
+
+import { IconPlusSmall } from "../../../../components/icons/plus-small"
+
+import { Avatar } from "../../../../components/ui/avatar"
+import { Button } from "../../../../components/ui/button"
+import { Dialog } from "../../../../components/ui/dialog"
+import { Sidebar } from "../../../../components/ui/sidebar"
+import { Tabs } from "../../../../components/ui/tabs"
+import { CreateChannelForm } from "./create-channel-form"
+import { JoinPublicChannel } from "./join-public-channel"
 
 export interface SidebarProps {
 	class?: string
@@ -25,7 +28,8 @@ export const AppSidebar = (props: SidebarProps) => {
 	const { channels: serverChannels } = useServerChannels(serverId)
 
 	const { userId } = useAuth()
-	const navigate = useNavigate()
+
+	const [createChannelModalOpen, setCreateChannelModalOpen] = createSignal(false)
 
 	const computedChannels = createMemo(() => {
 		return dmChannels()
@@ -49,7 +53,10 @@ export const AppSidebar = (props: SidebarProps) => {
 			<Sidebar.Group
 				title="Text Channels"
 				action={
-					<Dialog>
+					<Dialog
+						open={createChannelModalOpen()}
+						onOpenChange={(details) => setCreateChannelModalOpen(details.open)}
+					>
 						<Dialog.Trigger
 							class="text-muted-foreground"
 							asChild={(props) => (
@@ -65,10 +72,16 @@ export const AppSidebar = (props: SidebarProps) => {
 									<Tabs.Trigger value="create">Create New</Tabs.Trigger>
 								</Tabs.List>
 								<Tabs.Content value="join">
-									<p>Public Content</p>
+									<JoinPublicChannel
+										serverId={serverId}
+										onSuccess={() => setCreateChannelModalOpen(false)}
+									/>
 								</Tabs.Content>
 								<Tabs.Content value="create">
-									<p>Private Content</p>
+									<CreateChannelForm
+										serverId={serverId}
+										onSuccess={() => setCreateChannelModalOpen(false)}
+									/>
 								</Tabs.Content>
 							</Tabs>
 						</Dialog.Content>

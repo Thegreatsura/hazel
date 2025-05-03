@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute } from "@tanstack/solid-router"
-import { AppSidebar } from "~/components/app-sidebar"
+import { AppSidebar } from "~/routes/_app/$serverId/-components/app-sidebar"
 import { ServerSelectSidebar } from "./-components/server-select-sidebar"
 
 export const Route = createFileRoute("/_app/$serverId")({
