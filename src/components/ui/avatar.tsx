@@ -1,9 +1,42 @@
 import { Avatar as ArkAvatar } from "@ark-ui/solid"
-import { splitProps } from "solid-js"
+import { Show, splitProps } from "solid-js"
 
 import { twMerge } from "tailwind-merge"
+import { IconUser } from "../icons/user"
 
-export const AvatarRoot = (props: ArkAvatar.RootProps & { shape?: "circle" | "square" }) => {
+export interface AvatarProps extends AvatarRootProps {
+	name?: string
+	src?: string
+}
+
+const getInitials = (name = "") =>
+	name
+		.split(" ")
+		.map((part) => part[0])
+		.splice(0, 2)
+		.join("")
+		.toUpperCase()
+
+export const AvatarMolecule = (props: AvatarProps) => {
+	const [localProps, rootProps] = splitProps(props, ["name", "src"])
+
+	return (
+		<AvatarRoot {...rootProps}>
+			<AvatarFallback>
+				<Show when={localProps.name} fallback={<IconUser />}>
+					{getInitials(localProps.name)}
+				</Show>
+			</AvatarFallback>
+			<AvatarImage src={localProps.src} alt={localProps.name} />
+		</AvatarRoot>
+	)
+}
+
+export interface AvatarRootProps extends ArkAvatar.RootProps {
+	shape?: "circle" | "square"
+}
+
+export const AvatarRoot = (props: AvatarRootProps) => {
 	const [local, rest] = splitProps(props, ["class", "shape"])
 
 	return (
@@ -31,7 +64,8 @@ export const AvatarFallback = (props: ArkAvatar.FallbackProps) => {
 	)
 }
 
-const Avatar = Object.assign(AvatarRoot, {
+const Avatar = Object.assign(AvatarMolecule, {
+	Root: AvatarRoot,
 	Image: AvatarImage,
 	Fallback: AvatarFallback,
 })

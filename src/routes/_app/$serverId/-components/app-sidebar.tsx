@@ -1,19 +1,20 @@
 import { Link, useParams } from "@tanstack/solid-router"
 import { useAuth } from "clerk-solidjs"
 import { For, createMemo, createSignal } from "solid-js"
+import { IconHashtag } from "~/components/icons/hashtag"
 import { useDmChannels } from "~/lib/hooks/data/use-dm-channels"
 import { useServerChannels } from "~/lib/hooks/data/use-server-channels"
 import type { Channel } from "~/lib/zero/schema"
-import { IconHashtag } from "../../../../components/icons/hashtag"
 
-import { IconPlusSmall } from "../../../../components/icons/plus-small"
+import { IconPlusSmall } from "~/components/icons/plus-small"
+import { Avatar } from "~/components/ui/avatar"
+import { Button } from "~/components/ui/button"
+import { Dialog } from "~/components/ui/dialog"
+import { Sidebar } from "~/components/ui/sidebar"
+import { Tabs } from "~/components/ui/tabs"
 
-import { Avatar } from "../../../../components/ui/avatar"
-import { Button } from "../../../../components/ui/button"
-import { Dialog } from "../../../../components/ui/dialog"
-import { Sidebar } from "../../../../components/ui/sidebar"
-import { Tabs } from "../../../../components/ui/tabs"
 import { CreateChannelForm } from "./create-channel-form"
+import { CreateDmDialog } from "./create-dm-dialog"
 import { JoinPublicChannel } from "./join-public-channel"
 
 export interface SidebarProps {
@@ -92,29 +93,7 @@ export const AppSidebar = (props: SidebarProps) => {
 					{(channel) => <ChannelItem channel={channel} serverId={serverId()} />}
 				</For>
 			</Sidebar.Group>
-			<Sidebar.Group
-				title="DM's"
-				action={
-					<Dialog>
-						<Dialog.Trigger
-							class="text-muted-foreground"
-							asChild={(props) => (
-								<Button intent="ghost" size="icon" {...props}>
-									<IconPlusSmall />
-								</Button>
-							)}
-						/>
-						<Dialog.Content>
-							<Dialog.Header>
-								<Dialog.Title>Add Direct Message</Dialog.Title>
-								<Dialog.Description>
-									Enter the username of the person you want to message.
-								</Dialog.Description>
-							</Dialog.Header>
-						</Dialog.Content>
-					</Dialog>
-				}
-			>
+			<Sidebar.Group title="DM's" action={<CreateDmDialog />}>
 				<For each={computedChannels()}>
 					{(channel) => <DmChannelLink channel={channel} serverId={serverId()} />}
 				</For>
@@ -166,10 +145,7 @@ const DmChannelLink = (props: DmChannelLinkProps) => {
 					<For each={props.channel.friends}>
 						{(friend) => (
 							<div class="inline-block">
-								<Avatar class="size-7">
-									<Avatar.Image src={friend.avatarUrl} alt={friend.tag} />
-									<Avatar.Fallback>{friend.displayName}</Avatar.Fallback>
-								</Avatar>
+								<Avatar class="size-7" src={friend.avatarUrl} name={friend.displayName} />
 							</div>
 						)}
 					</For>

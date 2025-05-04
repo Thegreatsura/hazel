@@ -280,10 +280,11 @@ export function ChatMessage(props: {
 						if (props.message.replyToMessageId) scrollToMessage(props.message.replyToMessageId)
 					}}
 				>
-					<Avatar class="size-4">
-						<AvatarImage src={props.message.replyToMessage?.author?.avatarUrl} />
-						<AvatarFallback>{props.message.replyToMessage?.author?.displayName.slice(0, 2)}</AvatarFallback>
-					</Avatar>
+					<Avatar
+						class="size-4"
+						name={props.message.replyToMessage?.author?.displayName}
+						src={props.message.replyToMessage?.author?.avatarUrl}
+					/>
 					<UserTag user={props.message.replyToMessage?.author!} />
 					<span class="text-ellipsis text-foreground text-xs">
 						{getPlainTextFromContent(props.message.replyToMessage?.content ?? "")}
@@ -356,10 +357,7 @@ export function ChatMessage(props: {
 					</Menu>
 				</div>
 				<Show when={showAvatar()}>
-					<Avatar>
-						<AvatarImage src={props.message.author?.avatarUrl} />
-						<AvatarFallback>{props.message.author?.displayName.slice(0, 2)}</AvatarFallback>
-					</Avatar>
+					<Avatar src={props.message.author?.avatarUrl} name={props.message.author?.displayName} />
 				</Show>
 				<Show when={!showAvatar()}>
 					<div class="w-10 items-center justify-end pr-1 text-[10px] text-muted-foreground leading-tight opacity-0 group-hover:opacity-100">

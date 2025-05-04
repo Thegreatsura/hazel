@@ -14,16 +14,15 @@ export const ServerSelectSidebar = () => {
 				{(server) => (
 					<Avatar
 						class="cursor-pointer"
+						name={server.name}
+						src={server.imageUrl}
 						onClick={() =>
 							navigate({
 								to: "/$serverId",
 								params: { serverId: server.id },
 							})
 						}
-					>
-						<AvatarImage src={server.imageUrl} alt={server.name} />
-						<AvatarFallback>{server.name.slice(0, 2)}</AvatarFallback>
-					</Avatar>
+					/>
 				)}
 			</For>
 		</ul>

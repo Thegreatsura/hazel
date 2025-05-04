@@ -67,9 +67,10 @@ export function PinnedModal() {
 											<IconCircleXFill />
 										</Button>
 									</div>
-									<Avatar>
-										<Avatar.Image src={pinnedMessage?.message?.author?.avatarUrl} />
-									</Avatar>
+									<Avatar
+										src={pinnedMessage?.message?.author?.avatarUrl}
+										name={pinnedMessage?.message?.author?.displayName}
+									/>
 									<div class="min-w-0 flex-1">
 										<div class="flex items-baseline gap-2">
 											<span class="font-semibold">

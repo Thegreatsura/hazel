@@ -31,20 +31,12 @@ export function ChatTopbar() {
 		<div class="flex h-16 items-center justify-between gap-2 border-b bg-sidebar p-3">
 			<div class="flex items-center gap-2">
 				<Show when={isSingleDm()}>
-					<Avatar>
-						<AvatarImage src={friends()[0].avatarUrl} alt={friends()[0].displayName} />
-						<AvatarFallback>{friends()[0].displayName.slice(0, 2)}</AvatarFallback>
-					</Avatar>
+					<Avatar src={friends()[0].avatarUrl} name={friends()[0].displayName} />
 				</Show>
 				<Show when={!isSingleDm()}>
 					<div class="-space-x-4 flex items-center justify-center">
 						<For each={friends()}>
-							{(friend) => (
-								<Avatar>
-									<AvatarImage src={friend.avatarUrl} alt={friend.displayName} />
-									<AvatarFallback>{friend.displayName.slice(0, 2)}</AvatarFallback>
-								</Avatar>
-							)}
+							{(friend) => <Avatar src={friend.avatarUrl} name={friend.displayName} />}
 						</For>
 					</div>
 				</Show>
