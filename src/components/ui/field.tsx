@@ -27,7 +27,7 @@ const { description, label, fieldError } = fieldStyles()
 const fieldGroupStyles = tv({
 	base: [
 		"group flex h-10 items-center overflow-hidden rounded-lg border border-input shadow-xs transition duration-200 ease-out",
-		"relative focus-within:ring-4 group-invalid:focus-within:border-destructive group-invalid:focus-within:ring-destructive/20",
+		"relative focus-within:ring-1 group-invalid:focus-within:border-destructive group-invalid:focus-within:ring-destructive/20",
 		"[&>[role=progressbar]:first-child]:ml-2.5 [&>[role=progressbar]:last-child]:mr-2.5",
 		"**:data-[slot=icon]:size-4 **:data-[slot=icon]:shrink-0 **:[button]:shrink-0",
 		"[&>button:has([data-slot=icon]):first-child]:left-0 [&>button:has([data-slot=icon]):last-child]:right-0 [&>button:has([data-slot=icon])]:absolute",
@@ -98,7 +98,7 @@ export const FieldSelect = (props: FieldSelectProps) => {
 			<Field.Select
 				{...rest}
 				class={twMerge(
-					"peer inline-flex w-full cursor-pointer appearance-none items-center rounded-md text-foreground text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 has-[option[disabled]:checked]:text-muted-foreground aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 dark:aria-[invalid=true]:ring-destructive/40",
+					"peer inline-flex w-full cursor-pointer appearance-none items-center rounded-md text-foreground text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:ring-[1px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 has-[option[disabled]:checked]:text-muted-foreground aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 dark:aria-[invalid=true]:ring-destructive/40",
 					classProps.multiple ? "py-1 *:px-3 *:py-1 [&_option:checked]:bg-accent" : "h-9 ps-3 pe-8",
 					classProps.class,
 				)}
