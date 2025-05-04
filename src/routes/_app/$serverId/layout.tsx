@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_app/$serverId")({
 function RouteComponent() {
 	return (
 		<div>
-			<div class="fixed inset-y-0 border-r bg-background pb-4 lg:left-0 lg:z-50 lg:block lg:w-14 lg:overflow-y-auto">
+			<div class="fixed inset-y-0 border-r bg-sidebar/90 pb-4 lg:left-0 lg:z-50 lg:block lg:w-14 lg:overflow-y-auto">
 				<ServerSelectSidebar />
 			</div>
 			<main class="pl-14">

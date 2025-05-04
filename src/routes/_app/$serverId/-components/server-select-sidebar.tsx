@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/solid-router"
 import { For } from "solid-js"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { Avatar } from "~/components/ui/avatar"
 import { useUserServers } from "~/lib/hooks/data/use-user-servers"
 
 export const ServerSelectSidebar = () => {
