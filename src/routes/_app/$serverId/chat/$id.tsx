@@ -1,5 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/solid-router"
-import { type Accessor, For, createEffect, createMemo, createSignal, on, onMount } from "solid-js"
+import { type Accessor, For, Show, createEffect, createMemo, createSignal, on, onMount } from "solid-js"
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
@@ -113,27 +113,38 @@ function RouteComponent() {
 		<div class="flex h-screen flex-col">
 			<ChatTopbar />
 			<div class="flex-1 space-y-6 overflow-y-auto p-4 pl-0" ref={messagesRef}>
-				<For each={processedMessages().processedGroupedMessages}>
-					{([date, messages]) => (
-						<div class="flex flex-col">
-							<div class="py-2 text-center text-muted-foreground text-sm">
-								<span>{date}</span>
-							</div>
-
-							<For each={messages()}>
-								{({ message, isGroupStart, isGroupEnd }) => {
-									return (
-										<ChatMessage
-											message={message}
-											isGroupStart={isGroupStart}
-											isGroupEnd={isGroupEnd}
-										/>
-									)
-								}}
-							</For>
+				<Show
+					when={processedMessages().processedGroupedMessages.length > 0}
+					fallback={
+						<div class="flex h-full flex-col items-center justify-center">
+							<p class="text-center text-muted-foreground">
+								No messages yet, be the first to break the ice!
+							</p>
 						</div>
-					)}
-				</For>
+					}
+				>
+					<For each={processedMessages().processedGroupedMessages}>
+						{([date, messages]) => (
+							<div class="flex flex-col">
+								<div class="py-2 text-center text-muted-foreground text-sm">
+									<span>{date}</span>
+								</div>
+
+								<For each={messages()}>
+									{({ message, isGroupStart, isGroupEnd }) => {
+										return (
+											<ChatMessage
+												message={message}
+												isGroupStart={isGroupStart}
+												isGroupEnd={isGroupEnd}
+											/>
+										)
+									}}
+								</For>
+							</div>
+						)}
+					</For>
+				</Show>
 			</div>
 			<div class="mx-2 mb-6">
 				<FloatingBar channelId={params.id} />
