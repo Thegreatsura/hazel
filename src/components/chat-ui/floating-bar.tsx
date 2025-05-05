@@ -179,6 +179,47 @@ const useFileAttachment = () => {
 	}
 }
 
+const useGlobalEditorFocus = (editorRef: () => HTMLDivElement | undefined) => {
+	createEffect(() => {
+		if (!editorRef()) {
+			return
+		}
+
+		const handleGlobalKeyDown = (event: globalThis.KeyboardEvent) => {
+			if (event.ctrlKey || event.altKey || event.metaKey) {
+				return
+			}
+
+			if (document.querySelector('[data-react-aria-modal="true"]')) {
+				return
+			}
+
+			const activeElement = document.activeElement
+			if (activeElement) {
+				const isInputContext = activeElement.closest(
+					'input, textarea, select, [contenteditable="true"], [contenteditable=""]',
+				)
+				if (isInputContext) {
+					return
+				}
+			}
+
+			const isPrintableKey = event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey
+
+			if (isPrintableKey) {
+				event.preventDefault()
+				editorRef()?.focus()
+			}
+		}
+
+		document.addEventListener("keydown", handleGlobalKeyDown)
+
+		onCleanup(() => {
+			document.removeEventListener("keydown", handleGlobalKeyDown)
+		})
+	})
+}
+
 export function FloatingBar(props: { channelId: string }) {
 	const auth = useAuth()
 	const [chatStore, setChatStore] = chatStore$
@@ -190,6 +231,9 @@ export function FloatingBar(props: { channelId: string }) {
 		removeAttachment,
 		clearAttachments, // Use this for a potential 'clear all' button if needed
 	} = useFileAttachment()
+
+	const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
+	useGlobalEditorFocus(editorRef)
 
 	const isUploading = createMemo(() => attachments().some((att) => att.status === "uploading"))
 	const successfulKeys = createMemo(() =>
@@ -257,6 +301,7 @@ export function FloatingBar(props: { channelId: string }) {
 
 				<div class="w-full">
 					<input
+						ref={setEditorRef}
 						class="w-full"
 						onKeyDown={(e) => {
 							if (e.key === "Enter") {

@@ -1,8 +1,6 @@
 # TODOs
 
 ## Chat UI
-- Add file upload
-- Add input auto focus from anywhere in the app (see old app)
 - Add markdown rendering 
 - Fix Reply to message Styling
 - Remove input after message send
