@@ -2,6 +2,7 @@ import { Outlet, createRootRouteWithContext } from "@tanstack/solid-router"
 import { TanStackRouterDevtools } from "@tanstack/solid-router-devtools"
 import { ClerkProvider, SignIn, useAuth } from "clerk-solidjs"
 import { Match, Show, Suspense, Switch, createEffect, createSignal, onCleanup } from "solid-js"
+import { FpsCounter } from "~/components/devtools/fps-counter"
 import { initZero } from "../lib/zero/zero-client"
 import { ZeroProvider } from "../lib/zero/zero-context"
 
@@ -86,6 +87,9 @@ function RootComponent() {
 		<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
 			<AuthInner />
 			<TanStackRouterDevtools />
+			<Show when={import.meta.env.DEV}>
+				<FpsCounter />
+			</Show>
 		</ClerkProvider>
 	)
 }

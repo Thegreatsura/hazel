@@ -11,6 +11,7 @@ import { IconHorizontalDots } from "../icons/horizontal-dots"
 import { IconPin } from "../icons/pin"
 import { IconPlus } from "../icons/plus"
 import { IconReply } from "../icons/reply"
+import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
 import { IconTrash } from "../icons/trash"
 import { Avatar } from "../ui/avatar"
 import { Button, buttonVariants } from "../ui/button"
@@ -21,8 +22,8 @@ import { ChatImage } from "./chat-image"
 import { ConfirmDialog } from "./confirm-dialog"
 import { ReactionTags } from "./reaction-tags"
 import { UserTag } from "./user-tag"
-import { Dialog } from "../ui/dialog"
-import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
+
+import { Markdown } from "@maki-chat/markdown"
 
 function extractTextFromJsonNodes(nodes: any[]): string {
 	if (!Array.isArray(nodes)) return ""
@@ -375,8 +376,7 @@ export function ChatMessage(props: {
 							<span class="text-muted-foreground text-xs">{messageTime()}</span>
 						</div>
 					</Show>
-					{/* TODO: This should be a markdown viewer */}
-					<p class="text-sm">{props.message.content}</p>
+					<Markdown class="text-sm" children={props.message.content} renderingStrategy="reconcile" />
 					<div class="flex flex-col gap-2 pt-2">
 						<Show when={attachedCount() > 0}>
 							<div
