@@ -2,22 +2,23 @@ import { useParams } from "@tanstack/solid-router"
 import { For, type JSX, Show, createMemo, createSignal, splitProps } from "solid-js"
 import { twJoin, twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
+
+import { IconCopy } from "~/components/icons/copy"
+import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
+import { IconPin } from "~/components/icons/pin"
+import { IconPlus } from "~/components/icons/plus"
+import { IconReply } from "~/components/icons/reply"
+import { IconTrash } from "~/components/icons/trash"
+
+import { Avatar } from "~/components/ui/avatar"
+import { Button, buttonVariants } from "~/components/ui/button"
+import { Menu } from "~/components/ui/menu"
+import { Popover } from "~/components/ui/popover"
+import { Tooltip } from "~/components/ui/tooltip"
 import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { newId } from "~/lib/id-helpers"
 import { useZero } from "~/lib/zero/zero-context"
 import { chatStore$ } from "~/routes/_app/$serverId/chat/$id"
-import { IconCopy } from "../icons/copy"
-import { IconHorizontalDots } from "../icons/horizontal-dots"
-import { IconPin } from "../icons/pin"
-import { IconPlus } from "../icons/plus"
-import { IconReply } from "../icons/reply"
-import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
-import { IconTrash } from "../icons/trash"
-import { Avatar } from "../ui/avatar"
-import { Button, buttonVariants } from "../ui/button"
-import { Menu } from "../ui/menu"
-import { Popover } from "../ui/popover"
-import { Tooltip } from "../ui/tooltip"
 
 import { ConfirmDialog } from "./confirm-dialog"
 import { ImageViewerModal } from "./image-viewer-modal"
@@ -277,11 +278,12 @@ export function ChatMessage(props: {
 				isGroupStart: props.isGroupStart,
 				isGroupEnd: props.isGroupEnd,
 				isPinned: isPinned(),
+				class: "rounded-l-none",
 			})}
 		>
 			<Show when={props.message.replyToMessageId}>
 				<Button
-					class="flex w-fit items-center gap-1 pl-12 text-left"
+					class="flex w-fit items-center gap-1 pl-12 text-left hover:bg-transparent"
 					intent="ghost"
 					onClick={() => {
 						if (props.message.replyToMessageId) scrollToMessage(props.message.replyToMessageId)
@@ -482,7 +484,7 @@ export const chatMessageStyles = tv({
 	base: "group relative flex flex-col px-4 py-1 transition-colors hover:bg-muted/50",
 	variants: {
 		variant: {
-			chat: "rounded-l-none",
+			chat: "rounded-l-none rounded-md",
 			pinned: "border p-3",
 		},
 		isGettingRepliedTo: {
@@ -504,6 +506,10 @@ export const chatMessageStyles = tv({
 	},
 	defaultVariants: {
 		variant: "chat",
+		isPinned: false,
+		isGettingRepliedTo: false,
+		isGroupStart: false,
+		isGroupEnd: false,
 	},
 })
 
