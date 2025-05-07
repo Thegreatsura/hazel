@@ -485,7 +485,7 @@ export const chatMessageStyles = tv({
 	variants: {
 		variant: {
 			chat: "rounded-l-none rounded-md",
-			pinned: "border p-3",
+			pinned: "border p-3 rounded-md",
 		},
 		isGettingRepliedTo: {
 			true: "border-primary border-l-2 bg-primary/20 hover:bg-primary/15",
