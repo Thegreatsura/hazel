@@ -4,7 +4,7 @@ import { type Accessor, For, createMemo, createSignal } from "solid-js"
 import { IconHashtag } from "~/components/icons/hashtag"
 import { useDmChannels } from "~/lib/hooks/data/use-dm-channels"
 import { useServerChannels } from "~/lib/hooks/data/use-server-channels"
-import type { Channel } from "~/lib/zero/schema"
+import type { Channel, Member } from "~/lib/zero/schema"
 
 import { IconPlusSmall } from "~/components/icons/plus-small"
 import { Avatar } from "~/components/ui/avatar"
@@ -13,6 +13,8 @@ import { Dialog } from "~/components/ui/dialog"
 import { Sidebar } from "~/components/ui/sidebar"
 import { Tabs } from "~/components/ui/tabs"
 
+import { IconAudio } from "~/components/icons/audio"
+import { IconMutedAudio } from "~/components/icons/audio-muted"
 import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
 import { IconPaperPlane } from "~/components/icons/paper-plane"
 import { IconPhone } from "~/components/icons/phone"
@@ -51,9 +53,15 @@ export const AppSidebar = (props: SidebarProps) => {
 
 				if (friends.length === 0) return null
 
+				const isMuted = channel.members.some((member) => member.isMuted && member.userId === userId())
+				const isHidden = channel.members.some((member) => member.isHidden && member.userId === userId())
+
+				if (isHidden) return null
+
 				return {
 					...channel,
 					isSingleDm,
+					isMuted,
 					friends,
 				}
 			})
@@ -149,12 +157,13 @@ export const AppSidebar = (props: SidebarProps) => {
 }
 
 export interface ChannelItemProps {
-	channel: Channel
+	channel: Channel & { members: readonly Member[] }
 	serverId: Accessor<string>
 }
 
 export const ChannelItem = (props: ChannelItemProps) => {
 	const z = useZero()
+	const { userId } = useAuth()
 	const params = createMemo(() => ({
 		serverId: props.serverId(),
 		id: props.channel.id,
@@ -166,6 +175,10 @@ export const ChannelItem = (props: ChannelItemProps) => {
 			channelId: channelId,
 		})
 	}
+
+	const isMuted = createMemo(() =>
+		props.channel.members.some((member) => member.isMuted && member.userId === userId()),
+	)
 
 	return (
 		<Sidebar.MenuItem>
@@ -195,6 +208,7 @@ export const ChannelItem = (props: ChannelItemProps) => {
 					)}
 				/>
 				<Menu.Content>
+					<MuteMenuItem channelId={props.channel.id} isMuted={isMuted} />
 					<Menu.Item
 						class="flex items-center gap-2 text-destructive"
 						value="close"
@@ -220,6 +234,7 @@ interface Friend {
 
 interface ComputedChannel {
 	id: string
+	isMuted: boolean
 	friends: Friend[]
 }
 
@@ -230,6 +245,8 @@ interface DmChannelLinkProps {
 
 const DmChannelLink = (props: DmChannelLinkProps) => {
 	const z = useZero()
+
+	const { userId } = useAuth()
 
 	const params = createMemo(() => ({
 		serverId: props.serverId(),
@@ -285,12 +302,16 @@ const DmChannelLink = (props: DmChannelLinkProps) => {
 						Call
 					</Menu.Item>
 					<Menu.Separator />
+					<MuteMenuItem channelId={props.channel.id} isMuted={() => props.channel.isMuted} />
 					<Menu.Item
-						class="flex items-center gap-2 text-destructive"
+						class="text-destructive"
 						value="close"
-						onSelect={() => {
-							z.mutate.channelMembers.delete
-							console.log("TODO: Implement close DM")
+						onSelect={async () => {
+							await z.mutate.channelMembers.update({
+								channelId: props.channel.id,
+								userId: userId()!,
+								isHidden: true,
+							})
 						}}
 					>
 						<IconX class="size-4" />
@@ -299,5 +320,26 @@ const DmChannelLink = (props: DmChannelLinkProps) => {
 				</Menu.Content>
 			</Menu>
 		</Sidebar.MenuItem>
+	)
+}
+
+const MuteMenuItem = ({ channelId, isMuted }: { channelId: string; isMuted: Accessor<boolean> }) => {
+	const { userId } = useAuth()
+	const z = useZero()
+
+	return (
+		<Menu.Item
+			value="mute"
+			onSelect={async () => {
+				await z.mutate.channelMembers.update({
+					channelId: channelId,
+					userId: userId()!,
+					isMuted: true,
+				})
+			}}
+		>
+			{isMuted() ? <IconAudio /> : <IconMutedAudio class="size-4" />}
+			{isMuted() ? "Unmute" : "Mute"}
+		</Menu.Item>
 	)
 }

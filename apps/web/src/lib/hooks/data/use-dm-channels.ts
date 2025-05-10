@@ -8,6 +8,7 @@ export const useDmChannels = (serverId: Accessor<string>) => {
 	const dmChannelQuery = createMemo(() =>
 		z.query.serverChannels
 			.related("users")
+			.related("members")
 			.limit(10)
 			.where((eq) => eq.and(eq.cmp("channelType", "=", "direct"), eq.cmp("serverId", "=", serverId()))),
 	)

@@ -7,6 +7,7 @@ export { schema, type Schema }
 export type Message = Row<typeof schema.tables.messages>
 export type User = Row<typeof schema.tables.users>
 export type Channel = Row<typeof schema.tables.serverChannels>
+export type Member = Row<typeof schema.tables.channelMembers>
 
 // The contents of your decoded JWT.
 type AuthData = {
