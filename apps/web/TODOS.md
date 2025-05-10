@@ -4,7 +4,7 @@
 - Fix Zero Permissions
 
 ## Chat UI
-- Add markdown rendering
+- Change Input to TextArea
 - Fix Reply to Preview of Message if it's a markdown thing like a image display an icon
 - Emoji Picker
 - Add day/week/year to pinned message list
@@ -24,20 +24,9 @@
     - Languages
     - Change Username/Avatar
 
-
-## Sidebar
-- Delete Channel
-- Close DM Chat
-
 ## Server Page
 - Kick User
 - Manage Roles
-
-
-## Avatar Servers
-- Add a separate service to try to fetch avatars from other servers or when not found,
-create an avatar
-
 
 # Investigations
 - Look into [campsite](https://github.com/campsite/campsite) for product inspiration
