@@ -125,8 +125,8 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 		<Show when={props.selectedImage()}>
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
 			<div
-				class="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-black/80 transition-opacity duration-300 ease-in-out"
-				style={{ opacity: isVisible() ? "1" : "0.4" }}
+				class="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-black/80 transition-opacity duration-200 ease-in-out"
+				style={{ opacity: isVisible() ? "1" : "0.0" }}
 				onClick={handleClose}
 			>
 				<div class="absolute top-3 left-5 flex items-center gap-2">
@@ -141,9 +141,9 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 				</div>
 				{/* Keep aspect ratio */}
 				<div
-					class="max-h-[90vh] max-w-[90vw] transition-transform duration-300 ease-in"
+					class="max-h-[85vh] max-w-[90vw] transition-transform duration-200 ease-in"
 					style={{
-						transform: isVisible() ? "scale(1)" : "scale(0.1)",
+						transform: isVisible() ? "scale(1)" : "scale(0.0)",
 					}}
 				>
 					<img
