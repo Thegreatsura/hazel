@@ -6,6 +6,7 @@ import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
 import { MakiApi } from "@maki-chat/api-schema"
 import { createMutators, schema } from "@maki-chat/zero"
 import { Config, Effect } from "effect"
+import { serverMutators } from "../server-mutators"
 
 export const ZeroApiLive = HttpApiBuilder.group(MakiApi, "Zero", (handlers) =>
 	Effect.gen(function* () {
@@ -20,7 +21,7 @@ export const ZeroApiLive = HttpApiBuilder.group(MakiApi, "Zero", (handlers) =>
 					new ZQLDatabase(new PostgresJSConnection(postgres(databaseUrl)), schema),
 				)
 
-				const result = yield* Effect.promise(() => processor.process(createMutators(), raw))
+				const result = yield* Effect.promise(() => processor.process(serverMutators(createMutators()), raw))
 				return result
 			}),
 		)
