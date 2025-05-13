@@ -3,6 +3,7 @@ import { type Accessor, Index, Show, createEffect, createMemo, createSignal } fr
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
+import { useChat } from "~/lib/hooks/data/use-chat"
 import { type Message, useChatMessages } from "~/lib/hooks/data/use-chat-messages"
 import { createChangeEffect } from "~/lib/utils/signals"
 
@@ -18,10 +19,10 @@ function RouteComponent() {
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 	let messagesRef: HTMLDivElement | undefined
 
-	const messages = createMemo(() => useChatMessages(params.id))
+	const { messages, channelMember, isLoading } = useChat(params.id)
 
 	const lastMessageId = createMemo(() => {
-		return messages().messages().at(0)?.id
+		return messages().at(0)?.id
 	})
 
 	// Smooth-scroll to the bottom of the messages when the last message id changes
@@ -43,21 +44,19 @@ function RouteComponent() {
 	})
 
 	const processedMessages = createMemo(() => {
-		const groupedMessages = messages()
-			.messages()
-			.reduce<Record<string, Message[]>>((groups, message) => {
-				const date = new Date(message.createdAt!).toLocaleDateString("en-US", {
-					year: "numeric",
-					month: "long",
-					day: "numeric",
-				})
+		const groupedMessages = messages().reduce<Record<string, Message[]>>((groups, message) => {
+			const date = new Date(message.createdAt!).toLocaleDateString("en-US", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			})
 
-				if (!groups[date]) {
-					groups[date] = [] as any
-				}
-				groups[date].push(message)
-				return groups
-			}, {})
+			if (!groups[date]) {
+				groups[date] = [] as any
+			}
+			groups[date].push(message)
+			return groups
+		}, {})
 
 		const sortedDates = Object.keys(groupedMessages).sort((a, b) => {
 			return new Date(a).getTime() - new Date(b).getTime()
@@ -137,6 +136,9 @@ function RouteComponent() {
 												message={message().message}
 												isGroupStart={message().isGroupStart}
 												isGroupEnd={message().isGroupEnd}
+												isFirstNewMessage={
+													message().message.id === channelMember()?.lastSeenMessageId
+												}
 												serverId={() => params.serverId}
 											/>
 										)

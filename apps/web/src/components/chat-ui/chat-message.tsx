@@ -26,6 +26,7 @@ import { ReactionTags } from "./reaction-tags"
 import { UserTag } from "./user-tag"
 
 import { Markdown } from "@maki-chat/markdown"
+import { Badge } from "../ui/badge"
 import { UserAvatar } from "../user-ui/user-popover-content"
 import { ChatImage } from "./chat-image"
 
@@ -67,6 +68,7 @@ export function ChatMessage(props: {
 	message: Message
 	isGroupStart: boolean
 	isGroupEnd: boolean
+	isFirstNewMessage?: boolean
 }) {
 	const z = useZero()
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
@@ -279,10 +281,16 @@ export function ChatMessage(props: {
 				isGettingRepliedTo: false,
 				isGroupStart: props.isGroupStart,
 				isGroupEnd: props.isGroupEnd,
+				isFirstNewMessage: props.isFirstNewMessage,
 				isPinned: isPinned(),
 				class: "rounded-l-none [contain-intrinsic-size:auto_60px] [content-visibility:auto]",
 			})}
 		>
+			<Show when={props.isFirstNewMessage}>
+				<div class="absolute top-1 right-1 z-50">
+					<Badge class="text-[10px]">New Message</Badge>
+				</div>
+			</Show>
 			<Show when={props.message.replyToMessageId}>
 				<Button
 					class="flex w-fit items-center gap-1 pl-12 text-left hover:bg-transparent"
@@ -488,6 +496,10 @@ export const chatMessageStyles = tv({
 		variant: {
 			chat: "rounded-l-none rounded-md",
 			pinned: "border p-3 rounded-md",
+		},
+		isFirstNewMessage: {
+			true: "border-emerald-500 border-l-2 bg-emerald-500/20 hover:bg-emerald-500/15",
+			false: "",
 		},
 		isGettingRepliedTo: {
 			true: "border-primary border-l-2 bg-primary/20 hover:bg-primary/15",
