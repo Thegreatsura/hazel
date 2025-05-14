@@ -10,7 +10,12 @@ export const useDmChannels = (serverId: Accessor<string>) => {
 			.related("users")
 			.related("members")
 			.limit(10)
-			.where((eq) => eq.and(eq.cmp("channelType", "=", "direct"), eq.cmp("serverId", "=", serverId()))),
+			.where((eq) =>
+				eq.and(
+					eq.or(eq.cmp("channelType", "=", "direct"), eq.cmp("channelType", "=", "single")),
+					eq.cmp("serverId", "=", serverId()),
+				),
+			),
 	)
 
 	const [recentDmChannels, status] = createQuery(dmChannelQuery)

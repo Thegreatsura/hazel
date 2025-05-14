@@ -9,7 +9,13 @@ export const useServerChannels = (serverId: Accessor<string>) => {
 		z.query.serverChannels
 			.related("users")
 			.related("members")
-			.where((eq) => eq.and(eq.cmp("channelType", "!=", "direct"), eq.cmp("serverId", "=", serverId())))
+			.where((eq) =>
+				eq.and(
+					eq.cmp("channelType", "!=", "direct"),
+					eq.cmp("channelType", "!=", "single"),
+					eq.cmp("serverId", "=", serverId()),
+				),
+			)
 			.whereExists("users", (eq) => eq.where("id", "=", z.userID)),
 	)
 
