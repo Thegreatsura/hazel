@@ -283,11 +283,11 @@ export function ChatMessage(props: {
 				isGroupEnd: props.isGroupEnd,
 				isFirstNewMessage: props.isFirstNewMessage,
 				isPinned: isPinned(),
-				class: "rounded-l-none [contain-intrinsic-size:auto_60px] [content-visibility:auto]",
+				class: "rounded-l-none",
 			})}
 		>
 			<Show when={props.isFirstNewMessage}>
-				<div class="absolute top-1 right-1 z-50">
+				<div class="absolute top-1 right-1 z-10">
 					<Badge class="text-[10px]">New Message</Badge>
 				</div>
 			</Show>
@@ -313,7 +313,7 @@ export function ChatMessage(props: {
 			<div class="flex gap-4">
 				<div
 					class={twMerge(
-						"-top-4 absolute right-4 z-50 rounded-md border bg-sidebar shadow-md group-hover:flex",
+						"-top-4 absolute right-4 z-20 rounded-md border bg-sidebar shadow-md group-hover:flex",
 						open() ? "flex" : "hidden",
 					)}
 				>
@@ -358,7 +358,7 @@ export function ChatMessage(props: {
 						<Menu.Trigger class={twMerge(buttonVariants({ intent: "ghost", size: "square" }))}>
 							<IconHorizontalDots class="size-4" />
 						</Menu.Trigger>
-						<Menu.Content>
+						<Menu.Content class="z-20">
 							<For each={actions().filter((a) => a.showMenu)}>
 								{(a) => (
 									// TODO: Show hotkey here
