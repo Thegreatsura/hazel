@@ -4,7 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"db": "drizzle-kit"
+		"db": "drizzle-kit",
+		"typecheck": "tsc --noEmit"
 	},
 	"exports": {
 		".": "./src/index.ts"

@@ -3,7 +3,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
 	"dependencies": {
 		"@effect/platform": "^0.82.1",
 		"effect": "^3.15.1"

@@ -3,7 +3,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
 	"dependencies": {
 		"hast": "^1.0.0",
 		"highlight.js": "^11.11.1",

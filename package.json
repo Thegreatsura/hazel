@@ -4,7 +4,8 @@
 	"packageManager": "bun@1.2.11",
 	"workspaces": ["apps/*", "packages/*"],
 	"scripts": {
-		"dev": "bun --filter=* dev",
+		"dev": "turbo dev",
+		"build": "turbo build",
 		"setup:dev": "bun run ./scripts/setup-dev.ts",
 		"dev:zero-cache": "zero-cache-dev -p ./packages/zero/src/schema.ts",
 		"dev:db-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up -d",
@@ -14,5 +15,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4"
 	},
-	"trustedDependencies": ["@rocicorp/zero-sqlite3"]
+	"trustedDependencies": ["@rocicorp/zero-sqlite3"],
+	"dependencies": {
+		"turbo": "^2.5.3"
+	}
 }

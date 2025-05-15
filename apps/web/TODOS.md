@@ -39,3 +39,5 @@
  - Run it locally
 
  - Look into [huly](https://huly.app/workbench/hazel/chunter/threads) for product inspiration
+
+ - Look into Bridges here Slack to Chat Sync https://matrix.org/ecosystem/bridges/
