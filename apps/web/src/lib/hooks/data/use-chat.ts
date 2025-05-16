@@ -7,7 +7,7 @@ import { useChatMessages } from "./use-chat-messages"
 export const useChat = (channelId: Accessor<string>) => {
 	const z = useZero()
 
-	const { messages, isLoading: isLoadingMessages } = useChatMessages(channelId)
+	const { messages, isLoading: isLoadingMessages } = useChatMessages(channelId, () => 100)
 
 	const [channel, channelResult] = createQuery(
 		() => z.query.serverChannels.where(({ cmp }) => cmp("id", "=", channelId())).one(),

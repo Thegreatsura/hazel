@@ -1,74 +1,64 @@
 import { createFileRoute } from "@tanstack/solid-router"
-
-import { createVirtualizer } from "@tanstack/solid-virtual"
-
-import { faker } from "@faker-js/faker"
-import { For, Index, createEffect, createMemo } from "solid-js"
-import { Button } from "~/components/ui/button"
 import { useChatMessages } from "~/lib/hooks/data/use-chat-messages"
+
+import { createEffect, createMemo, createSignal, on } from "solid-js"
+import { VList, type VListHandle } from "virtua/solid"
 
 export const Route = createFileRoute("/virtualized")({
 	component: RouteComponent,
 })
 
+const PAGE_SIZE = 10
+
 function RouteComponent() {
-	let parentRef: HTMLDivElement | undefined
+	const [limit, setLimit] = createSignal(PAGE_SIZE)
+	const { messages } = useChatMessages(() => "cha_2xsesAW65pajuEFu", limit)
 
-	const { messages } = useChatMessages(() => "cha_2xsesAW65pajuEFu")
+	const reversedMessages = createMemo(() => [...messages()].reverse())
 
-	const virtualizer = createMemo(() =>
-		createVirtualizer({
-			count: messages().length,
-			getScrollElement: () => parentRef!,
-			estimateSize: () => 30,
-			getItemKey: (index) => messages()[index].id,
-			enabled: true,
-			overscan: 5,
-		}),
-	)
+	const [shouldStickToBottom, setShouldStickToBottom] = createSignal(true)
+
+	const [vlistRef, setVlistRef] = createSignal<VListHandle | undefined>(undefined)
 
 	createEffect(() => {
-		console.log(messages().length - 1)
-		virtualizer().scrollToIndex(messages().length - 1, {
-			align: "center",
-			behavior: "smooth",
+		const ref = vlistRef()
+		if (!ref) return
+		if (!shouldStickToBottom()) return
+
+		ref.scrollToIndex(reversedMessages().length - 1, {
+			smooth: true,
+			align: "end",
 		})
 	})
 
 	return (
-		<div>
-			<Button>
-				<span>Scroll to bottom</span>
-			</Button>
-			<div
-				class="flex flex-col overflow-y-auto contain-strict"
-				style={{ width: "400px", height: "400px", "overflow-y": "auto" }}
-				ref={parentRef}
+		<div class="flex h-screen flex-col">
+			<VList
+				class="flex-1"
+				overscan={5}
+				shift
+				data={reversedMessages()}
+				ref={setVlistRef}
+				onScroll={async (offset) => {
+					if (!vlistRef()) {
+						return
+					}
+
+					setShouldStickToBottom(offset >= vlistRef()!.scrollSize - vlistRef()!.viewportSize - 120)
+
+					if (offset < 150) {
+						if (limit() <= messages().length) {
+							setLimit(messages().length + PAGE_SIZE)
+						}
+					}
+				}}
 			>
-				<div
-					style={{
-						position: "absolute",
-						top: 0,
-						left: 0,
-						width: "100%",
-						transform: `translateY(${virtualizer().getVirtualItems()[0]?.start ?? 0}px)`,
-					}}
-				>
-					<For each={virtualizer().getVirtualItems()}>
-						{(row) => (
-							<div
-								data-index={row.index}
-								ref={(el) => queueMicrotask(() => virtualizer().measureElement(el))}
-							>
-								<div style={{ padding: "10px 0" }}>
-									<div>Row {row.index}</div>
-									<div>Item :D</div>
-								</div>
-							</div>
-						)}
-					</For>
-				</div>
-			</div>
+				{(message, index) => (
+					<div class="border border-blue-600 bg-primary p-12">
+						{message.content} {index()}
+					</div>
+				)}
+			</VList>
 		</div>
 	)
 }

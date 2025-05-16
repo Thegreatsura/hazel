@@ -3,20 +3,21 @@ import { type Accessor, createMemo } from "solid-js"
 import { CACHE_AWHILE } from "~/lib/zero/query-cache-policy"
 import { useZero } from "~/lib/zero/zero-context"
 
-export const useChatMessages = (channelId: Accessor<string>) => {
+export const useChatMessages = (channelId: Accessor<string>, limit: Accessor<number>) => {
 	const z = useZero()
 
 	const [messages, messagesResult] = createQuery(
 		() =>
 			z.query.messages
-				.limit(100)
+
 				.related("author")
 				.related("replyToMessage", (q) => q.related("author"))
 				.related("childMessages")
 				.related("reactions")
 				.related("pinnedInChannels")
 				.where(({ cmp }) => cmp("channelId", "=", channelId()))
-				.orderBy("createdAt", "desc"),
+				.orderBy("createdAt", "desc")
+				.limit(limit()),
 		CACHE_AWHILE,
 	)
 
