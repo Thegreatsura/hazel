@@ -23,7 +23,8 @@
 			"correctness": {
 				"useHookAtTopLevel": "off",
 				"noUnusedImports": "off",
-				"noChildrenProp": "off"
+				"noChildrenProp": "off",
+				"useJsxKeyInIterable": "off"
 			},
 			"suspicious": {
 				"noConfusingVoidType": "off",

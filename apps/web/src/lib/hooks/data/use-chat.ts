@@ -4,10 +4,10 @@ import { CACHE_AWHILE } from "~/lib/zero/query-cache-policy"
 import { useZero } from "~/lib/zero/zero-context"
 import { useChatMessages } from "./use-chat-messages"
 
-export const useChat = (channelId: Accessor<string>) => {
+export const useChat = (channelId: Accessor<string>, messageCount: Accessor<number>) => {
 	const z = useZero()
 
-	const { messages, isLoading: isLoadingMessages } = useChatMessages(channelId)
+	const { messages, isLoading: isLoadingMessages } = useChatMessages(channelId, messageCount)
 
 	const [channel, channelResult] = createQuery(
 		() => z.query.serverChannels.where(({ cmp }) => cmp("id", "=", channelId())).one(),
