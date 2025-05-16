@@ -483,6 +483,7 @@ export function ChatMessage(props: ChatMessageProps) {
 				}}
 			/>
 
+			{/* TODO Move this out of the chat message  */}
 			<ImageViewerModal
 				selectedImage={selectedImage}
 				setSelectedImage={setSelectedImage}
