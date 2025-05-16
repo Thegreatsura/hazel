@@ -25,6 +25,8 @@ function RouteComponent() {
 	const navigate = Route.useNavigate()
 
 	const channelId = createMemo(() => params().id)
+	const serverId = createMemo(() => params().serverId)
+
 	const { messages, channel, isChannelLoading } = useChat(channelId, limit)
 
 	// Redirect when channel is not found
@@ -126,7 +128,7 @@ function RouteComponent() {
 						isGroupStart={message.isGroupStart}
 						isGroupEnd={message.isGroupEnd}
 						isFirstNewMessage={false}
-						serverId={() => "srv_b6tAwPtTxEpFQfXC"}
+						serverId={serverId}
 					/>
 				)}
 			</VList>
