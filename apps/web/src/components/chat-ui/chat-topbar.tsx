@@ -1,9 +1,10 @@
 import { createQuery } from "@rocicorp/zero/solid"
 import { useParams } from "@tanstack/solid-router"
 import { useAuth } from "clerk-solidjs"
-import { For, Show, createMemo } from "solid-js"
+import { For, Match, Show, Switch, createMemo } from "solid-js"
 import { useZero } from "~/lib/zero/zero-context"
 import { IconGroup } from "../icons/group"
+import { IconHashtag } from "../icons/hashtag"
 import { IconPhone } from "../icons/phone"
 import { IconSearch } from "../icons/search"
 import { IconUserPlus } from "../icons/user-plus"
@@ -30,28 +31,38 @@ export function ChatTopbar() {
 	return (
 		<div class="flex h-16 items-center justify-between gap-2 border-b bg-sidebar p-3">
 			<div class="flex items-center gap-2">
-				<Show when={isSingleDm()}>
-					<Avatar size="sm" src={friends()[0].avatarUrl} name={friends()[0].displayName} />
-				</Show>
-				<Show when={!isSingleDm()}>
-					<div class="-space-x-4 flex items-center justify-center">
-						<For each={friends()}>
-							{(friend) => (
-								<Avatar
-									class="ring-background"
-									size="sm"
-									src={friend.avatarUrl}
-									name={friend.displayName}
-								/>
-							)}
-						</For>
-					</div>
-				</Show>
-				<p class="max-w-[120px] truncate text-sidebar-fg">
-					{friends()
-						.map((friend) => friend.displayName)
-						.join(", ")}
-				</p>
+				<Switch>
+					<Match when={channel()?.channelType === "single" || channel()?.channelType === "direct"}>
+						<Show when={isSingleDm()}>
+							<Avatar size="sm" src={friends()[0].avatarUrl} name={friends()[0].displayName} />
+						</Show>
+						<Show when={!isSingleDm()}>
+							<div class="-space-x-4 flex items-center justify-center">
+								<For each={friends()}>
+									{(friend) => (
+										<Avatar
+											class="ring-background"
+											size="sm"
+											src={friend.avatarUrl}
+											name={friend.displayName}
+										/>
+									)}
+								</For>
+							</div>
+						</Show>
+						<p class="max-w-[120px] truncate text-sidebar-fg">
+							{friends()
+								.map((friend) => friend.displayName)
+								.join(", ")}
+						</p>
+					</Match>
+					<Match when={channel()?.channelType === "private" || channel()?.channelType === "public"}>
+						<div class="flex items-center gap-1">
+							<IconHashtag class="size-5" />
+							<p class="max-w-[120px] truncate">{channel()?.name}</p>
+						</div>
+					</Match>
+				</Switch>
 			</div>
 			<div class="flex gap-2">
 				<Button size="square" intent="ghost">
