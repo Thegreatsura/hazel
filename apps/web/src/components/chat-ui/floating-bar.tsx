@@ -314,6 +314,10 @@ export function FloatingBar(props: { channelId: string }) {
 					class="w-full resize-none bg-transparent py-3 outline-none"
 					rows={1}
 					onInput={(e) => {
+						if (e.currentTarget.scrollHeight >= 240) {
+							return
+						}
+
 						e.currentTarget.style.height = "auto"
 						e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
 					}}
