@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { nanoid } from "nanoid"
 
 import { MakiApi } from "@maki-chat/api-schema"
+import { CurrentUser } from "@maki-chat/api-schema/schema/user.js"
 
 export const MainApiLive = HttpApiBuilder.group(MakiApi, "Root", (handlers) =>
 	Effect.gen(function* () {
@@ -11,6 +12,7 @@ export const MainApiLive = HttpApiBuilder.group(MakiApi, "Root", (handlers) =>
 			.handle("upload", () =>
 				Effect.gen(function* () {
 					const uniqueId = nanoid()
+					const currentUser = yield* CurrentUser
 					return yield* Effect.succeed("Uploaded Files")
 				}),
 			)

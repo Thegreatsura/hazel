@@ -17,7 +17,6 @@ export const serverMutators = (clientMutators: CustomMutatorDefs<typeof schema>)
 
 				// This will run in the background
 				const postNotifications = async () => {
-					console.log(global.env.HYPERDRIVE.connectionString)
 					const db = getDb(global.env.HYPERDRIVE.connectionString)
 
 					const channelMembers = await db.query.channelMembers.findMany({

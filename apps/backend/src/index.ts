@@ -3,9 +3,11 @@ import { ConfigProvider, Layer } from "effect"
 
 import { oldUploadHandler } from "./http/old-upload"
 
+import { AuthorizationLive } from "./authorization.live"
 import { HttpLive } from "./http"
+import { Jose } from "./services/jose"
 
-const Live = HttpLive.pipe()
+const Live = HttpLive.pipe(Layer.provide(AuthorizationLive), Layer.provide(Jose.Default))
 
 const HttpApiScalarLayer = HttpApiScalar.layer().pipe(Layer.provide(Live))
 

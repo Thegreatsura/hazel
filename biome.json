@@ -24,7 +24,8 @@
 				"useHookAtTopLevel": "off",
 				"noUnusedImports": "off",
 				"noChildrenProp": "off",
-				"useJsxKeyInIterable": "off"
+				"useJsxKeyInIterable": "off",
+				"useYield": "off"
 			},
 			"suspicious": {
 				"noConfusingVoidType": "off",
