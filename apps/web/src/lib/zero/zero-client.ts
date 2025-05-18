@@ -1,6 +1,7 @@
 import type { Zero as ZeroType } from "@rocicorp/zero"
 import { createZero } from "@rocicorp/zero/solid"
 
+import type { UserId } from "@maki-chat/api-schema/schema/user.js"
 import { type AuthData, type Schema, createMutators, schema } from "@maki-chat/zero"
 
 let _zero: ZeroType<Schema> | null = null
@@ -9,7 +10,7 @@ let _zero: ZeroType<Schema> | null = null
  * Call this once you have a userId + a getToken() from Clerk.
  * Subsequent calls just return the same instance.
  */
-export async function initZero(userId: string, getTokenFn: () => Promise<string>, authData: AuthData) {
+export async function initZero(userId: typeof UserId.Type, getTokenFn: () => Promise<string>) {
 	if (_zero) return _zero
 
 	// @ts-expect-error
@@ -22,7 +23,9 @@ export async function initZero(userId: string, getTokenFn: () => Promise<string>
 			}
 			return token
 		},
-		mutators: createMutators(authData),
+		mutators: createMutators({
+			userId,
+		}),
 		server: import.meta.env.VITE_PUBLIC_ZERO_SERVER,
 		schema,
 		kvStore: "idb",

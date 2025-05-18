@@ -54,9 +54,9 @@ function ZeroInner() {
 		try {
 			// Call initZero, passing the current user ID and a function to get the token
 			// This matches the original React structure where initZero receives a function
-			const z = await initZero(currentUserId, () => getToken({ template: "ZeroSync" }).then((t) => t!), {
-				userId: currentUserId as typeof UserId.Type,
-			})
+			const z = await initZero(currentUserId as typeof UserId.Type, () =>
+				getToken({ template: "ZeroSync" }).then((t) => t!),
+			)
 
 			if (isActive) {
 				setZero(z)

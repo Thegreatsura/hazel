@@ -23,8 +23,6 @@ export default {
 			waitUntil: (promise: Promise<any>) => ctx.waitUntil(promise),
 		})
 
-		console.log("request", "COOL")
-
 		const url = new URL(request.url)
 		if (url.pathname === "/upload") {
 			return await oldUploadHandler(request)!

@@ -321,15 +321,13 @@ export function ChatMessage(props: ChatMessageProps) {
 
 	const [open, setOpen] = createSignal(false)
 
-	createEffect(() => {
+	createEffect(async () => {
 		if (props.isFirstNewMessage()) {
-			setTimeout(async () => {
-				await z.mutate.channelMembers.update({
-					channelId: props.message().channelId!,
-					userId: z.userID,
-					lastSeenMessageId: null,
-					notificationCount: 0,
-				})
+			await z.mutate.channelMembers.update({
+				channelId: props.message().channelId!,
+				userId: z.userID,
+				lastSeenMessageId: null,
+				notificationCount: 0,
 			})
 		}
 	})

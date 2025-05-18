@@ -1,5 +1,5 @@
 import type { CustomMutatorDefs } from "@rocicorp/zero"
-import type { Message, schema } from "./schema"
+import type { Member, Message, schema } from "./schema"
 
 import type { UserId } from "@maki-chat/api-schema/schema/user.js"
 
@@ -16,6 +16,15 @@ export function createMutators(authData: AuthData) {
 				}
 
 				await tx.mutate.messages.insert(data)
+			},
+		},
+		channelMembers: {
+			update: async (tx, data: Member) => {
+				if (data.userId !== authData.userId) {
+					throw new Error("Unauthorized")
+				}
+
+				await tx.mutate.channelMembers.update(data)
 			},
 		},
 	} as const satisfies CustomMutatorDefs<typeof schema>
