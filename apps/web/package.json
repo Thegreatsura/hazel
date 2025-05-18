@@ -13,12 +13,11 @@
 	},
 	"dependencies": {
 		"@ark-ui/solid": "^5.9.1",
-		"@faker-js/faker": "^9.8.0",
+		"@bigmistqke/solid-contenteditable": "^0.0.11",
 		"@maki-chat/api-schema": "workspace:*",
 		"@maki-chat/markdown": "workspace:*",
 		"@maki-chat/zero": "workspace:*",
 		"@rocicorp/zero": "^0.19.2025050203",
-		"@tailwindcss/vite": "^4.1.7",
 		"@tanstack/router-plugin": "^1.120.5",
 		"@tanstack/solid-form": "^1.11.1",
 		"@tanstack/solid-router": "^1.120.5",
@@ -33,6 +32,7 @@
 		"virtua": "^0.41.2"
 	},
 	"devDependencies": {
+		"@tailwindcss/vite": "^4.1.7",
 		"tailwindcss": "^4.1.7",
 		"tw-animate-css": "^1.3.0",
 		"typescript": "^5.8.3",
