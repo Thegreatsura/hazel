@@ -282,7 +282,6 @@ export function FloatingBar(props: { channelId: string }) {
 					id: newId("messages"),
 					content: content,
 					authorId: auth.userId()!,
-					createdAt: new Date().getTime(),
 					replyToMessageId: chatStore().replyToMessageId,
 					attachedFiles: successfulKeys(),
 				})
