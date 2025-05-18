@@ -12,7 +12,6 @@ import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
 import { ChatInput } from "../markdown-input/chat-input"
 import { Button } from "../ui/button"
 
-import { createSelection } from "@solid-primitives/selection"
 import { setElementAnchorAndFocus } from "../markdown-input/utils"
 
 // Type for individual attachment state

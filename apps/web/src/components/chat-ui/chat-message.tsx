@@ -321,8 +321,6 @@ export function ChatMessage(props: ChatMessageProps) {
 
 	const [open, setOpen] = createSignal(false)
 
-	console.log(props.message().content)
-
 	createEffect(() => {
 		if (props.isFirstNewMessage()) {
 			setTimeout(async () => {

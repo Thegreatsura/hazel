@@ -1,15 +1,15 @@
 export type BaseTokenType =
 	| "text"
-	| "codeblock"
 	| "header1"
 	| "header2"
-	| "header3"
-	| "header4"
-	| "header5"
-	| "header6"
+
+	// Styles
+	| "strikethrough"
 	| "bold"
 	| "italic"
+	// Code
 	| "inlinecode"
+	| "codeblock"
 
 export interface TokenPattern<T extends string> {
 	type: T
@@ -33,13 +33,17 @@ export function parseMarkdownTokens<CustomTokenType extends string = never>(
 
 	// Define base token patterns
 	const basePatterns: TokenPattern<BaseTokenType>[] = [
-		{ type: "codeblock", pattern: /```[\s\S]*?```/g },
 		{ type: "header1", pattern: /^# .+$/gm },
 		{ type: "header2", pattern: /^## .+$/gm },
-		{ type: "header3", pattern: /^### .+$/gm },
+
+		// Styles
 		{ type: "bold", pattern: /\*\*[^*]+\*\*/g },
 		{ type: "italic", pattern: /\*[^*]+\*/g },
+		{ type: "strikethrough", pattern: /~~[^~]+~~/g },
+
+		// Code
 		{ type: "inlinecode", pattern: /`[^`]+`/g },
+		{ type: "codeblock", pattern: /```[\s\S]*?```/g },
 	]
 
 	// Combine base and additional patterns

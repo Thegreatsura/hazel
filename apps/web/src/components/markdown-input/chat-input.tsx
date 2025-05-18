@@ -17,21 +17,24 @@ export const ChatInput = (props: ChatInputProps) => {
 			onValueChange={baseProps.onValueChange}
 			renderers={{
 				header1: (token) => <h1 class="font-bold text-xl">{token.content}</h1>,
+				header2: (token) => <h2 class="font-bold text-lg">{token.content}</h2>,
+
+				// Styles
 				bold: (token) => <strong class="font-bold">{token.content}</strong>,
 				italic: (token) => <em class="italic">{token.content}</em>,
+				strikethrough: (token) => <span class="line-through">{token.content}</span>,
+
+				//
 				codeblock: (token) => {
 					let codeRef: HTMLPreElement | undefined
-					// onMount(() => {
-					// 	if (codeRef) {
-					// 		hljs.highlightElement(codeRef.querySelector("code") as HTMLElement)
-					// 	}
-					// })
+
 					return (
 						<pre ref={codeRef} class="overflow-x-auto rounded bg-muted p-2">
 							<code>{token.content}</code>
 						</pre>
 					)
 				},
+				inlinecode: (token) => <span class="rounded-md bg-muted p-0.5">{token.content}</span>,
 				default: (token) => <span>{token.content}</span>,
 			}}
 			{...divProps}

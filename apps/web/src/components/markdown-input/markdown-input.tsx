@@ -42,7 +42,8 @@ export function MarkdownInput<CustomTokenType extends string = never>(props: Mar
 						when={blocks.length > 0}
 						fallback={
 							<span class="text-muted-foreground opacity-70">
-								{baseProps.placeholder || "Type here..."}
+								{" "}
+								{/* {baseProps.placeholder || "Type here..."} */}
 							</span>
 						}
 					>
