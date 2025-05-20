@@ -53,8 +53,6 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 					console.error("Failed to download image:", error)
 				}
 
-				console.log("Image downloaded:", imageUrl)
-
 				toaster.create({
 					title: "Image downloaded",
 					description: "Your image has been downloaded.",

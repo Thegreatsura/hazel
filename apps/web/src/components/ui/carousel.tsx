@@ -110,7 +110,7 @@ export function CarouselIndicator(props: {
 		<ArkCarousel.Indicator
 			index={props.index}
 			class={twMerge(
-				"h-2 w-6 rounded-full bg-muted-foreground/30 transition-all duration-300 aria-selected:w-8 aria-selected:bg-primary",
+				"h-2 w-6 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-in-out data-current:w-8 data-current:bg-primary",
 				props.class,
 			)}
 		/>
