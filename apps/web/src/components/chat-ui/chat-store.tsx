@@ -4,6 +4,11 @@ import { createStore } from "solid-js/store"
 interface ChatStore extends InputChatStore {
 	replyToMessageId: string | null
 	openThreadId: string | null
+	imageDialog: {
+		open: boolean
+		messageId: string | null
+		selectedImage: string | null
+	}
 }
 
 interface InputChatStore {
@@ -14,6 +19,11 @@ const createChatStore = (props: InputChatStore) => {
 	const [state, setState] = createStore<ChatStore>({
 		replyToMessageId: null,
 		openThreadId: null,
+		imageDialog: {
+			open: false,
+			messageId: null,
+			selectedImage: null,
+		},
 		...props,
 	})
 

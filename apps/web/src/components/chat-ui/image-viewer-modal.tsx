@@ -21,7 +21,7 @@ import { Carousel } from "../ui/carousel"
 
 interface ImageViewerModalProps {
 	selectedImage: Accessor<string | null>
-	setSelectedImage: (image: string | null) => void
+	onOpenChange: (open: boolean) => void
 	author: Message["author"]
 	createdAt: number
 	bucketUrl: string
@@ -107,16 +107,13 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 			icon: <IconCircleXSolid />,
 			onClick: (e: MouseEvent) => {
 				e.stopPropagation()
-				props.setSelectedImage(null)
+				props.onOpenChange(false)
 			},
 		},
 	]
 
 	return (
-		<Dialog
-			open={!!props.selectedImage()}
-			onOpenChange={(details) => props.setSelectedImage(details.open ? props.selectedImage() : null)}
-		>
+		<Dialog open={!!props.selectedImage()} onOpenChange={(details) => props.onOpenChange(details.open)}>
 			<Portal>
 				<DialogBackdrop />
 				<ArkDialog.Positioner>
@@ -126,7 +123,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 						)}
 						onClick={(e) => {
 							if (e.target !== e.currentTarget) return
-							props.setSelectedImage(null)
+							props.onOpenChange(false)
 						}}
 					>
 						<div class="absolute top-3 left-5 flex items-center gap-2">

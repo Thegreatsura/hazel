@@ -29,6 +29,8 @@ import { Badge } from "../ui/badge"
 import { UserAvatar } from "../user-ui/user-popover-content"
 import { ChatImage } from "./chat-image"
 
+import { reconcile } from "solid-js/store"
+import { cn } from "~/lib/utils"
 import { IconBrandLinear } from "../icons/brand/linear"
 import { IconThread } from "../icons/thread"
 import { useChat } from "./chat-store"
@@ -84,8 +86,6 @@ export function ChatMessage(props: ChatMessageProps) {
 
 	const [pendingAction, setPendingAction] = createSignal<ChatAction | null>(null)
 	const isPinned = createMemo(() => props.message().pinnedInChannels?.some((p) => p.channelId === params.id))
-
-	const [selectedImage, setSelectedImage] = createSignal<string | null>(null)
 
 	const messageTime = createMemo(() => {
 		return new Date(props.message().createdAt!).toLocaleTimeString("en-US", {
@@ -471,15 +471,22 @@ export function ChatMessage(props: ChatMessageProps) {
 									{...props}
 								/>
 							),
-							img: (props) => {
-								const [imgProps, rest] = splitProps(props, ["src", "alt", "onClick"])
+							img: (parentProps) => {
+								const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
 								return (
 									<div class={"relative aspect-video max-h-[300px] overflow-hidden rounded-md"}>
 										<ChatImage
 											src={imgProps.src!}
 											alt={imgProps.alt!}
 											onClick={() => {
-												setSelectedImage(imgProps.src!)
+												setState(
+													"imageDialog",
+													reconcile({
+														open: true,
+														messageId: props.message().id,
+														selectedImage: imgProps.src!,
+													}),
+												)
 											}}
 											{...rest}
 										/>
@@ -492,13 +499,15 @@ export function ChatMessage(props: ChatMessageProps) {
 					<div class="flex flex-col gap-2">
 						<Show when={attachedCount() > 0}>
 							<div
-								class={twMerge(
+								class={cn([
 									"mt-2",
-									attachedCount() === 1
-										? "flex max-w-[400px]"
-										: `grid grid-cols-${attachedCount() === 3 ? 3 : 2} max-w-lg`,
 									"gap-1",
-								)}
+									{
+										"flex max-w-[400px]": attachedCount() === 1,
+										"grid max-w-lg grid-cols-2": attachedCount() === 2,
+										"grid max-w-lg grid-cols-3": attachedCount() === 3,
+									},
+								])}
 							>
 								<For each={props.message().attachedFiles?.slice(0, 4)}>
 									{(file) => (
@@ -507,7 +516,14 @@ export function ChatMessage(props: ChatMessageProps) {
 												src={`${import.meta.env.VITE_BUCKET_URL}/${file}`}
 												alt={file}
 												onClick={() => {
-													setSelectedImage(file)
+													setState(
+														"imageDialog",
+														reconcile({
+															open: true,
+															messageId: props.message().id,
+															selectedImage: file,
+														}),
+													)
 												}}
 											/>
 										</div>
@@ -532,15 +548,6 @@ export function ChatMessage(props: ChatMessageProps) {
 					await pendingAction()?.onAction()
 					setPendingAction(null)
 				}}
-			/>
-
-			{/* TODO Move this out of the chat message  */}
-			<ImageViewerModal
-				selectedImage={selectedImage}
-				setSelectedImage={setSelectedImage}
-				author={props.message().author}
-				createdAt={props.message().createdAt!}
-				bucketUrl={import.meta.env.VITE_BUCKET_URL}
 			/>
 		</div>
 	)

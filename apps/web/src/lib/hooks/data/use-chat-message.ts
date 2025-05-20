@@ -12,7 +12,7 @@ export const useChatMessage = (id: Accessor<string>) => {
 			.one(),
 	)
 
-	const [message, messagesResult] = createQuery(messageQuery)
+	const [message, messagesResult] = createQuery(messageQuery, {})
 
 	const isLoading = createMemo(() => messagesResult().type !== "complete")
 
