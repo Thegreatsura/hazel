@@ -1,5 +1,6 @@
 import { createForm } from "@tanstack/solid-form"
 import { type } from "arktype"
+import { useUser } from "clerk-solidjs"
 import { IconInternet } from "~/components/icons/internet"
 import { Button } from "~/components/ui/button"
 import { TextField } from "~/components/ui/text-field"
@@ -11,10 +12,12 @@ export const Useronboarding = () => {
 
 	const navigate = Route.useNavigate()
 
+	const { user } = useUser()
+
 	const form = createForm(() => ({
 		defaultValues: {
-			displayName: "",
-			tag: "",
+			displayName: user()?.fullName ?? "",
+			tag: user()?.username?.toLowerCase() ?? "",
 		},
 		validators: {
 			onChange: type({
@@ -27,7 +30,7 @@ export const Useronboarding = () => {
 				id: z.userID,
 				displayName: value.displayName,
 				tag: value.tag,
-				avatarUrl: "https://avatars.githubusercontent.com/u/84227753",
+				avatarUrl: user()?.imageUrl || "https://avatars.githubusercontent.com/u/84227753",
 			})
 
 			navigate({ to: "/onboarding", search: { step: "server" } })
