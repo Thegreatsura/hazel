@@ -1,0 +1,10 @@
+name: hazel-cluster
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+description: Optimized and Maintenance-free Kubernetes on Hetzner Cloud in one command! with Pulumi!
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: https://github.com/spigell/pulumi-hcloud-kube-hetzner/tree/main/pulumi-templates/phkh-typescript-simple

@@ -1,0 +1,13 @@
+{
+    "name": "hazel-cluster",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^16"
+    },
+    "dependencies": {
+        "@pulumi/kubernetes": "^4.23.0",
+        "@pulumi/pulumi": "^3",
+        "@spigell/hcloud-kube-hetzner": "0.1.0",
+        "yaml": "^2.4.3"
+    }
+}
