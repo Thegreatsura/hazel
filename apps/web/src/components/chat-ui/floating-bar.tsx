@@ -294,6 +294,8 @@ export function FloatingBar(props: { channelId: string }) {
 				setInput("")
 				clearAttachments()
 			})
+
+		trackTyping(false)
 	}
 
 	return (
