@@ -56,12 +56,6 @@ export const createPresence = () => {
 
 		setIsTyping(typing)
 		await trackPresence({ typing })
-
-		onCleanup(() => {
-			if (typingTimeout) {
-				clearTimeout(typingTimeout)
-			}
-		})
 	}
 
 	createEffect(() => {
@@ -94,6 +88,7 @@ export const createPresence = () => {
 	})
 
 	onCleanup(() => {
+		clearTimeout(typingTimeout)
 		channel().untrack()
 		supabase.removeChannel(channel())
 	})
