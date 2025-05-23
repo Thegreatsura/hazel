@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@maki-chat/api-schema": "workspace:*",
-		"@rocicorp/zero": "^0.20.2025052001",
+		"@rocicorp/zero": "^0.20.2025052100",
 		"drizzle-zero": "^0.10.1"
 	},
 	"devDependencies": {

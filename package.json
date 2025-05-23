@@ -2,7 +2,9 @@
 	"name": "maki-chat",
 	"private": true,
 	"packageManager": "bun@1.2.11",
-	"workspaces": ["apps/*", "packages/*"],
+	"workspaces": {
+		"packages": ["apps/*", "packages/*"]
+	},
 	"scripts": {
 		"dev": "turbo dev",
 		"build": "turbo build typecheck",
