@@ -53,6 +53,9 @@
 
  # ScyllaDB Rework Todos
 
+!! There is something weird going on with my effect tanstack query wrapper, seems to break 
+reactivity needs to be fixed
+
  - Integrate into the chatUI
   - Reimplemnet Unpin
   - Reimplement Threads 

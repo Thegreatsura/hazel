@@ -1,13 +1,16 @@
 import type { Message } from "@maki-chat/api-schema/schema/message.js"
 import { Markdown } from "@maki-chat/markdown"
 import { Option } from "effect"
-import type { Accessor } from "solid-js"
+import { type Accessor, createMemo } from "solid-js"
 import { twJoin } from "tailwind-merge"
+import { useChat } from "~/components/chat-state/chat-store"
 import { IconCode } from "~/components/icons/code"
 import { IconImage } from "~/components/icons/image"
 import { IconQuote } from "~/components/icons/quote"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import { useUser } from "~/lib/hooks/data/use-user"
+import { MessageQueries } from "~/lib/services/data-access/message-queries"
 import { UserTag } from "../user-tag"
 
 interface MessageReplyProps {
@@ -17,9 +20,16 @@ interface MessageReplyProps {
 
 export function MessageReply(props: MessageReplyProps) {
 	// TODO: Fetch replytomessage here and author
+	const { state } = useChat()
 
-	const replyToMessage: any | null = null
-	const replyToMessageAuthor: any | null = null
+	const replyToMessageId = createMemo(() => Option.getOrThrow(props.message().replyToMessageId))
+	const { data: replyToMessage } = MessageQueries.createMessageQuery({
+		messageId: replyToMessageId,
+		channelId: () => state.channelId,
+	})
+
+	const { user: replyToMessageAuthor } = useUser(() => replyToMessage?.authorId!)
+
 	return (
 		<div>
 			<svg
@@ -51,10 +61,10 @@ export function MessageReply(props: MessageReplyProps) {
 			>
 				<Avatar
 					class="size-4"
-					name={replyToMessageAuthor?.displayName!}
-					src={replyToMessageAuthor?.avatarUrl}
+					name={replyToMessageAuthor()?.displayName!}
+					src={replyToMessageAuthor()?.avatarUrl}
 				/>
-				<UserTag user={replyToMessageAuthor} />
+				<UserTag user={replyToMessageAuthor()} />
 				<span class="text-ellipsis text-foreground text-xs">
 					<Markdown
 						children={replyToMessage?.content.split("\n")[0]}

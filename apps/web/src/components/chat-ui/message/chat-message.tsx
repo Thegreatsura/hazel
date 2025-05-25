@@ -25,7 +25,6 @@ interface ChatMessageProps {
 
 export function ChatMessage(props: ChatMessageProps) {
 	const z = useZero()
-	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 
 	const isRepliedTo = createMemo(() => Option.isSome(props.message().replyToMessageId))
 	const showAvatar = createMemo(() => props.isGroupStart() || isRepliedTo())
