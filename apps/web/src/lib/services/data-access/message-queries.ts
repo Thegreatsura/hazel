@@ -15,7 +15,7 @@ export namespace MessageQueries {
 		channelId,
 		limit = 20,
 	}: { channelId: Accessor<ChannelId>; limit?: number }) => {
-		return useEffectInfiniteQuery({
+		return useEffectInfiniteQuery(() => ({
 			queryKey: messagesKey({
 				channelId: channelId(),
 				limit,
@@ -38,6 +38,6 @@ export namespace MessageQueries {
 			getPreviousPageParam: (firstPage) =>
 				firstPage.pagination.hasPrevious ? firstPage.pagination.previousCursor : undefined,
 			initialPageParam: undefined as string | undefined,
-		})
+		}))
 	}
 }

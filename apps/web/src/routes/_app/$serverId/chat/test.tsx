@@ -47,7 +47,8 @@ function InfiniteScrollMessages() {
 
 	return (
 		<div class="messages-container">
-			<Button onClick={() => setChannelId("cha_IWzcz6x7VB" as ChannelId)}>Set Channel</Button>
+			<Button onClick={() => setChannelId("cha_IWzcz6x7VB" as ChannelId)}>Set Wrong Channel</Button>
+			<Button onClick={() => setChannelId("cha_IWzcz6x7V-" as ChannelId)}>Set Riight Channel</Button>
 			<Show when={messagesQuery.isLoading}>
 				<div class="loading">Loading messages...</div>
 			</Show>

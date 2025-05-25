@@ -21,7 +21,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Predicate from "effect/Predicate"
-import { createMemo } from "solid-js"
+import { type Accessor, createMemo } from "solid-js"
 import { toaster } from "~/components/ui/toaster"
 import type { LiveRuntimeContext } from "../services/live-layer"
 import { useRuntime } from "../services/runtime"
@@ -129,21 +129,30 @@ type EffectfulMutationOptions<A, E extends EffectfulError, Variables, R extends 
 } & UseRunnerOpts<A, E>
 
 export function useEffectMutation<A, E extends EffectfulError, Variables, R extends LiveRuntimeContext>(
-	options: EffectfulMutationOptions<A, E, Variables, R>,
+	options: EffectfulMutationOptions<A, E, Variables, R> | Accessor<EffectfulMutationOptions<A, E, Variables, R>>,
 ): UseMutationResult<A, E | QueryDefect, Variables> {
-	const effectRunner = useRunner<A, E, R>(options)
-	const [spanName] = options.mutationKey
+	const resolvedOptions = createMemo(() => (typeof options === "function" ? options() : options))
 
-	const mutationFn = (variables: Variables) => {
-		const effect = options.mutationFn(variables)
-		return effect.pipe(effectRunner(spanName))
-	}
+	const effectRunner = createMemo(() => useRunner<A, E, R>(resolvedOptions()))
 
-	return useMutation<A, E | QueryDefect, Variables>(() => ({
-		...options,
-		mutationFn,
-		throwOnError: false,
-	}))
+	const mutationOptions = createMemo(() => {
+		const opts = resolvedOptions()
+		const runner = effectRunner()
+		const [spanName] = opts.mutationKey
+
+		const mutationFn = (variables: Variables) => {
+			const effect = opts.mutationFn(variables)
+			return effect.pipe(runner(spanName))
+		}
+
+		return {
+			...opts,
+			mutationFn,
+			throwOnError: false,
+		}
+	})
+
+	return useMutation<A, E | QueryDefect, Variables>(mutationOptions)
 }
 
 type EffectfulQueryFunction<
@@ -175,24 +184,34 @@ export function useEffectQuery<
 	E extends EffectfulError,
 	R extends LiveRuntimeContext,
 	QueryKeyType extends QueryKey = QueryKey,
->({ gcTime, staleTime, ...options }: EffectfulQueryOptions<A, E, R, QueryKeyType>): UseQueryResult<A, E | QueryDefect> {
-	const effectRunner = useRunner<A, E, R>(options)
-	const [spanName] = options.queryKey
+>(
+	options: EffectfulQueryOptions<A, E, R, QueryKeyType> | Accessor<EffectfulQueryOptions<A, E, R, QueryKeyType>>,
+): UseQueryResult<A, E | QueryDefect> {
+	const resolvedOptions = createMemo(() => (typeof options === "function" ? options() : options))
 
-	const queryFn: QueryFunction<A, QueryKeyType> = (context: QueryFunctionContext<QueryKeyType>) => {
-		const effect = (options.queryFn as EffectfulQueryFunction<A, E, R, QueryKeyType>)(context)
-		return effect.pipe(effectRunner(spanName))
-	}
+	const effectRunner = createMemo(() => useRunner<A, E, R>(resolvedOptions()))
 
-	const queryOptions = createMemo(() => ({
-		...options,
-		queryFn: options.queryFn === skipToken ? skipToken : (queryFn as any),
-		...(staleTime !== undefined && {
-			staleTime: Duration.toMillis(staleTime),
-		}),
-		...(gcTime !== undefined && { gcTime: Duration.toMillis(gcTime) }),
-		throwOnError: false,
-	}))
+	const queryOptions = createMemo(() => {
+		const opts = resolvedOptions()
+		const runner = effectRunner()
+		const { gcTime, staleTime, ...restOpts } = opts
+		const [spanName] = opts.queryKey
+
+		const queryFn: QueryFunction<A, QueryKeyType> = (context: QueryFunctionContext<QueryKeyType>) => {
+			const effect = (opts.queryFn as EffectfulQueryFunction<A, E, R, QueryKeyType>)(context)
+			return effect.pipe(runner(spanName))
+		}
+
+		return {
+			...restOpts,
+			queryFn: opts.queryFn === skipToken ? skipToken : (queryFn as any),
+			...(staleTime !== undefined && {
+				staleTime: Duration.toMillis(staleTime),
+			}),
+			...(gcTime !== undefined && { gcTime: Duration.toMillis(gcTime) }),
+			throwOnError: false,
+		}
+	})
 
 	return useQuery<A, E | QueryDefect, A, QueryKeyType>(queryOptions)
 }
@@ -224,71 +243,53 @@ export function useEffectInfiniteQuery<
 	R extends LiveRuntimeContext,
 	QueryKeyType extends QueryKey = QueryKey,
 	PageParam = unknown,
->({
-	gcTime,
-	getNextPageParam,
-	getPreviousPageParam,
-	initialPageParam,
-	queryFn: effectfulQueryFn,
-	queryKey,
-	staleTime,
-	...options
-}: EffectfulInfiniteQueryOptions<A, E, R, QueryKeyType, PageParam>): UseInfiniteQueryResult<
-	InfiniteData<A, PageParam>,
-	E | QueryDefect
-> {
-	const effectRunner = useRunner<A, E, R>(options)
-	const [spanName] = queryKey
+>(
+	options:
+		| EffectfulInfiniteQueryOptions<A, E, R, QueryKeyType, PageParam>
+		| Accessor<EffectfulInfiniteQueryOptions<A, E, R, QueryKeyType, PageParam>>,
+): UseInfiniteQueryResult<InfiniteData<A, PageParam>, E | QueryDefect> {
+	const resolvedOptions = createMemo(() => (typeof options === "function" ? options() : options))
 
-	const queryFn: QueryFunction<A, QueryKeyType, PageParam> = (
-		context: QueryFunctionContext<QueryKeyType, PageParam>,
-	) => {
-		const effect = (effectfulQueryFn as EffectfulQueryFunction<A, E, R, QueryKeyType, PageParam>)(context)
-		return effect.pipe(effectRunner(spanName))
-	}
+	const effectRunner = createMemo(() => useRunner<A, E, R>(resolvedOptions()))
 
-	const infiniteQueryOptions = createMemo(() => ({
-		...options,
-		queryKey,
-		queryFn: effectfulQueryFn === skipToken ? skipToken : (queryFn as any),
-		initialPageParam,
-		getNextPageParam,
-		...(getPreviousPageParam !== undefined && { getPreviousPageParam }),
-		...(staleTime !== undefined && {
-			staleTime: Duration.toMillis(staleTime),
-		}),
-		...(gcTime !== undefined && { gcTime: Duration.toMillis(gcTime) }),
-		throwOnError: false,
-	}))
+	const infiniteQueryOptions = createMemo(() => {
+		const opts = resolvedOptions()
+		const runner = effectRunner()
+		const {
+			gcTime,
+			getNextPageParam,
+			getPreviousPageParam,
+			initialPageParam,
+			queryFn: effectfulQueryFn,
+			queryKey,
+			staleTime,
+			...restOpts
+		} = opts
+		const [spanName] = queryKey
+
+		const queryFn: QueryFunction<A, QueryKeyType, PageParam> = (
+			context: QueryFunctionContext<QueryKeyType, PageParam>,
+		) => {
+			const effect = (effectfulQueryFn as EffectfulQueryFunction<A, E, R, QueryKeyType, PageParam>)(context)
+			return effect.pipe(runner(spanName))
+		}
+
+		return {
+			...restOpts,
+			queryKey,
+			queryFn: effectfulQueryFn === skipToken ? skipToken : (queryFn as any),
+			initialPageParam,
+			getNextPageParam,
+			...(getPreviousPageParam !== undefined && { getPreviousPageParam }),
+			...(staleTime !== undefined && {
+				staleTime: Duration.toMillis(staleTime),
+			}),
+			...(gcTime !== undefined && { gcTime: Duration.toMillis(gcTime) }),
+			throwOnError: false,
+		}
+	})
 
 	return useInfiniteQuery<A, E | QueryDefect, InfiniteData<A, PageParam>, QueryKeyType, PageParam>(
 		infiniteQueryOptions,
 	)
-}
-
-export const createQueryDataAccessor = <T>(queryResult: UseQueryResult<T, unknown>) => {
-	return {
-		data: () => queryResult.data,
-		error: () => queryResult.error,
-		isLoading: () => queryResult.isLoading,
-		isFetching: () => queryResult.isFetching,
-		isSuccess: () => queryResult.isSuccess,
-		isError: () => queryResult.isError,
-		isPending: () => queryResult.isPending,
-		refetch: queryResult.refetch,
-	}
-}
-
-export const createMutationAccessor = <T, E, V>(mutationResult: UseMutationResult<T, E, V>) => {
-	return {
-		data: () => mutationResult.data,
-		error: () => mutationResult.error,
-		isLoading: () => mutationResult.isPending,
-		isSuccess: () => mutationResult.isSuccess,
-		isError: () => mutationResult.isError,
-		isPending: () => mutationResult.isPending,
-		mutate: mutationResult.mutate,
-		mutateAsync: mutationResult.mutateAsync,
-		reset: mutationResult.reset,
-	}
 }
