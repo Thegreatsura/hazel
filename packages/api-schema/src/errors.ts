@@ -2,6 +2,11 @@ import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
 import { CurrentUser, UserId } from "./schema/user"
 
+export const ErrorBaseSchema = Schema.Struct({
+	title: Schema.String.pipe(Schema.maxLength(128)),
+	detail: Schema.String.pipe(Schema.maxLength(255)),
+})
+
 export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
 	"hazel/Unauthorized",
 	{
@@ -54,5 +59,22 @@ export class NotFound extends Schema.TaggedError<NotFound>()(
 
 	static is(u: unknown): u is NotFound {
 		return Predicate.isTagged(u, "@hazel/errors/NotFound")
+	}
+}
+
+export class InternalServerError extends Schema.TaggedError<InternalServerError>()(
+	"@superwall/schema/models/errors/InternalServerError",
+	{
+		...ErrorBaseSchema.fields,
+		cause: Schema.Defect,
+	},
+	HttpApiSchema.annotations({
+		status: 500,
+		title: "InternalServerError",
+		description: "An unexpected error occurred",
+	}),
+) {
+	static is(u: unknown): u is InternalServerError {
+		return Predicate.isTagged(u, "@superwall/schema/models/errors/InternalServerError")
 	}
 }

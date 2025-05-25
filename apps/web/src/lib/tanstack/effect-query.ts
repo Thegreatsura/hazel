@@ -122,7 +122,7 @@ export type QueryKey = readonly [string, QueryVariables?]
 
 type EffectfulMutationOptions<A, E extends EffectfulError, Variables, R extends LiveRuntimeContext> = Omit<
 	UseMutationOptions<A, E | QueryDefect, Variables>,
-	"mutationFn" | "onSuccess" | "onError" | "onSettled" | "onMutate" | "retry" | "retryDelay"
+	"mutationFn" | "onSuccess" | "onError" | "onSettled" | "retry" | "retryDelay"
 > & {
 	mutationKey: QueryKey
 	mutationFn: (variables: Variables) => Effect.Effect<A, E, R>

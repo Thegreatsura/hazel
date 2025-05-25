@@ -1,16 +1,25 @@
-import type { ChannelId, Message, MessageId } from "@maki-chat/api-schema/schema/message.js"
+import { type ChannelId, Message, MessageId, OptimisticId } from "@maki-chat/api-schema/schema/message.js"
 import { keepPreviousData } from "@tanstack/solid-query"
-import { Effect } from "effect"
+import { DateTime, Effect, Option, Ref, Schema } from "effect"
 import type { Accessor } from "solid-js"
+import { unwrap } from "solid-js/store"
 import { QueryData, useEffectInfiniteQuery, useEffectMutation, useEffectQuery } from "~/lib/tanstack"
 import { ApiClient } from "../common/api-client"
+import { QueryClient } from "../common/query-client"
 
 export namespace MessageQueries {
 	type InfiniteVars = {
 		channelId: ChannelId
 	}
 	const messagesKey = QueryData.makeQueryKey<"messages", InfiniteVars>("messages")
-	const messagesHelpers = QueryData.makeHelpers<Array<Message>, InfiniteVars>(messagesKey)
+	const messagesHelpers = QueryData.makeHelpers<
+		{
+			data: Array<Message>
+		},
+		InfiniteVars
+	>(messagesKey)
+
+	const pendingOptimisticIds = Ref.unsafeMake(new Set<string>())
 
 	export const createPaginatedMessagesQuery = ({
 		channelId,
@@ -54,22 +63,55 @@ export namespace MessageQueries {
 			mutationFn: Effect.fnUntraced(function* (message: typeof Message.jsonCreate.Type) {
 				const { client } = yield* ApiClient
 
-				const optimisticId = crypto.randomUUID()
-				// yield* Ref.update(pendingOptimisticIds, (set) => set.add(optimisticId))
-				// yield* Effect.addFinalizer(() =>
-				// 	Ref.update(pendingOptimisticIds, (set) => {
-				// 		set.delete(optimisticId)
-				// 		return set
-				// 	}),
-				// )
+				const optimisticId = OptimisticId.make(crypto.randomUUID())
+				const tempMessageId = MessageId.make(crypto.randomUUID())
 
-				return yield* client.message.createMessage({
-					payload: message,
-					path: {
-						channelId: channelId(),
-					},
+				yield* Ref.update(pendingOptimisticIds, (set) => set.add(optimisticId))
+				yield* Effect.addFinalizer(() =>
+					Ref.update(pendingOptimisticIds, (set) => {
+						set.delete(optimisticId)
+						return set
+					}),
+				)
+
+				const now = yield* DateTime.now
+
+				const optimisticMessage = Message.make({
+					...message,
+					channelId: channelId(),
+					id: MessageId.make(`temp_${crypto.randomUUID()}`),
+					createdAt: now,
+					updatedAt: now,
 				})
-			}),
+
+				yield* messagesHelpers.setInfiniteData({ channelId: channelId() }, (draft) => {
+					if (draft.pages.length > 0) {
+						draft.pages[0].data.unshift(optimisticMessage as any)
+					}
+				})
+
+				return yield* client.message
+					.createMessage({
+						payload: { ...message, optimisticId: Option.some(optimisticId) },
+						path: {
+							channelId: channelId(),
+						},
+					})
+					.pipe(
+						Effect.tapError(() =>
+							messagesHelpers.setInfiniteData({ channelId: channelId() }, (draft) => {
+								if (draft.pages.length > 0) {
+									const messageIndex = draft.pages[0].data.findIndex(
+										(msg) => msg.id === tempMessageId,
+									)
+									if (messageIndex !== -1) {
+										draft.pages[0].data.splice(messageIndex, 1)
+									}
+								}
+							}),
+						),
+					)
+			}, Effect.scoped),
 		})
 	}
 
@@ -94,11 +136,13 @@ export namespace MessageQueries {
 					})
 					.pipe(
 						Effect.tap(() =>
-							messagesHelpers.setData({ channelId: channelId() }, (draft) => {
-								console.log(draft)
-								const index = draft.findIndex((t) => t.id === messageId)
-								if (index !== -1) {
-									draft.splice(index, 1)
+							messagesHelpers.setInfiniteData({ channelId: channelId() }, (draft) => {
+								for (const page of draft.pages) {
+									const index = page.data.findIndex((t) => t.id === messageId)
+									if (index !== -1) {
+										page.data.splice(index, 1)
+										break
+									}
 								}
 							}),
 						),

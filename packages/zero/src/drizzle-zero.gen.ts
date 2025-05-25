@@ -192,6 +192,16 @@ export const schema = {
           >,
           serverName: "updated_at",
         },
+        optimisticId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "optimisticId"
+          >,
+          serverName: "optimistic_id",
+        },
       },
       primaryKey: ["id"],
     },

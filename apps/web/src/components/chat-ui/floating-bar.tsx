@@ -283,6 +283,7 @@ export function FloatingBar(props: { channelId: ChannelId }) {
 		createMessageMutation.mutate({
 			content: content,
 			authorId: auth.userId()! as any,
+			optimisticId: Option.none(),
 			replyToMessageId: Option.fromNullable(state.replyToMessageId as MessageId),
 			attachedFiles: successfulKeys(),
 			threadChannelId: Option.none(),

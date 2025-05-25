@@ -1,6 +1,6 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
 import { Schema } from "effect"
-import { NotFound } from "../errors"
+import { InternalServerError, NotFound } from "../errors"
 import { ChannelId, Message, MessageCursorResult, MessageId } from "../schema/message"
 
 export const MessageApiGroup = HttpApiGroup.make("message")
@@ -12,12 +12,8 @@ export const MessageApiGroup = HttpApiGroup.make("message")
 					channelId: ChannelId,
 				}),
 			)
-			.addSuccess(
-				Schema.Struct({
-					success: Schema.Boolean,
-					id: MessageId,
-				}),
-			),
+			.addSuccess(Message.json)
+			.addError(InternalServerError),
 	)
 	.add(
 		HttpApiEndpoint.put("updateMessage")`/:channelId/messages/:id`
@@ -27,7 +23,8 @@ export const MessageApiGroup = HttpApiGroup.make("message")
 				Schema.Struct({
 					success: Schema.Boolean,
 				}),
-			),
+			)
+			.addError(InternalServerError),
 	)
 	.add(
 		HttpApiEndpoint.del("deleteMessage")`/:channelId/messages/:id`
@@ -36,7 +33,8 @@ export const MessageApiGroup = HttpApiGroup.make("message")
 				Schema.Struct({
 					success: Schema.Boolean,
 				}),
-			),
+			)
+			.addError(InternalServerError),
 	)
 	.add(
 		HttpApiEndpoint.get("getMessage")`/:channelId/messages/:id`
@@ -47,6 +45,7 @@ export const MessageApiGroup = HttpApiGroup.make("message")
 				}),
 			)
 			.addSuccess(Message.json)
+			.addError(InternalServerError)
 			.addError(NotFound),
 	)
 	.add(
@@ -64,5 +63,6 @@ export const MessageApiGroup = HttpApiGroup.make("message")
 					),
 				}),
 			)
-			.addSuccess(MessageCursorResult),
+			.addSuccess(MessageCursorResult)
+			.addError(InternalServerError),
 	)

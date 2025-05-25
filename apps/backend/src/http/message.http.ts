@@ -1,22 +1,29 @@
 import { HttpApiBuilder } from "@effect/platform"
-import { Effect, Option } from "effect"
+import { Config, Effect, Option, Schema } from "effect"
 
 import { MakiApi } from "@maki-chat/api-schema"
 import { NotFound } from "@maki-chat/api-schema/errors.js"
+import { Message } from "@maki-chat/api-schema/schema"
 import { MessageService } from "@maki-chat/backend-shared/services"
+import { schema } from "@maki-chat/drizzle"
+import { drizzle } from "drizzle-orm/postgres-js"
+import { getMessages } from "../services/drizzle"
 
 export const MessageApiLive = HttpApiBuilder.group(MakiApi, "message", (handlers) =>
 	Effect.gen(function* () {
 		const messageService = yield* MessageService
 
+		const databaseUrl = yield* Config.string("DATABASE_URL")
+
 		return handlers
 			.handle(
 				"createMessage",
 				Effect.fnUntraced(function* ({ payload, path }) {
+					console.log("Message payload:", payload)
 					const message = yield* messageService.create(path.channelId, payload)
 
-					console.log("Message created:", message)
-					return { success: true, id: message.id }
+					console.log("Message created:", message.id)
+					return message
 				}),
 			)
 
@@ -56,21 +63,18 @@ export const MessageApiLive = HttpApiBuilder.group(MakiApi, "message", (handlers
 			.handle(
 				"getMessages",
 				Effect.fnUntraced(function* ({ urlParams, path }) {
-					console.log("Paginating messages:", path.channelId, urlParams)
 					const result = yield* messageService.paginate(path.channelId, {
 						cursor: urlParams.cursor || null,
 						limit: urlParams.limit,
 					})
-
-					console.log("Messages:", result)
 
 					return {
 						data: result.data,
 						pagination: {
 							hasNext: result.pagination.hasNext,
 							hasPrevious: result.pagination.hasPrevious,
-							nextCursor: Option.getOrUndefined(result.pagination.nextCursor),
-							previousCursor: Option.getOrUndefined(result.pagination.previousCursor),
+							nextCursor: result.pagination.nextCursor,
+							previousCursor: result.pagination.previousCursor || undefined,
 						},
 					}
 				}),

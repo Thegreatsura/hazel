@@ -16,6 +16,8 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core"
 
+import type { Brand } from "effect"
+
 export const userRoleEnum = pgEnum("user_role", ["owner", "admin", "member"])
 export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "direct", "single", "thread"])
 
@@ -126,15 +128,16 @@ export const channelMembers = pgTable(
 export const messages = pgTable(
 	"messages",
 	{
-		id: uuid("id").primaryKey(),
+		id: uuid("id").primaryKey().$type<string & Brand.Brand<"@hazel/message-id">>(),
 		attachedFiles: jsonb("attached_files").$type<string[]>(),
 		authorId: text("author_id"),
 		channelId: text("channel_id"),
 		content: text("content"),
-		createdAt: timestamp("created_at"),
+		createdAt: timestamp("created_at").defaultNow(),
 		replyToMessageId: uuid("reply_to_message_id"),
 		threadChannelId: text("thread_channel_id"),
-		updatedAt: timestamp("updated_at"),
+		updatedAt: timestamp("updated_at").defaultNow(),
+		optimisticId: text("optimistic_id"),
 	},
 	(table) => ({
 		channelCreatedIdx: index("idx_messages_channel_created").on(table.channelId, table.id),

@@ -3,7 +3,7 @@ import { ConfigProvider, Layer, Redacted, String } from "effect"
 
 import { addCorsHeaders, oldUploadHandler } from "./http/old-upload"
 
-import { MessageService } from "@maki-chat/backend-shared/services"
+import { Database, MessageService } from "@maki-chat/backend-shared/services"
 import { AuthorizationLive } from "./authorization.live"
 import { HttpLive } from "./http"
 import { Jose } from "./services/jose"
@@ -88,6 +88,11 @@ export default {
 			transformResultNames: String.snakeToCamel,
 		})
 
+		const DatabaseLive = Database.layer({
+			url: Redacted.make(env.HYPERDRIVE.connectionString),
+			ssl: false,
+		})
+
 		const ConfigLayer = Layer.setConfigProvider(
 			ConfigProvider.fromJson({ ...env, DATABASE_URL: env.HYPERDRIVE.connectionString }),
 		)
@@ -96,6 +101,7 @@ export default {
 			Layer.mergeAll(Live, HttpApiScalarLayer, HttpServer.layerContext).pipe(
 				Layer.provide(ConfigLayer),
 				Layer.provide(PgLive),
+				Layer.provide(DatabaseLive),
 			),
 			{
 				middleware: HttpMiddleware.cors(),

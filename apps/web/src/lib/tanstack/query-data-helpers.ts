@@ -1,3 +1,4 @@
+import type { InfiniteData } from "@tanstack/solid-query"
 import * as Effect from "effect/Effect"
 import * as mutative from "mutative"
 import { QueryClient } from "../services/common/query-client"
@@ -84,6 +85,10 @@ export function makeHelpers<Data, Variables = void>(
 		? [(draft: mutative.Draft<Data>) => Data | void]
 		: [Variables, (draft: mutative.Draft<Data>) => Data | void]
 
+	type SetInfiniteDataParams = Variables extends void
+		? [(draft: mutative.Draft<InfiniteData<Data>>) => InfiniteData<Data> | void]
+		: [Variables, (draft: mutative.Draft<InfiniteData<Data>>) => InfiniteData<Data> | void]
+
 	type QueryParams = Variables extends void ? [] : [Variables]
 
 	return {
@@ -127,6 +132,28 @@ export function makeHelpers<Data, Variables = void>(
 							},
 							{},
 						) as Data
+					},
+				),
+			),
+		setInfiniteData: (...params: SetInfiniteDataParams) =>
+			Effect.andThen(QueryClient, (client) =>
+				client.setQueryData<InfiniteData<Data>>(
+					params.length === 1
+						? (queryKey as () => readonly [string])()
+						: (queryKey as (v: Variables) => readonly [string, ...Array<unknown>])(params[0]),
+					(oldData) => {
+						if (oldData === undefined) return oldData
+						return mutative.create(
+							oldData,
+							(data) => {
+								const updater = params.length === 1 ? params[0] : params[1]
+								const result = updater(data)
+								if (result !== undefined) {
+									return result
+								}
+							},
+							{},
+						) as InfiniteData<Data>
 					},
 				),
 			),

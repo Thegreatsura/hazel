@@ -9,6 +9,8 @@ export type MessageId = Schema.Schema.Type<typeof MessageId>
 
 export const MessageId = Schema.String.pipe(Schema.brand("@hazel/message-id"))
 
+export const OptimisticId = Schema.String.pipe(Schema.brand("@hazel/optimistic-id"))
+
 const ModelArrayString = Model.Field({
 	insert: Schema.Array(Schema.String),
 	update: Schema.Array(Schema.String),
@@ -32,6 +34,7 @@ export class Message extends Model.Class<Message>("@hazel/Message")({
 	attachedFiles: ModelArrayString,
 	createdAt: Model.DateTimeInsertFromDate,
 	updatedAt: Model.DateTimeUpdateFromDate,
+	optimisticId: Model.FieldOption(OptimisticId),
 }) {}
 
 export const MessageCursorResult = Schema.Struct({
