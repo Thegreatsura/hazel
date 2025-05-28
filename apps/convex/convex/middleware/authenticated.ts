@@ -9,10 +9,7 @@ export const withUser = <Ctx extends QueryCtx, Args extends [any] | [], Output>(
 		if (!identity) {
 			throw new Error("Unauthenticated call to function requiring authentication")
 		}
-		// Note: If you don't want to define an index right away, you can use
-		// db.query("users")
-		//  .filter(q => q.eq(q.field("tokenIdentifier"), identity.tokenIdentifier))
-		//  .unique();
+
 		const user = await ctx.db
 			.query("users")
 			.withIndex("bg_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))

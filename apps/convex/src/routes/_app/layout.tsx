@@ -4,6 +4,7 @@ export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
 	beforeLoad: async ({ context }) => {
 		const token = await context.auth.getToken()
+		console.log("token", token)
 
 		if (!token) {
 			throw redirect({
