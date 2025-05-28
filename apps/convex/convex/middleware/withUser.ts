@@ -35,14 +35,17 @@ export const withUser = <
 	args: TArgs
 	handler: (ctx: TContext & { user: User }, ...args: TOneOrZeroArgs) => Promise<TResult>
 }) => {
-	return async (ctx: TContext, ...args: TOneOrZeroArgs): Promise<TResult> => {
-		const identity = await ctx.auth.getUserIdentity()
-		if (identity === null) {
-			throw new Error("Not authenticated")
-		}
+	return {
+		args,
+		handler: async (ctx: TContext, ...args: TOneOrZeroArgs): Promise<TResult> => {
+			const identity = await ctx.auth.getUserIdentity()
+			if (identity === null) {
+				throw new Error("Not authenticated")
+			}
 
-		const user = await User.fromIdentity(ctx, identity, (args[0] as any).serverId)
+			const user = await User.fromIdentity(ctx, identity, (args[0] as any).serverId)
 
-		return await handler({ ...ctx, user }, ...args)
+			return await handler({ ...ctx, user }, ...args)
+		},
 	}
 }

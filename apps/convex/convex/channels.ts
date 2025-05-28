@@ -2,11 +2,20 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { withUser } from "./middleware/withUser"
 
-export const getChannels = query({
-	handler: async (ctx) => {
-		return await ctx.db.query("channels").collect()
-	},
-})
+export const getChannels = query(
+	withUser({
+		args: {
+			serverId: v.id("servers"),
+		},
+		handler: async (ctx, args) => {
+			// TODO: Validate that the user can view the channel
+			return await ctx.db
+				.query("channels")
+				.filter((q) => q.eq(q.field("serverId"), args.serverId))
+				.collect()
+		},
+	}),
+)
 
 export const createChannel = mutation(
 	withUser({

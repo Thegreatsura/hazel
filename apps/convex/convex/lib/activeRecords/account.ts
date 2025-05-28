@@ -21,13 +21,21 @@ export class Account {
 		return new Account(account)
 	}
 
-	public async validateCanViewAccount(args: { ctx: GenericContext; userId: Id<"accounts"> }) {
-		if (args.userId !== this.doc._id) {
+	public async validateCanViewAccount(args: { ctx: GenericContext; accountId: Id<"accounts"> }) {
+		if (args.accountId !== this.id) {
 			throw new Error("You do not have permission to view this account")
 		}
 	}
 
 	public async createUserFromAccount(args: { ctx: MutationCtx; serverId: Id<"servers"> }) {
+		const user = await args.ctx.db
+			.query("users")
+			.withIndex("by_accountId", (q) => q.eq("accountId", this.id))
+			.filter((q) => q.eq(q.field("serverId"), args.serverId))
+			.unique()
+
+		if (user) throw new Error("User already exists")
+
 		return await args.ctx.db.insert("users", {
 			accountId: this.id,
 			serverId: args.serverId,

@@ -8,7 +8,7 @@ export const getAccount = query(
 			id: v.id("accounts"),
 		},
 		handler: async (ctx, args) => {
-			await ctx.account.validateCanViewAccount({ ctx, userId: args.id })
+			await ctx.account.validateCanViewAccount({ ctx, accountId: args.id })
 
 			return await ctx.db.get(args.id)
 		},

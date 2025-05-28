@@ -19,7 +19,6 @@ import type * as channels from "../channels.js";
 import type * as lib_activeRecords_account from "../lib/activeRecords/account.js";
 import type * as lib_activeRecords_user from "../lib/activeRecords/user.js";
 import type * as messages from "../messages.js";
-import type * as middleware_authenticated from "../middleware/authenticated.js";
 import type * as middleware_withAccount from "../middleware/withAccount.js";
 import type * as middleware_withUser from "../middleware/withUser.js";
 import type * as pinnedMessages from "../pinnedMessages.js";
@@ -42,7 +41,6 @@ declare const fullApi: ApiFromModules<{
   "lib/activeRecords/account": typeof lib_activeRecords_account;
   "lib/activeRecords/user": typeof lib_activeRecords_user;
   messages: typeof messages;
-  "middleware/authenticated": typeof middleware_authenticated;
   "middleware/withAccount": typeof middleware_withAccount;
   "middleware/withUser": typeof middleware_withUser;
   pinnedMessages: typeof pinnedMessages;
