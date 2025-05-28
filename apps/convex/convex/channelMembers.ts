@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { withUser } from "./middleware/authenticated"
+import { withUser } from "./middleware/withUser"
 
 export const getChannelMembers = query({
 	handler: async (ctx) => {
@@ -12,15 +12,15 @@ export const createChannelMember = mutation(
 	withUser({
 		args: {
 			userId: v.id("users"),
-			channelId: v.id("serverChannels"),
+			channelId: v.id("channels"),
 			isHidden: v.boolean(),
 			isMuted: v.boolean(),
 			joinedAt: v.number(),
+
+			serverId: v.id("servers"),
 		},
 		handler: async (ctx, args) => {
-			if (!(await ctx.user.canViewChannel({ ctx, channelId: args.channelId }))) {
-				throw new Error("You do not have access to this channel")
-			}
+			await ctx.user.validateIsMemberOfChannel({ ctx, channelId: args.channelId })
 
 			return await ctx.db.insert("channelMembers", {
 				userId: args.userId,

@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { withUser } from "./middleware/authenticated"
+import { withUser } from "./middleware/withUser"
 
 export const getPinnedMessages = query({
 	handler: async (ctx) => {
@@ -11,8 +11,10 @@ export const getPinnedMessages = query({
 export const createPinnedMessage = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			messageId: v.id("messages"),
-			channelId: v.id("serverChannels"),
+			channelId: v.id("channels"),
 		},
 		handler: async (ctx, args) => {
 			await ctx.user.validateCanViewChannel({ ctx, channelId: args.channelId })
@@ -28,6 +30,8 @@ export const createPinnedMessage = mutation(
 export const deletePinnedMessage = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			id: v.id("pinnedMessages"),
 		},
 		handler: async (ctx, args) => {

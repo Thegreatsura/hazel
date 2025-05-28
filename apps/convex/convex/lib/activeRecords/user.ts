@@ -1,24 +1,31 @@
 import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "convex-hazel/_generated/server"
 import type { UserIdentity } from "convex/server"
+import { Account } from "./account"
 
-type GenericContext = QueryCtx | MutationCtx
+export type GenericContext = QueryCtx | MutationCtx
 
 export class User {
-	private constructor(private readonly user: Doc<"users">) {}
+	private constructor(
+		private readonly user: Doc<"users">,
+		private readonly account: Account,
+	) {}
 
-	static async fromIdentity(ctx: GenericContext, identity: UserIdentity) {
+	static async fromIdentity(ctx: GenericContext, identity: UserIdentity, serverId: string) {
+		const account = await Account.fromIdentity(ctx, identity)
+
 		const user = await ctx.db
 			.query("users")
-			.withIndex("bg_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+			.withIndex("by_accountId", (q) => q.eq("accountId", account.id))
+			.filter((q) => q.eq(q.field("serverId"), serverId))
 			.unique()
 
 		if (!user) throw new Error("User not found")
 
-		return new User(user)
+		return new User(user, account)
 	}
 
-	public async isMemberOfChannel(args: { ctx: GenericContext; channelId: Id<"serverChannels"> }) {
+	public async isMemberOfChannel(args: { ctx: GenericContext; channelId: Id<"channels"> }) {
 		const channelMember = await args.ctx.db
 			.query("channelMembers")
 			.filter((q) => q.eq(q.field("userId"), this.user._id))
@@ -27,37 +34,19 @@ export class User {
 
 		return channelMember != null
 	}
-	public async validateIsMemberOfChannel(args: { ctx: GenericContext; channelId: Id<"serverChannels"> }) {
+	public async validateIsMemberOfChannel(args: { ctx: GenericContext; channelId: Id<"channels"> }) {
 		if (!(await this.isMemberOfChannel(args))) {
 			throw new Error("You are not a member of this channel")
 		}
 	}
 
-	public async isMemberOfServer({ ctx, serverId }: { ctx: GenericContext; serverId: Id<"servers"> }) {
-		const serverMember = await ctx.db
-			.query("serverMembers")
-			.filter((q) => q.eq(q.field("userId"), this.user._id))
-			.filter((q) => q.eq(q.field("serverId"), serverId))
-			.first()
-
-		return serverMember != null
-	}
-	public async validateIsMemberOfServer({ ctx, serverId }: { ctx: GenericContext; serverId: Id<"servers"> }) {
-		if (!(await this.isMemberOfServer({ ctx, serverId }))) {
-			throw new Error("You are not a member of this server")
-		}
-	}
-
-	public async canViewChannel({ ctx, channelId }: { ctx: GenericContext; channelId: Id<"serverChannels"> }) {
+	public async canViewChannel({ ctx, channelId }: { ctx: GenericContext; channelId: Id<"channels"> }) {
 		const channel = await ctx.db.get(channelId)
 		if (!channel) throw new Error("Channel not found")
 
-		return (
-			(await this.isMemberOfChannel({ ctx, channelId })) ||
-			((await this.isMemberOfServer({ ctx, serverId: channel.serverId })) && channel.type === "public")
-		)
+		return channel.type === "public" || (await this.isMemberOfChannel({ ctx, channelId }))
 	}
-	public async validateCanViewChannel({ ctx, channelId }: { ctx: GenericContext; channelId: Id<"serverChannels"> }) {
+	public async validateCanViewChannel({ ctx, channelId }: { ctx: GenericContext; channelId: Id<"channels"> }) {
 		if (!(await this.canViewChannel({ ctx, channelId }))) {
 			throw new Error("You do not have access to this channel")
 		}
@@ -98,4 +87,13 @@ export class User {
 			throw new Error("You do not have permission to delete this reaction")
 		}
 	}
+
+	// public async canViewUser({ ctx, userId }: { ctx: GenericContext; userId: Id<"users"> }) {
+	// 	if(userId === this.user._id) return true
+	// }
+	// public async validateCanViewUser({ ctx, userId }: { ctx: GenericContext; userId: Id<"users"> }) {
+	// 	if (!(await this.canViewUser({ ctx, userId }))) {
+	// 		throw new Error("You do not have permission to view this user")
+	// 	}
+	// }
 }

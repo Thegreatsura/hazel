@@ -1,10 +1,12 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { withUser } from "./middleware/authenticated"
+import { withUser } from "./middleware/withUser"
 
 export const createReaction = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			messageId: v.id("messages"),
 			userId: v.id("users"),
 			emoji: v.string(),
@@ -27,6 +29,8 @@ export const createReaction = mutation(
 export const deleteReaction = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			id: v.id("reactions"),
 		},
 		handler: async (ctx, args) => {

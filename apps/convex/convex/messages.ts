@@ -1,12 +1,14 @@
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { withUser } from "./middleware/authenticated"
+import { withUser } from "./middleware/withUser"
 
 export const getMessages = query(
 	withUser({
 		args: {
-			channelId: v.id("serverChannels"),
+			serverId: v.id("servers"),
+
+			channelId: v.id("channels"),
 			paginationOpts: paginationOptsValidator,
 		},
 		handler: async (ctx, args) => {
@@ -30,9 +32,11 @@ export const getMessages = query(
 export const createMessage = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			content: v.string(),
-			channelId: v.id("serverChannels"),
-			threadChannelId: v.optional(v.id("serverChannels")),
+			channelId: v.id("channels"),
+			threadChannelId: v.optional(v.id("channels")),
 			authorId: v.id("users"),
 			replyToMessageId: v.optional(v.id("messages")),
 			attachedFiles: v.array(v.string()),
@@ -58,6 +62,8 @@ export const createMessage = mutation(
 export const updateMessage = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			id: v.id("messages"),
 			content: v.string(),
 		},
@@ -74,6 +80,8 @@ export const updateMessage = mutation(
 export const deleteMessage = mutation(
 	withUser({
 		args: {
+			serverId: v.id("servers"),
+
 			id: v.id("messages"),
 		},
 		handler: async (ctx, args) => {

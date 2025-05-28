@@ -13,14 +13,17 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as accounts from "../accounts.js";
 import type * as channelMembers from "../channelMembers.js";
-import type * as lib_user from "../lib/user.js";
+import type * as channels from "../channels.js";
+import type * as lib_activeRecords_account from "../lib/activeRecords/account.js";
+import type * as lib_activeRecords_user from "../lib/activeRecords/user.js";
 import type * as messages from "../messages.js";
 import type * as middleware_authenticated from "../middleware/authenticated.js";
+import type * as middleware_withAccount from "../middleware/withAccount.js";
+import type * as middleware_withUser from "../middleware/withUser.js";
 import type * as pinnedMessages from "../pinnedMessages.js";
 import type * as reactions from "../reactions.js";
-import type * as serverChannels from "../serverChannels.js";
-import type * as serverMembers from "../serverMembers.js";
 import type * as servers from "../servers.js";
 import type * as users from "../users.js";
 
@@ -33,14 +36,17 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  accounts: typeof accounts;
   channelMembers: typeof channelMembers;
-  "lib/user": typeof lib_user;
+  channels: typeof channels;
+  "lib/activeRecords/account": typeof lib_activeRecords_account;
+  "lib/activeRecords/user": typeof lib_activeRecords_user;
   messages: typeof messages;
   "middleware/authenticated": typeof middleware_authenticated;
+  "middleware/withAccount": typeof middleware_withAccount;
+  "middleware/withUser": typeof middleware_withUser;
   pinnedMessages: typeof pinnedMessages;
   reactions: typeof reactions;
-  serverChannels: typeof serverChannels;
-  serverMembers: typeof serverMembers;
   servers: typeof servers;
   users: typeof users;
 }>;

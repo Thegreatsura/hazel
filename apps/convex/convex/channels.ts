@@ -1,18 +1,19 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { withUser } from "./middleware/authenticated"
+import { withUser } from "./middleware/withUser"
 
-export const getServerChannels = query({
+export const getChannels = query({
 	handler: async (ctx) => {
-		return await ctx.db.query("serverChannels").collect()
+		return await ctx.db.query("channels").collect()
 	},
 })
 
-export const createServerChannel = mutation(
+export const createChannel = mutation(
 	withUser({
 		args: {
-			name: v.string(),
 			serverId: v.id("servers"),
+
+			name: v.string(),
 			type: v.union(
 				v.literal("public"),
 				v.literal("private"),
@@ -21,12 +22,10 @@ export const createServerChannel = mutation(
 				v.literal("single"),
 			),
 			ownerId: v.id("users"),
-			parentChannelId: v.optional(v.id("serverChannels")),
+			parentChannelId: v.optional(v.id("channels")),
 		},
 		handler: async (ctx, args) => {
-			await ctx.user.validateIsMemberOfServer({ ctx, serverId: args.serverId })
-
-			const channelId = await ctx.db.insert("serverChannels", {
+			const channelId = await ctx.db.insert("channels", {
 				name: args.name,
 				serverId: args.serverId,
 				type: args.type,
