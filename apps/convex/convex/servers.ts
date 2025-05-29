@@ -46,13 +46,11 @@ export const getServersForUser = accountQuery({
 export const createServer = accountMutation({
 	args: {
 		name: v.string(),
-		slug: v.string(),
 		imageUrl: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const serverId = await ctx.db.insert("servers", {
 			name: args.name,
-			slug: args.slug,
 			imageUrl: args.imageUrl,
 			updatedAt: Date.now(),
 		})
@@ -62,19 +60,7 @@ export const createServer = accountMutation({
 		await ctx.db.patch(serverId, {
 			creatorId: user,
 		})
-
-		await ctx.db.insert("users", {
-			accountId: ctx.account.id,
-			serverId: serverId,
-			role: "owner",
-			joinedAt: Date.now(),
-			displayName: ctx.account.doc.displayName,
-			tag: ctx.account.doc.displayName.toLowerCase(),
-			avatarUrl: ctx.account.doc.avatarUrl,
-			status: "online",
-			lastSeen: 0,
-		})
-
+		
 		await ctx.db.insert("channels", {
 			serverId: serverId,
 			name: "general",

@@ -100,6 +100,10 @@ export const createReaction = userMutation({
 
 		await ctx.user.validateIsMemberOfChannel({ ctx, channelId: message.channelId })
 
+		if (message.reactions.some((reaction) => reaction.userId === args.userId && reaction.emoji === args.emoji)) {
+			throw new Error("You have already reacted to this message")
+		}
+
 		return await ctx.db.patch(args.messageId, {
 			reactions: [...message.reactions, { userId: args.userId, emoji: args.emoji }],
 		})

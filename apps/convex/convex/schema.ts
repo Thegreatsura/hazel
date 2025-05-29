@@ -4,7 +4,6 @@ import { v } from "convex/values"
 export default defineSchema({
 	servers: defineTable({
 		name: v.string(),
-		slug: v.string(),
 		imageUrl: v.optional(v.string()),
 
 		// This value is always set, but it needs to be optional because the server is created before the user is created

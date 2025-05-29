@@ -3,11 +3,24 @@ import { accountMutation } from "./middleware/withAccount"
 import { userQuery } from "./middleware/withUser"
 
 export const getUsers = userQuery({
+	args: {},
 	handler: async (ctx, args) => {
 		return await ctx.db
 			.query("users")
 			.withIndex("by_serverId", (q) => q.eq("serverId", args.serverId))
 			.collect()
+	},
+})
+
+export const getUser = userQuery({
+	args: {
+		userId: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db.get(args.userId)
+		if (!user) throw new Error("User not found")
+		if (user.serverId !== args.serverId) throw new Error("User not found")
+		return user
 	},
 })
 
