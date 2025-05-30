@@ -87,6 +87,9 @@ export default defineSchema({
 		isHidden: v.boolean(),
 		isMuted: v.boolean(),
 
+		lastSeenMessageId: v.optional(v.id("messages")),
+		notificationCount: v.number(),
+
 		joinedAt: v.number(),
 		deletedAt: v.optional(v.number()),
 	}).index("by_channelIdAndUserId", ["channelId", "userId"]),

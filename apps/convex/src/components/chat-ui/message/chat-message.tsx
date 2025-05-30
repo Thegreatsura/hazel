@@ -2,8 +2,7 @@ import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 
 import { Badge } from "~/components/ui/badge"
 
-import type { Message } from "@maki-chat/api-schema/schema/message.js"
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import { Option } from "effect"
 import { useChat } from "~/components/chat-state/chat-store"
 import { MessageActions } from "./message-actions"
@@ -14,7 +13,7 @@ import { chatMessageStyles } from "./message-styles"
 
 interface ChatMessageProps {
 	serverId: Accessor<Id<"servers">>
-	message: Accessor<Message>
+	message: Accessor<Doc<"messages">>
 	isGroupStart: Accessor<boolean>
 	isGroupEnd: Accessor<boolean>
 	isFirstNewMessage: Accessor<boolean>
@@ -22,13 +21,13 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage(props: ChatMessageProps) {
-	const isRepliedTo = createMemo(() => Option.isSome(props.message().replyToMessageId))
+	const isRepliedTo = createMemo(() => !!props.message().replyToMessageId)
 	const showAvatar = createMemo(() => props.isGroupStart() || isRepliedTo())
 
 	const { state } = useChat()
 
 	const channelId = createMemo(() => state.channelId)
-	const messageId = createMemo(() => props.message().id)
+	const messageId = createMemo(() => props.message()._id)
 
 	// TODO: Implement
 	const isPinned = () => false
@@ -56,7 +55,7 @@ export function ChatMessage(props: ChatMessageProps) {
 
 	return (
 		<div
-			id={`message-${props.message().id}`}
+			id={`message-${props.message()._id}`}
 			class={chatMessageStyles({
 				isGettingRepliedTo: false,
 				isGroupStart: props.isGroupStart(),
@@ -65,7 +64,7 @@ export function ChatMessage(props: ChatMessageProps) {
 				isPinned: isPinned(),
 				class: "rounded-l-none",
 			})}
-			data-id={props.message().id}
+			data-id={props.message()._id}
 		>
 			<Show when={props.isFirstNewMessage()}>
 				<div class="absolute top-1 right-1 z-10">

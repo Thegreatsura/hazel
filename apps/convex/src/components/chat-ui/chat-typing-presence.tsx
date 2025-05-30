@@ -1,11 +1,11 @@
 import { For, Show } from "solid-js"
-import { userUsers } from "~/lib/hooks/data/use-users"
 import { useChat } from "../chat-state/chat-store"
 
 export const ChatTypingPresence = () => {
 	const { state } = useChat()
 
-	const { users } = userUsers(() => state.typingUserIds)
+	// TODO: Reimplement
+	const { users } = { users: () => [] }
 
 	return (
 		<div class="mb-2 h-3">

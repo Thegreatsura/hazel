@@ -1,37 +1,49 @@
 import { useNavigate } from "@tanstack/solid-router"
+import { api } from "convex-hazel/_generated/api"
 import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import { type Accessor, createEffect, createMemo, createSignal, on } from "solid-js"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
+import { createPaginatedQuery, createQuery } from "~/lib/convex"
 
 const PAGE_SIZE = 30
 
 export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: Accessor<Id<"servers">> }) {
 	const navigate = useNavigate()
 
-	const { channel, isChannelLoading, channelMember } = useChat(props.channelId, () => 20)
-
-	const paginatedMessages = MessageQueries.createPaginatedMessagesQuery({
-		channelId: props.channelId,
-		limit: PAGE_SIZE,
+	const channel = createQuery(api.channels.getChannel, {
+		channelId: props.channelId(),
+		serverId: props.serverId(),
 	})
+
+	const paginatedMessages = createPaginatedQuery(
+		api.messages.getMessages,
+		{
+			channelId: props.channelId(),
+			serverId: props.serverId(),
+		},
+		{
+			initialNumItems: PAGE_SIZE,
+		},
+	)
 
 	// Redirect when channel is not found
-	createEffect(() => {
-		if (!channel() && !isChannelLoading()) {
-			navigate({
-				to: "/$serverId",
-				params: { serverId: props.serverId() },
-			})
-		}
-	})
+	// TODO: Readd once creaequery has loading state
+	// createEffect(() => {
+	// 	if (!channel() && !isChannelLoading()) {
+	// 		navigate({
+	// 			to: "/$serverId",
+	// 			params: { serverId: props.serverId() },
+	// 		})
+	// 	}
+	// })
 
 	const processedMessages = createMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
 
-		const allMessages = (paginatedMessages.data?.pages.flatMap((page) => page.data) ?? []).reverse()
+		const allMessages = paginatedMessages.results().reverse()
 
 		const result: Array<{
 			message: Doc<"messages">
@@ -46,8 +58,8 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 
 			let isGroupStart = true
 			if (prevMessage) {
-				const currentTime = currentMessage.createdAt.epochMillis
-				const prevTime = prevMessage.createdAt.epochMillis
+				const currentTime = currentMessage._creationTime
+				const prevTime = prevMessage._creationTime
 				const timeDiff = currentTime - prevTime
 				if (currentMessage.authorId === prevMessage.authorId && timeDiff < timeThreshold) {
 					isGroupStart = false
@@ -56,8 +68,8 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 
 			let isGroupEnd = true
 			if (nextMessage) {
-				const currentTime = currentMessage.createdAt.epochMillis
-				const nextTime = nextMessage.createdAt.epochMillis
+				const currentTime = currentMessage._creationTime
+				const nextTime = nextMessage._creationTime
 				const timeDiff = nextTime - currentTime
 				if (currentMessage.authorId === nextMessage.authorId && timeDiff < timeThreshold) {
 					isGroupEnd = false
@@ -105,8 +117,8 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 					setShouldStickToBottom(offset >= vlistRef()!.scrollSize - vlistRef()!.viewportSize - 120)
 
 					if (offset < 300) {
-						if (paginatedMessages.hasNextPage && paginatedMessages.fetchStatus !== "fetching") {
-							paginatedMessages.fetchNextPage()
+						if (paginatedMessages.status() === "CanLoadMore") {
+							paginatedMessages.loadMore(PAGE_SIZE)
 						}
 					}
 				}}
@@ -116,7 +128,7 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 						message={() => message.message}
 						isGroupStart={() => message.isGroupStart}
 						isGroupEnd={() => message.isGroupEnd}
-						isFirstNewMessage={() => message.message.id === channelMember()?.lastSeenMessageId}
+						isFirstNewMessage={() => message.message._id === channel()?.currentUser?.lastSeenMessageId}
 						serverId={props.serverId}
 						isThread={false}
 					/>

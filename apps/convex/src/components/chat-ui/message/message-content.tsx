@@ -6,15 +6,13 @@ import { cn } from "~/lib/utils"
 import { ChatImage } from "./chat-image"
 import { ThreadButton } from "./thread-button"
 
-import type { Message } from "@maki-chat/api-schema/schema/message.js"
 import { Markdown } from "@maki-chat/markdown"
-import { DateTime, Option } from "effect"
+import type { Doc } from "convex-hazel/_generated/dataModel"
 import { useChat } from "~/components/chat-state/chat-store"
-import { useUser } from "~/lib/hooks/data/use-user"
 import { ReactionTags } from "./reaction-tags"
 
 interface MessageContentProps {
-	message: Accessor<Message>
+	message: Accessor<Doc<"messages">>
 	serverId: Accessor<string>
 	showAvatar: Accessor<boolean>
 }
@@ -27,7 +25,7 @@ export function MessageContent(props: MessageContentProps) {
 	const { user: author } = useUser(() => props.message().authorId)
 
 	const messageTime = createMemo(() => {
-		return new Date(DateTime.toDate(props.message().createdAt)).toLocaleTimeString("en-US", {
+		return new Date(props.message()._creationTime).toLocaleTimeString("en-US", {
 			hour: "2-digit",
 			minute: "2-digit",
 			hour12: false,
@@ -81,7 +79,7 @@ export function MessageContent(props: MessageContentProps) {
 											"imageDialog",
 											reconcile({
 												open: true,
-												messageId: props.message().id,
+												messageId: props.message()._id,
 												selectedImage: imgProps.src!,
 											}),
 										)
@@ -128,7 +126,7 @@ export function MessageContent(props: MessageContentProps) {
 												"imageDialog",
 												reconcile({
 													open: true,
-													messageId: props.message().id,
+													messageId: props.message()._id,
 													selectedImage: file,
 												}),
 											)
@@ -147,8 +145,10 @@ export function MessageContent(props: MessageContentProps) {
 				<ReactionTags message={props.message} />
 			</div>
 
-			<Show when={Option.isSome(props.message().threadChannelId)}>
-				<ThreadButton threadChannelId={Option.getOrNull(props.message().threadChannelId)!} />
+			<Show when={props.message().threadChannelId}>
+				{(threadChannelId) => {
+					return <ThreadButton threadChannelId={threadChannelId()} />
+				}}
 			</Show>
 		</div>
 	)

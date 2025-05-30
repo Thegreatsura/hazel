@@ -166,6 +166,7 @@ export const createChannel = userMutation({
 			joinedAt: Date.now(),
 			isHidden: false,
 			isMuted: false,
+			notificationCount: 0,
 		})
 
 		if (args.userIds) {
@@ -177,6 +178,7 @@ export const createChannel = userMutation({
 					joinedAt: Date.now(),
 					isHidden: false,
 					isMuted: false,
+					notificationCount: 0,
 				})
 			})
 		}
@@ -223,6 +225,7 @@ export const creatDmChannel = userMutation({
 				joinedAt: Date.now(),
 				isHidden: false,
 				isMuted: false,
+				notificationCount: 0,
 			}),
 			ctx.db.insert("channelMembers", {
 				channelId,
@@ -230,6 +233,7 @@ export const creatDmChannel = userMutation({
 				joinedAt: Date.now(),
 				isHidden: false,
 				isMuted: false,
+				notificationCount: 0,
 			}),
 		])
 
@@ -273,6 +277,7 @@ export const joinChannel = userMutation({
 			joinedAt: Date.now(),
 			isHidden: false,
 			isMuted: false,
+			notificationCount: 0,
 		})
 	},
 })

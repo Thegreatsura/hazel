@@ -9,6 +9,7 @@ import { ImageViewerModal } from "~/components/chat-ui/image-viewer-modal"
 import { IconX } from "~/components/icons/x"
 import { Button } from "~/components/ui/button"
 import { createQuery } from "~/lib/convex"
+import { Channel } from "./-components/channel"
 // import { Channel } from "./-components/channel"
 
 export const Route = createFileRoute("/_protected/_app/$serverId/chat/$id")({
@@ -36,10 +37,10 @@ function RouteComponent() {
 		<div class="flex h-screen flex-col">
 			<ChatTopbar />
 			<div class="flex flex-1">
-				{/* <Channel channelId={channelId} serverId={serverId} /> */}
-				{/* <Show when={state.openThreadId}>
+				<Channel channelId={channelId} serverId={serverId} />
+				<Show when={state.openThreadId}>
 					<ThreadChannel channelId={state.openThreadId!} serverId={serverId()} />
-				</Show> */}
+				</Show>
 			</div>
 			<ChatImageViewerModal />
 		</div>

@@ -1,5 +1,7 @@
 import { ChannelId, type Message } from "@maki-chat/api-schema/schema/message.js"
 import { useParams } from "@tanstack/solid-router"
+import { api } from "convex-hazel/_generated/api"
+import type { Doc } from "convex-hazel/_generated/dataModel"
 import { Option } from "effect"
 import { type Accessor, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
@@ -11,26 +13,20 @@ import { IconPlus } from "~/components/icons/plus"
 import { IconReply } from "~/components/icons/reply"
 import { IconThread } from "~/components/icons/thread"
 import { IconTrash } from "~/components/icons/trash"
-
-import { newId } from "~/lib/id-helpers"
-import { MessageQueries } from "~/lib/services/data-access/message-queries"
-import { useZero } from "~/lib/zero/zero-context"
+import { createMutation } from "~/lib/convex"
 
 interface CreateMessageActionsProps {
-	message: Accessor<Message>
-	serverId: Accessor<string>
+	message: Accessor<Doc<"messages">>
 	isPinned: Accessor<boolean>
-	isThread: boolean
+	isThread: Accessor<boolean>
 }
 
 export function createMessageActions(props: CreateMessageActionsProps) {
-	const z = useZero()
-	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 	const { setState, state } = useChat()
 
 	const channelId = createMemo(() => state.channelId)
 
-	const deleteMessageMutation = MessageQueries.deleteMutation(channelId)
+	const deleteMessageMutation = createMutation(api.messages.deleteMessage)
 
 	return createMemo(() => [
 		{
@@ -124,7 +120,11 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			key: "delete",
 			label: "Delete",
 			icon: <IconTrash class="size-4" />,
-			onAction: async () => deleteMessageMutation.mutateAsync(props.message().id),
+			onAction: async () =>
+				deleteMessageMutation({
+					id: props.message()._id,
+					serverId: state.serverId,
+				}),
 			hotkey: "del",
 			showMenu: true,
 			isDanger: true,
