@@ -147,7 +147,7 @@ export const createChannel = userMutation({
 		serverId: v.id("servers"),
 
 		name: v.string(),
-		type: v.union(v.literal("public"), v.literal("private"), v.literal("thread")),
+		type: v.union(v.literal("public"), v.literal("private"), v.literal("thread"), v.literal("direct")),
 		userIds: v.optional(v.array(v.id("users"))),
 		parentChannelId: v.optional(v.id("channels")),
 	},

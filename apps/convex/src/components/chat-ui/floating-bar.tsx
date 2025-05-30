@@ -9,7 +9,9 @@ import { ChatInput } from "../markdown-input/chat-input"
 import { Button } from "../ui/button"
 
 import type { MessageId } from "@maki-chat/api-schema/schema/message.js"
+import { api } from "convex-hazel/_generated/api"
 import { Option } from "effect"
+import { createMutation, createQuery } from "~/lib/convex"
 import { useChat } from "../chat-state/chat-store"
 import { createPresence } from "../chat-state/create-presence"
 import { setElementAnchorAndFocus } from "../markdown-input/utils"
@@ -37,13 +39,14 @@ const useFileAttachment = () => {
 			return
 		}
 
-		const newAttachments: Attachment[] = imageFiles.map((file) => ({
-			id: newId("attachment"),
-			file: file,
-			status: "pending",
-		}))
+		// TODO: Readd
+		// const newAttachments: Attachment[] = imageFiles.map((file) => ({
+		// 	id: newId("attachment"),
+		// 	file: file,
+		// 	status: "pending",
+		// }))
 
-		setAttachments((prev) => [...prev, ...newAttachments])
+		// setAttachments((prev) => [...prev, ...newAttachments])
 	}
 
 	// Effect to process pending uploads
@@ -246,7 +249,7 @@ export function FloatingBar() {
 	const { state, setState } = useChat()
 	const { trackTyping } = createPresence()
 
-	const createMessageMutation = MessageQueries.createMessageMutation(() => state.channelId)
+	const createMessage = createMutation(api.messages.createMessage)
 
 	const { attachments, setFileInputRef, handleFileChange, openFileSelector, removeAttachment, clearAttachments } =
 		useFileAttachment()
@@ -276,13 +279,12 @@ export function FloatingBar() {
 		const content = text.trim()
 
 		// TODO: If we are not a channel member and the channel is a thread, we need to add the current user as a channel member
-		createMessageMutation.mutate({
+		await createMessage({
 			content: content,
-			authorId: auth.userId()! as any,
-			optimisticId: Option.none(),
-			replyToMessageId: Option.fromNullable(state.replyToMessageId as MessageId),
+			replyToMessageId: state.replyToMessageId || undefined,
 			attachedFiles: successfulKeys(),
-			threadChannelId: Option.none(),
+			serverId: state.serverId,
+			channelId: state.channelId,
 		})
 
 		setInput("")
@@ -387,32 +389,30 @@ function ReplyInfo(props: {
 	const replyToMessageId = createMemo(() => state.replyToMessageId!)
 
 	const channelId = createMemo(() => state.channelId)
-	const query = MessageQueries.createMessageQuery({
-		messageId: replyToMessageId,
-		channelId: channelId,
+
+	const message = createQuery(api.messages.getMessage, {
+		id: replyToMessageId(),
+		channelId: channelId(),
+		serverId: state.serverId,
 	})
 
-	const messageData = createMemo(() => query.data)
-
-	const authorId = createMemo(() => messageData()?.authorId!)
-
-	const { user: author } = useUser(authorId)
-
 	return (
-		<Show when={messageData()?.authorId}>
-			<div
-				class={twMerge(
-					"flex items-center justify-between gap-2 rounded-sm rounded-b-none border border-border/90 border-b-0 bg-secondary/90 px-2 py-1 text-muted-fg text-sm transition hover:border-border/90",
-					props.showAttachmentArea && "rounded-t-none",
-				)}
-			>
-				<p>
-					Replying to <span class="font-semibold text-fg">{author()?.displayName}</span>
-				</p>
-				<Button size="icon" intent="icon" onClick={() => setState("replyToMessageId", null)}>
-					<IconCircleXSolid />
-				</Button>
-			</div>
+		<Show when={message()} keyed>
+			{(message) => (
+				<div
+					class={twMerge(
+						"flex items-center justify-between gap-2 rounded-sm rounded-b-none border border-border/90 border-b-0 bg-secondary/90 px-2 py-1 text-muted-fg text-sm transition hover:border-border/90",
+						props.showAttachmentArea && "rounded-t-none",
+					)}
+				>
+					<p>
+						Replying to <span class="font-semibold text-fg">{message.author.displayName}</span>
+					</p>
+					<Button size="icon" intent="icon" onClick={() => setState("replyToMessageId", null)}>
+						<IconCircleXSolid />
+					</Button>
+				</div>
+			)}
 		</Show>
 	)
 }

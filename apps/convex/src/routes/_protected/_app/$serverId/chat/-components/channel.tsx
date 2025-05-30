@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/solid-router"
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import { type Accessor, createEffect, createMemo, createSignal, on } from "solid-js"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
@@ -34,7 +34,7 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 		const allMessages = (paginatedMessages.data?.pages.flatMap((page) => page.data) ?? []).reverse()
 
 		const result: Array<{
-			message: Message
+			message: Doc<"messages">
 			isGroupStart: boolean
 			isGroupEnd: boolean
 		}> = []
@@ -123,7 +123,7 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 				)}
 			</VList>
 			<div class="mx-2 flex flex-col gap-1.5">
-				<FloatingBar channelId={props.channelId()} />
+				<FloatingBar />
 				<ChatTypingPresence />
 			</div>
 		</div>

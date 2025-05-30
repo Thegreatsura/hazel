@@ -113,7 +113,6 @@ export const CreateDmDialog = (props: CreateDmDialogProps) => {
 					<Button
 						intent="default"
 						onClick={async () => {
-							createDmChannelMutation
 							const channelId = await createDmChannelMutation({
 								serverId: props.serverId() as Id<"servers">,
 								userIds: selectFriends().map((friend) => friend._id as Id<"users">),

@@ -12,10 +12,10 @@ import { toaster } from "~/components/ui/toaster"
 import { Tooltip } from "~/components/ui/tooltip"
 
 import { Portal } from "solid-js/web"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { Dialog, DialogBackdrop } from "../ui/dialog"
 
 import { Dialog as ArkDialog } from "@ark-ui/solid"
+import type { Doc } from "convex-hazel/_generated/dataModel"
 import { twMerge } from "tailwind-merge"
 import { Carousel } from "../ui/carousel"
 
@@ -23,7 +23,7 @@ interface ImageViewerModalProps {
 	defaultImage: Accessor<string>
 	availableImages: Accessor<string[]>
 	onOpenChange: (open: boolean) => void
-	author: Message["author"]
+	author: Doc<"users">
 	createdAt: number
 	bucketUrl: string
 }
