@@ -15,6 +15,7 @@ interface ChatStore extends InputChatStore {
 }
 
 interface InputChatStore {
+	serverId: Id<"servers">
 	channelId: Id<"channels">
 }
 
@@ -44,9 +45,13 @@ export const ChatProvider = (props: { children: JSX.Element } & InputChatStore) 
 	const [childProps, restProps] = splitProps(props, ["children"])
 
 	return (
-		<Show when={props.channelId} keyed>
-			{(channelId) => {
-				const chatStore$ = createChatStore({ ...restProps, channelId })
+		<Show when={props.channelId && props.serverId} keyed>
+			{(_) => {
+				const chatStore$ = createChatStore({
+					...restProps,
+					channelId: props.channelId,
+					serverId: props.serverId,
+				})
 
 				return <ChatContext.Provider value={chatStore$}>{childProps.children}</ChatContext.Provider>
 			}}

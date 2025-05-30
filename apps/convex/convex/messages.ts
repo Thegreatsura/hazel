@@ -2,6 +2,28 @@ import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { userMutation, userQuery } from "./middleware/withUser"
 
+export const getMessage = userQuery({
+	args: {
+		serverId: v.id("servers"),
+		channelId: v.id("channels"),
+		id: v.id("messages"),
+	},
+	handler: async (ctx, args) => {
+		await ctx.user.validateCanViewChannel({ ctx, channelId: args.channelId })
+
+		const message = await ctx.db.get(args.id)
+		if (!message) throw new Error("Message not found")
+
+		const messageAuthor = await ctx.db.get(message.authorId)
+		if (!messageAuthor) throw new Error("Message author not found")
+
+		return {
+			...message,
+			author: messageAuthor,
+		}
+	},
+})
+
 export const getMessages = userQuery({
 	args: {
 		serverId: v.id("servers"),
