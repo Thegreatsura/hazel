@@ -733,7 +733,7 @@ describe("pinning", () => {
 		})
 
 		// Pin the message
-		const pinnedMessageId = await t.mutation(api.pinnedMessages.createPinnedMessage, {
+		await t.mutation(api.pinnedMessages.createPinnedMessage, {
 			serverId: server,
 			messageId,
 			channelId,
@@ -746,7 +746,6 @@ describe("pinning", () => {
 		})
 
 		expect(pinnedMessages).toHaveLength(1)
-		expect(pinnedMessages[0]?._id).toEqual(pinnedMessageId)
 		expect(pinnedMessages[0]?.messageId).toEqual(messageId)
 		expect(pinnedMessages[0]?.channelId).toEqual(channelId)
 	})
@@ -761,7 +760,7 @@ describe("pinning", () => {
 		})
 
 		// Pin the message
-		const pinnedMessageId = await t.mutation(api.pinnedMessages.createPinnedMessage, {
+		await t.mutation(api.pinnedMessages.createPinnedMessage, {
 			serverId: server,
 			messageId,
 			channelId,
@@ -770,7 +769,8 @@ describe("pinning", () => {
 		// Unpin the message
 		await t.mutation(api.pinnedMessages.deletePinnedMessage, {
 			serverId: server,
-			id: pinnedMessageId,
+			channelId,
+			messageId,
 		})
 
 		// Get pinned messages

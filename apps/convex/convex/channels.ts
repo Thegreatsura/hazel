@@ -158,6 +158,7 @@ export const createChannel = userMutation({
 			type: args.type,
 			parentChannelId: args.parentChannelId,
 			updatedAt: Date.now(),
+			pinnedMessages: [],
 		})
 
 		await ctx.db.insert("channelMembers", {
@@ -216,6 +217,7 @@ export const creatDmChannel = userMutation({
 			type: "single",
 			participantHash,
 			updatedAt: Date.now(),
+			pinnedMessages: [],
 		})
 
 		await Promise.all([

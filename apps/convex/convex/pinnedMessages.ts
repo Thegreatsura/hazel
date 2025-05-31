@@ -9,13 +9,10 @@ export const getPinnedMessages = userQuery({
 	handler: async (ctx, args) => {
 		await ctx.user.validateCanViewChannel({ ctx, channelId: args.channelId })
 
-		const pinnedMessages = await ctx.db
-			.query("pinnedMessages")
-			.withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-			.order("desc")
-			.collect()
+		const channel = await ctx.db.get(args.channelId)
+		if (!channel) throw new Error("Channel not found")
 
-		const computedPinnedMessages = await asyncMap(pinnedMessages, async (pinnedMessage) => {
+		const computedPinnedMessages = await asyncMap(channel.pinnedMessages, async (pinnedMessage) => {
 			const message = await ctx.db.get(pinnedMessage.messageId)
 			if (!message) return null
 
@@ -24,6 +21,7 @@ export const getPinnedMessages = userQuery({
 
 			return {
 				...pinnedMessage,
+				channelId: args.channelId,
 				messageAuthor,
 				message,
 			}
@@ -41,26 +39,33 @@ export const createPinnedMessage = userMutation({
 	handler: async (ctx, args) => {
 		await ctx.user.validateIsMemberOfChannel({ ctx, channelId: args.channelId })
 
-		const pinnedMessage = await ctx.db
-			.query("pinnedMessages")
-			.filter((q) => q.eq(q.field("messageId"), args.messageId))
-			.first()
+		const channel = await ctx.db.get(args.channelId)
+		if (!channel) throw new Error("Channel not found")
+
+		const pinnedMessage = channel.pinnedMessages.find((pinnedMessage) => pinnedMessage.messageId === args.messageId)
 		if (pinnedMessage) throw new Error("Message already pinned")
 
-		return await ctx.db.insert("pinnedMessages", {
-			messageId: args.messageId,
-			channelId: args.channelId,
+		await ctx.db.patch(args.channelId, {
+			pinnedMessages: [...channel.pinnedMessages, { messageId: args.messageId, pinnedAt: Date.now() }],
 		})
 	},
 })
 
 export const deletePinnedMessage = userMutation({
 	args: {
-		id: v.id("pinnedMessages"),
+		messageId: v.id("messages"),
+		channelId: v.id("channels"),
 	},
 	handler: async (ctx, args) => {
-		await ctx.user.validateCanAccessPinnedMessage({ ctx, pinnedMessageId: args.id })
+		await ctx.user.validateIsMemberOfChannel({ ctx, channelId: args.channelId })
 
-		return await ctx.db.delete(args.id)
+		const channel = await ctx.db.get(args.channelId)
+		if (!channel) throw new Error("Channel not found")
+
+		return await ctx.db.patch(args.channelId, {
+			pinnedMessages: channel.pinnedMessages.filter(
+				(pinnedMessage) => pinnedMessage.messageId !== args.messageId,
+			),
+		})
 	},
 })

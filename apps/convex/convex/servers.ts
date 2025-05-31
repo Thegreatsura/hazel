@@ -66,6 +66,7 @@ export const createServer = accountMutation({
 			name: "general",
 			type: "public",
 			updatedAt: Date.now(),
+			pinnedMessages: [],
 		})
 
 		return serverId

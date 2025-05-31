@@ -26,6 +26,8 @@ export default defineSchema({
 		serverId: v.id("servers"),
 		parentChannelId: v.optional(v.id("channels")),
 
+		pinnedMessages: v.array(v.object({ messageId: v.id("messages"), pinnedAt: v.number() })),
+
 		// This is a hash based on all participant ids in the channel (should be Single an Direct only)
 		participantHash: v.optional(v.string()),
 
@@ -93,8 +95,4 @@ export default defineSchema({
 		joinedAt: v.number(),
 		deletedAt: v.optional(v.number()),
 	}).index("by_channelIdAndUserId", ["channelId", "userId"]),
-	pinnedMessages: defineTable({
-		messageId: v.id("messages"),
-		channelId: v.id("channels"),
-	}).index("by_channelId", ["channelId"]),
 })
