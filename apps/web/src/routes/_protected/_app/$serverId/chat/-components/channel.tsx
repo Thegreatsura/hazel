@@ -32,9 +32,14 @@ const MessageSkeleton = (props: { isGroupStart: boolean }) => (
 	</div>
 )
 
-type ListItem =
-	| { type: "message"; data: { message: Message; isGroupStart: boolean; isGroupEnd: boolean } }
-	| { type: "skeleton"; id: string; isGroupStart: boolean }
+type ListItem = ListItemMessage | ListItemSkeleton
+
+type ListItemMessage = {
+	type: "message"
+	data: { message: Message; isGroupStart: boolean; isGroupEnd: boolean }
+}
+
+type ListItemSkeleton = { type: "skeleton"; id: string; isGroupStart: boolean }
 
 export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: Accessor<Id<"servers">> }) {
 	const channel = createQuery(api.channels.getChannel, {
@@ -71,8 +76,6 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 	const processedMessages = createMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
 		const allMessages = paginatedMessages.results().reverse()
-
-		console.log("allMessages", unwrap(allMessages))
 
 		const result: Array<{
 			message: Message
@@ -218,16 +221,11 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 				{(item) => (
 					<Show
 						when={item.type === "message"}
-						fallback={
-							<MessageSkeleton
-								isGroupStart={
-									(item as { type: "skeleton"; isGroupStart: boolean }).isGroupStart
-								}
-							/>
-						}
+						fallback={<MessageSkeleton isGroupStart={(item as ListItemSkeleton).isGroupStart} />}
 					>
 						{(() => {
-							const messageItem = item as { type: "message"; data: any }
+							const messageItem = item as ListItemMessage
+
 							return (
 								<ChatMessage
 									message={() => messageItem.data.message}

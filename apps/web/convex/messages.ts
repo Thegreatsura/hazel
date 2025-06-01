@@ -127,9 +127,7 @@ export const deleteMessage = userMutation({
 	handler: async (ctx, args) => {
 		await ctx.user.validateOwnsMessage({ ctx, messageId: args.id })
 
-		await ctx.db.patch(args.id, {
-			deletedAt: Date.now(),
-		})
+		await ctx.db.delete(args.id)
 	},
 })
 

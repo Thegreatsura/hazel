@@ -24,9 +24,12 @@ export function ChatMessage(props: ChatMessageProps) {
 	const isRepliedTo = createMemo(() => !!props.message().replyToMessageId)
 	const showAvatar = createMemo(() => props.isGroupStart() || isRepliedTo())
 
+	createEffect(() => {
+		console.log(isRepliedTo())
+	})
+
 	const { state } = useChat()
 
-	const channelId = createMemo(() => state.channelId)
 	const messageId = createMemo(() => props.message()._id)
 
 	const isPinned = () =>
