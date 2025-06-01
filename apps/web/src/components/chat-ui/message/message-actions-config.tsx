@@ -48,21 +48,24 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			label: "Thread",
 			icon: <IconThread class="size-4" />,
 			onAction: async () => {
-				const threadChannelId = props.message().threadChannelId || null
+				let threadChannelId = props.message().threadChannelId || null
 
 				if (!threadChannelId) {
-					await createThreadMutation({
+					threadChannelId = await createThreadMutation({
 						serverId: state.serverId,
 						name: "Thread name should be generated with AI",
 						parentChannelId: props.message().channelId,
 						type: "thread",
+						threadMessageId: props.message()._id,
 					})
+
+					console.log(threadChannelId)
 				}
 
 				setState("openThreadId", threadChannelId)
 			},
 			hotkey: "t",
-			showButton: !props.isThread,
+			showButton: !props.isThread(),
 		},
 		{
 			key: "reply",

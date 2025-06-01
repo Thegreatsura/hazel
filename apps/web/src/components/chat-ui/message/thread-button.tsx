@@ -1,8 +1,9 @@
-import type { Message } from "@maki-chat/api-schema/schema/message.js"
+import type { Doc } from "convex-hazel/_generated/dataModel"
 import { type Accessor, For, Show, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import type { Message } from "~/lib/types"
 
 interface ThreadButtonProps {
 	threadChannelId: string
@@ -12,13 +13,19 @@ export function ThreadButton(props: ThreadButtonProps) {
 	const { setState } = useChat()
 
 	// TODO: Fetch thread messages here
-	const threadMessages: Accessor<any[]> = () => []
+	const threadMessages: Accessor<Message[]> = createMemo(() => [])
 
 	const topFourAuthors = createMemo(() => {
 		const authors: { displayName: string; avatarUrl: string }[] = []
 		for (const message of threadMessages()) {
-			if (message.author?.avatarUrl && !authors.some((a) => a.avatarUrl === message.author!.avatarUrl)) {
-				authors.push({ displayName: message.author.displayName!, avatarUrl: message.author.avatarUrl })
+			if (
+				message.author?.avatarUrl &&
+				!authors.some((a) => a.avatarUrl === message.author!.avatarUrl)
+			) {
+				authors.push({
+					displayName: message.author.displayName!,
+					avatarUrl: message.author.avatarUrl,
+				})
 			}
 		}
 		return { authors: authors.slice(0, 4), total: authors.length }
@@ -43,7 +50,7 @@ export function ThreadButton(props: ThreadButtonProps) {
 				<span class="mx-1 text-muted-foreground text-xs">&middot;</span>
 				<p class="text-muted-foreground text-xs">
 					Last message{" "}
-					{new Date(threadMessages()[0].createdAt!).toLocaleTimeString("en-US", {
+					{new Date(threadMessages()[0]?._creationTime).toLocaleTimeString("en-US", {
 						hour: "2-digit",
 						minute: "2-digit",
 						hour12: false,
