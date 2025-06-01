@@ -68,11 +68,11 @@ export type PaginatedQueryArgs<Query extends PaginatedQueryReference> = Expand<
 	BetterOmit<FunctionArgs<Query>, "paginationOpts">
 >
 
-export type PaginatedQueryItem<Query extends PaginatedQueryReference> = FunctionReturnType<Query>["page"][number]
+export type PaginatedQueryItem<Query extends PaginatedQueryReference> =
+	FunctionReturnType<Query>["page"][number]
 
-export type CreatePaginatedQueryReturnType<Query extends PaginatedQueryReference> = CreatePaginatedQueryResult<
-	PaginatedQueryItem<Query>
->
+export type CreatePaginatedQueryReturnType<Query extends PaginatedQueryReference> =
+	CreatePaginatedQueryResult<PaginatedQueryItem<Query>>
 
 let paginationId = 0
 
@@ -279,7 +279,9 @@ export function createPaginatedQuery<Query extends PaginatedQueryReference>(
 						currResult.data?.isConvexSystemError === true &&
 						currResult.data?.paginationError === "InvalidCursor")
 				) {
-					logger.warn(`createPaginatedQuery hit error, resetting pagination state: ${currResult.message}`)
+					logger.warn(
+						`createPaginatedQuery hit error, resetting pagination state: ${currResult.message}`,
+					)
 					setState(createInitialState())
 					return [[], undefined]
 				}
@@ -288,7 +290,10 @@ export function createPaginatedQuery<Query extends PaginatedQueryReference>(
 
 			const ongoingSplit = currState.ongoingSplits[pageKey]
 			if (ongoingSplit !== undefined) {
-				if (queryResults[ongoingSplit[0]] !== undefined && queryResults[ongoingSplit[1]] !== undefined) {
+				if (
+					queryResults[ongoingSplit[0]] !== undefined &&
+					queryResults[ongoingSplit[1]] !== undefined
+				) {
 					completeSplitQuery(pageKey)
 				}
 			} else if (
