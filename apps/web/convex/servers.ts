@@ -24,6 +24,26 @@ export const getServers = query({
 	},
 })
 
+export const getServerForUser = accountQuery({
+	args: {
+		serverId: v.id("servers"),
+	},
+	handler: async (ctx, args) => {
+		const serverMember = await ctx.db
+			.query("users")
+			.withIndex("by_accountId_serverId", (q) =>
+				q.eq("accountId", ctx.account.doc._id).eq("serverId", args.serverId),
+			)
+			.first()
+
+		if (!serverMember) return null
+
+		const server = await ctx.db.get(serverMember.serverId)
+
+		return server
+	},
+})
+
 export const getServersForUser = accountQuery({
 	args: {},
 	handler: async (ctx) => {

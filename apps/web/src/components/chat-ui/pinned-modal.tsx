@@ -22,7 +22,9 @@ export function PinnedModal() {
 
 	const deletePinnedMessageMutation = createMutation(api.pinnedMessages.deletePinnedMessage)
 
-	const sortedPins = createMemo(() => [...(pinnedMessages() || [])].sort((a, b) => a._creationTime - b._creationTime))
+	const sortedPins = createMemo(() =>
+		[...(pinnedMessages() || [])].sort((a, b) => a._creationTime - b._creationTime),
+	)
 
 	const scrollToMessage = (messageId: string) => {
 		const element = document.getElementById(`message-${messageId}`)
@@ -78,16 +80,17 @@ export function PinnedModal() {
 									/>
 									<div class="min-w-0 flex-1">
 										<div class="flex items-baseline gap-2">
-											<span class="font-semibold">{pinnedMessage.messageAuthor.displayName}</span>
+											<span class="font-semibold">
+												{pinnedMessage.messageAuthor.displayName}
+											</span>
 											<span class="text-muted-fg text-xs">
 												{/* TODO: Add day date here */}
-												{new Date(pinnedMessage.message._creationTime!).toLocaleTimeString(
-													"en-US",
-													{
-														hour: "2-digit",
-														minute: "2-digit",
-													},
-												)}
+												{new Date(
+													pinnedMessage.message._creationTime!,
+												).toLocaleTimeString("en-US", {
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
 											</span>
 										</div>
 

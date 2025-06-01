@@ -1,7 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/solid-router"
 import { api } from "convex-hazel/_generated/api"
 import type { Id } from "convex-hazel/_generated/dataModel"
-import { createEffect, createMemo } from "solid-js"
 import { Sidebar } from "~/components/ui/sidebar"
 import { removeCurrentServerId, setCurrentServerId } from "~/lib/helpers/localstorage"
 import { AppSidebar } from "./-components/app-sidebar"
@@ -9,7 +8,7 @@ import { AppSidebar } from "./-components/app-sidebar"
 export const Route = createFileRoute("/_protected/_app/$serverId")({
 	component: RouteComponent,
 	beforeLoad: async ({ context, params }) => {
-		const server = await context.convex.query(api.servers.getServer, {
+		const server = await context.convex.query(api.servers.getServerForUser, {
 			serverId: params.serverId as Id<"servers">,
 		})
 
