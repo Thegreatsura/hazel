@@ -139,6 +139,21 @@ export class ConvexSolidClient {
 		})
 	}
 
+	async awaitAuth(): Promise<boolean> {
+		// First, wait for setAuth to be called
+		if (this.authSetPromise) {
+			await this.authSetPromise
+		}
+
+		// Then wait for the auth resolution
+		if (this.authPromise) {
+			return this.authPromise
+		}
+
+		// If we get here, auth was cleared after being set
+		return false
+	}
+
 	setAdminAuth(token: string, identity?: UserIdentityAttributes) {
 		this.adminAuth = token
 		this.fakeUserIdentity = identity
@@ -293,6 +308,11 @@ export function useConvex(): ConvexSolidClient {
 		)
 	}
 	return client
+}
+
+export function useAwaitAuth(): () => Promise<boolean> {
+	const client = useConvex()
+	return () => client.awaitAuth()
 }
 
 function createMutationInternal<Mutation extends FunctionReference<"mutation">>(
