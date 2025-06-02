@@ -1,9 +1,12 @@
 import { Button, Platform, Text, View } from "react-native"
 
+import { useMutation } from "convex/react"
 import Constants from "expo-constants"
 import * as Device from "expo-device"
 import * as Notifications from "expo-notifications"
 import { useEffect, useState } from "react"
+
+import { api } from "@hazel/backend/api"
 
 Notifications.setNotificationHandler({
 	handleNotification: async () => ({
@@ -81,12 +84,17 @@ async function registerForPushNotificationsAsync(channelId: string) {
 }
 
 export const NotificationHandler = ({ userId }: { userId: string }) => {
+	const registerPushToken = useMutation(api.expo.recordPushNotificationToken)
 	const [expoPushToken, setExpoPushToken] = useState("")
 	const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined)
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		registerForPushNotificationsAsync(userId)
-			.then((token) => setExpoPushToken(token ?? ""))
+			.then((token) => {
+				if (!token) return
+				registerPushToken({ token })
+			})
 			.catch((error: any) => setExpoPushToken(`${error}`))
 
 		const notificationListener = Notifications.addNotificationReceivedListener((notification) => {

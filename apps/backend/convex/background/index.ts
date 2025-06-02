@@ -1,6 +1,7 @@
 import { internalMutation } from "@hazel/backend/server"
 import { asyncMap } from "convex-helpers"
 import { v } from "convex/values"
+import { internal } from "../_generated/api"
 
 export const sendNotification = internalMutation({
 	args: {
@@ -30,6 +31,19 @@ export const sendNotification = internalMutation({
 				accountId: account._id,
 				targetedResourceId: args.channelId,
 				resourceId: args.messageId,
+			})
+		})
+
+		await asyncMap(filteredChannelMembers, async (member) => {
+			const user = await ctx.db.get(member.userId)
+			if (!user) return
+			const account = await ctx.db.get(user.accountId)
+
+			if (!account) return
+
+			await ctx.scheduler.runAfter(0, internal.expo.sendPushNotification, {
+				title: "New message",
+				to: account._id,
 			})
 		})
 	},

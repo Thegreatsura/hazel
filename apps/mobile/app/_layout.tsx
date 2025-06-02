@@ -4,11 +4,20 @@ import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import "react-native-reanimated"
 
-import { ClerkProvider } from "@clerk/clerk-expo"
+import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth } from "@clerk/clerk-expo"
 
 import { useColorScheme } from "@/hooks/useColorScheme"
 
+import { ConvexProviderWithClerk } from "convex/react-clerk"
+
 import { tokenCache } from "@clerk/clerk-expo/token-cache"
+
+import { ConvexReactClient } from "convex/react"
+import { Text } from "react-native"
+
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+	unsavedChangesWarning: false,
+})
 
 export default function RootLayout() {
 	const colorScheme = useColorScheme()
@@ -22,14 +31,21 @@ export default function RootLayout() {
 	}
 
 	return (
-		<ClerkProvider tokenCache={tokenCache}>
-			<ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-				<Stack>
-					<Stack.Screen name="(home)" options={{ headerShown: false }} />
-					<Stack.Screen name="+not-found" />
-				</Stack>
-				<StatusBar style="auto" />
-			</ThemeProvider>
-		</ClerkProvider>
+		<ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+			<ClerkProvider tokenCache={tokenCache}>
+				<ClerkLoaded>
+					<ConvexProviderWithClerk useAuth={useAuth} client={convex}>
+						<Stack>
+							<Stack.Screen name="(home)" options={{ headerShown: false }} />
+							<Stack.Screen name="+not-found" />
+						</Stack>
+						<StatusBar style="auto" />
+					</ConvexProviderWithClerk>
+				</ClerkLoaded>
+				<ClerkLoading>
+					<Text>Loading...</Text>
+				</ClerkLoading>
+			</ClerkProvider>
+		</ThemeProvider>
 	)
 }

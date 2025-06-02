@@ -2,6 +2,7 @@ import { PushNotifications } from "@convex-dev/expo-push-notifications"
 import { v } from "convex/values"
 import { components } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
+import { internalMutation } from "./_generated/server"
 import { accountMutation } from "./middleware/withAccount"
 
 type AccountId = Id<"accounts">
@@ -18,14 +19,14 @@ export const recordPushNotificationToken = accountMutation({
 	},
 })
 
-// export const sendPushNotification = mutation({
-// 	args: { title: v.string(), to: v.string() },
-// 	handler: async (ctx, args) => {
-// 		const pushId = await pushNotifications.sendPushNotification(ctx, {
-// 			userId: ctx.,
-// 			notification: {
-// 				title: args.title,
-// 			},
-// 		})
-// 	},
-// })
+export const sendPushNotification = internalMutation({
+	args: { title: v.string(), to: v.id("accounts") },
+	handler: async (ctx, args) => {
+		const pushId = await pushNotifications.sendPushNotification(ctx, {
+			userId: args.to,
+			notification: {
+				title: args.title,
+			},
+		})
+	},
+})
