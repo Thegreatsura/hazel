@@ -118,6 +118,8 @@ export const NotificationHandler = ({ userId }: { userId: string }) => {
 				<Text>Data: {notification && JSON.stringify(notification.request.content.data)}</Text>
 			</View>
 
+			<Button title="Get Token" onPress={async () => registerForPushNotificationsAsync(userId)} />
+
 			<Button
 				title="Register Push Token"
 				onPress={async () => {
