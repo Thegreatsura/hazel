@@ -36,7 +36,6 @@ export default function RootLayout() {
 		<ClerkProvider tokenCache={tokenCache} publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}>
 			<ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
 				<ClerkLoaded>
-					<Text>Loading...</Text>
 					<ConvexProviderWithClerk useAuth={useAuth} client={convex}>
 						<Stack>
 							<Stack.Screen name="(home)" options={{ headerShown: false }} />
@@ -47,7 +46,7 @@ export default function RootLayout() {
 					</ConvexProviderWithClerk>
 				</ClerkLoaded>
 				<ClerkLoading>
-					<Text>Loading...</Text>
+					<Text>Loading Clerk...</Text>
 				</ClerkLoading>
 			</ThemeProvider>
 		</ClerkProvider>
