@@ -5,7 +5,7 @@ import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
-import { createPaginatedQuery, createQuery } from "~/lib/convex"
+import { createCachedPaginatedQuery, createQuery } from "~/lib/convex"
 import type { Message } from "~/lib/types"
 
 const PAGE_SIZE = 30
@@ -46,16 +46,17 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 		serverId: props.serverId(),
 	})
 
-	const paginatedMessages = createPaginatedQuery(
-		api.messages.getMessages,
-		{
-			channelId: props.channelId(),
-			serverId: props.serverId(),
-		},
-		{
-			initialNumItems: PAGE_SIZE,
-		},
-	)
+       const paginatedMessages = createCachedPaginatedQuery(
+               api.messages.getMessages,
+               {
+                       channelId: props.channelId(),
+                       serverId: props.serverId(),
+               },
+               {
+                       initialNumItems: PAGE_SIZE,
+               },
+               `messages:${props.serverId()}:${props.channelId()}`,
+       )
 
 	const [pendingLoads, setPendingLoads] = createSignal(0)
 
@@ -74,7 +75,8 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 
 	const processedMessages = createMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
-		const allMessages = paginatedMessages.results().reverse()
+               const source = paginatedMessages.results()
+               const allMessages = source.slice().reverse()
 
 		const result: Array<{
 			message: Message
