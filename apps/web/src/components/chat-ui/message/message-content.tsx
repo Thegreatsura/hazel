@@ -1,12 +1,11 @@
-import { type Accessor, For, Show, createMemo, splitProps } from "solid-js"
-import { reconcile } from "solid-js/store"
+import { type Accessor, For, Show, createEffect, createMemo, splitProps } from "solid-js"
+import { reconcile, unwrap } from "solid-js/store"
 import { twJoin } from "tailwind-merge"
 
 import { cn } from "~/lib/utils"
 import { ChatImage } from "./chat-image"
 import { ThreadButton } from "./thread-button"
 
-import type { Doc } from "@hazel/backend"
 import { Markdown } from "@maki-chat/markdown"
 import { useChat } from "~/components/chat-state/chat-store"
 import type { Message } from "~/lib/types"
@@ -70,7 +69,15 @@ export function MessageContent(props: MessageContentProps) {
 						/>
 					),
 					li: (props) => <li class="" {...props} />,
-					ul: (props) => <ul class="list-inside list-disc" {...props} />,
+					ul: (props) => {
+						return (
+							<ul
+								class="list-inside list-disc"
+								style={{ "padding-left": `${props.depth * 4}px` }}
+								{...props}
+							/>
+						)
+					},
 					img: (parentProps) => {
 						const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
 						return (
