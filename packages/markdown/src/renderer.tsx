@@ -1,6 +1,14 @@
 import type { Element, Root, Text } from "hast"
 import { svg } from "property-information"
-import { type Component, For, Match, Show, Switch, createMemo } from "solid-js"
+import {
+       type Component,
+       For,
+       Match,
+       Show,
+       Switch,
+       createMemo,
+       onCleanup,
+} from "solid-js"
 import { Dynamic } from "solid-js/web"
 import type { Context, SolidMarkdownNames } from "./types"
 import { addProperty, flattenPosition, getElementsBeforeCount, getInputElement } from "./utils"
@@ -87,14 +95,21 @@ export const MarkdownText: Component<{
 }
 
 export const MarkdownNode: Component<{
-	context: Context
-	node: Element
-	index: number
-	parent: Element | Root
+        context: Context
+        node: Element
+        index: number
+        parent: Element | Root
 }> = (props) => {
-	const childProps = createMemo(() => {
-		const context = { ...props.context }
-		const options = context.options
+       const incrementListDepth = props.node.tagName === "ol" || props.node.tagName === "ul"
+       if (incrementListDepth) {
+               props.context.listDepth++
+               onCleanup(() => {
+                       props.context.listDepth--
+               })
+       }
+        const childProps = createMemo(() => {
+                const context = { ...props.context }
+                const options = context.options
 		const parentSchema = context.schema
 		const node = props.node
 		const name = node.tagName as SolidMarkdownNames
@@ -117,13 +132,6 @@ export const MarkdownNode: Component<{
 			}
 		}
 
-		if (name === "ol" || name === "ul") {
-			context.listDepth++
-		}
-
-		if (name === "ol" || name === "ul") {
-			context.listDepth--
-		}
 
 		// Restore parent schema.
 		context.schema = parentSchema
