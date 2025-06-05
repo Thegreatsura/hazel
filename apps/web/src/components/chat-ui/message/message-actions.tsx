@@ -1,4 +1,4 @@
-import { type Accessor, For, Show, createSignal } from "solid-js"
+import { type Accessor, For, Show, createMemo, createSignal } from "solid-js"
 import { twMerge } from "tailwind-merge"
 
 import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
@@ -15,6 +15,7 @@ interface MessageActionsProps {
 	message: Accessor<Doc<"messages">>
 	serverId: Accessor<string>
 	isPinned: Accessor<boolean>
+	hasThreadWithMessages: Accessor<boolean>
 }
 
 export function MessageActions(props: MessageActionsProps) {
@@ -24,6 +25,7 @@ export function MessageActions(props: MessageActionsProps) {
 	const actions = createMessageActions({
 		message: props.message,
 		isPinned: props.isPinned,
+		hasThreadWithMessages: props.hasThreadWithMessages,
 	})
 
 	const handleAction = (action: any) => {

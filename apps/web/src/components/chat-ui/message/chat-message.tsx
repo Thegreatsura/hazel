@@ -23,6 +23,8 @@ export function ChatMessage(props: ChatMessageProps) {
 	const isRepliedTo = createMemo(() => !!props.message().replyToMessageId)
 	const showAvatar = createMemo(() => props.isGroupStart() || isRepliedTo())
 
+	const hasThreadWithMessages = createMemo(() => props.message().threadMessages.length > 0)
+
 	const { state } = useChat()
 
 	const messageId = createMemo(() => props.message()._id)
@@ -75,7 +77,12 @@ export function ChatMessage(props: ChatMessageProps) {
 			</Show>
 
 			<div class="flex gap-4">
-				<MessageActions message={props.message} serverId={props.serverId} isPinned={isPinned} />
+				<MessageActions
+					message={props.message}
+					serverId={props.serverId}
+					isPinned={isPinned}
+					hasThreadWithMessages={hasThreadWithMessages}
+				/>
 
 				<MessageHeader message={props.message} showAvatar={showAvatar} serverId={props.serverId} />
 

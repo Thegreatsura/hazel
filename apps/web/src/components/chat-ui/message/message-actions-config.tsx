@@ -15,6 +15,7 @@ import { createMutation } from "~/lib/convex"
 
 interface CreateMessageActionsProps {
 	message: Accessor<Doc<"messages">>
+	hasThreadWithMessages: Accessor<boolean>
 	isPinned: Accessor<boolean>
 }
 
@@ -62,7 +63,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 				setState("openThreadId", threadChannelId)
 			},
 			hotkey: "t",
-			showButton: true,
+			showButton: !props.hasThreadWithMessages(),
 		},
 		{
 			key: "reply",
