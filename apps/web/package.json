@@ -28,10 +28,10 @@
 		"@bigmistqke/solid-contenteditable": "^0.0.11",
 		"@convex-dev/expo-push-notifications": "^0.2.4",
 		"@hazel/backend": "workspace:*",
-		"@tanstack/router-plugin": "^1.120.15",
+		"@tanstack/router-plugin": "1.121.0-alpha.22",
 		"@tanstack/solid-form": "^1.12.1",
-		"@tanstack/solid-router": "^1.120.15",
-		"@tanstack/solid-router-devtools": "^1.120.15",
+		"@tanstack/solid-router": "1.121.0-alpha.22",
+		"@tanstack/solid-router-devtools": "1.121.0-alpha.22",
 		"arktype": "^2.1.20",
 		"clerk-solidjs": "^2.0.10",
 		"convex": "^1.24.8",
@@ -39,6 +39,6 @@
 		"solid-js": "^1.9.7",
 		"tailwind-merge": "^3.3.0",
 		"tailwind-variants": "^1.0.0",
-		"virtua": "^0.41.3"
+		"virtua": "0.41.3"
 	}
 }

@@ -29,6 +29,20 @@ const router = createRouter({
 		auth: undefined!,
 		convex: undefined!,
 	},
+	defaultErrorComponent: (err) => {
+		console.error(err)
+		return (
+			<div class="flex min-h-screen items-center justify-center">
+				<div class="flex flex-col items-center justify-center gap-3">
+					<Logo class="h-12" />
+					<div class="text-center text-red-500">
+						<h1>Error</h1>
+						<p>Something went wrong.</p>
+					</div>
+				</div>
+			</div>
+		)
+	},
 	defaultPendingComponent: () => (
 		<div class="flex min-h-screen items-center justify-center">
 			<div class="flex flex-col items-center justify-center gap-3">
