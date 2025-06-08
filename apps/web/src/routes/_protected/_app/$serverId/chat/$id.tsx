@@ -57,13 +57,15 @@ function RouteComponent() {
 				</div>
 
 				<Show when={openThreadId()}>
-					<ChatProvider channelId={openThreadId} serverId={serverId}>
-						<ThreadChannel
-							channelId={openThreadId()}
-							serverId={serverId()}
-							closeThread={() => setState("openThreadId", null)}
-						/>
-					</ChatProvider>
+					<Suspense>
+						<ChatProvider channelId={openThreadId} serverId={serverId}>
+							<ThreadChannel
+								channelId={openThreadId()}
+								serverId={serverId()}
+								closeThread={() => setState("openThreadId", null)}
+							/>
+						</ChatProvider>
+					</Suspense>
 				</Show>
 			</div>
 			<ChatImageViewerModal />
