@@ -26,7 +26,7 @@ import type { Message } from "~/lib/types"
 const PAGE_SIZE = 35
 
 // Skeleton component for loading messages
-const MessageSkeleton = (props: { isGroupStart: boolean }) => (
+export const MessageSkeleton = (props: { isGroupStart: boolean }) => (
 	<div class="flex gap-3 px-4 py-2">
 		<Show when={props.isGroupStart}>
 			<div class="h-10 w-10 animate-pulse rounded-full bg-muted" />
