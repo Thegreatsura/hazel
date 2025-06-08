@@ -80,7 +80,7 @@ export const ChatProvider = (props: {
 	return (
 		<Suspense
 			fallback={
-				<div class="flex min-h-screen items-center justify-center">
+				<div class="flex flex-col-reverse p-4">
 					{Array.from({ length: 15 }).map((_, i) => (
 						<MessageSkeleton isGroupStart={i % 3 === 0} />
 					))}
