@@ -3,7 +3,6 @@
 - Move Pinned Message back to separate table
 
 # Features
-- Add Presence (online/offline)
 - File uploads with convex
 - Readd last read message
 - Call Feature
@@ -17,6 +16,8 @@
 - Delete Notification after it was seen (maybe just a simple cron cleanup job)
 - Improve typing presence todo less calls
 - Move all mutations to tanstack query
+
+- Add more presence types (away, busy)
 
 
 
