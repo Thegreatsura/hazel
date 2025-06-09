@@ -101,19 +101,13 @@ export default defineSchema({
 		resourceId: v.optional(v.union(v.id("messages"))),
 	}).index("by_accountId", ["accountId"]),
 
-	old_presence: defineTable({
-		user: v.string(),
-		room: v.string(),
-		present: v.boolean(),
-		latestJoin: v.number(),
-		data: v.any(),
-	})
-		.index("room_present_join", ["room", "present", "latestJoin"])
-		.index("room_user", ["room", "user"]),
+	typingIndicators: defineTable({
+		channelId: v.id("channels"),
+		accountId: v.id("accounts"),
 
-	old_presence_heartbeats: defineTable({
-		user: v.string(),
-		room: v.string(),
-		markAsGone: v.id("_scheduled_functions"),
-	}).index("by_room_user", ["room", "user"]),
+		lastTyped: v.number(),
+	})
+		.index("by_accountId", ["channelId", "accountId"])
+		.index("by_channel_timestamp", ["channelId", "lastTyped"])
+		.index("by_timestamp", ["lastTyped"]),
 })

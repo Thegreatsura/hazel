@@ -1,8 +1,8 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
-import { createSingleFlight } from "../convex-presence/create-singleflight"
 import { createMutation, createQuery, useConvex } from "../convex/client"
+import { createSingleFlight } from "./create-singleflight"
 
 if (typeof window === "undefined") {
 	throw new Error("this is frontend code, but it's running somewhere else!")

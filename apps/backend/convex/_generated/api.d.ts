@@ -11,6 +11,7 @@
 import type * as accounts from "../accounts.js";
 import type * as background_index from "../background/index.js";
 import type * as channels from "../channels.js";
+import type * as crons from "../crons.js";
 import type * as expo from "../expo.js";
 import type * as http from "../http.js";
 import type * as lib_activeRecords_account from "../lib/activeRecords/account.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   "background/index": typeof background_index;
   channels: typeof channels;
+  crons: typeof crons;
   expo: typeof expo;
   http: typeof http;
   "lib/activeRecords/account": typeof lib_activeRecords_account;
