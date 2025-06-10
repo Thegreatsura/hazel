@@ -79,11 +79,16 @@ function ChatImageViewerModal() {
 	const messageId = createMemo(() => state.imageDialog.messageId!)
 
 	const messageQuery = useQuery(() => ({
-		...convexQuery(api.messages.getMessage, {
-			id: messageId(),
-			channelId: state.channelId,
-			serverId: state.serverId,
-		}),
+		...convexQuery(
+			api.messages.getMessage,
+			!messageId()
+				? "skip"
+				: {
+						id: messageId(),
+						channelId: state.channelId,
+						serverId: state.serverId,
+					},
+		),
 		enabled: !!messageId(),
 	}))
 

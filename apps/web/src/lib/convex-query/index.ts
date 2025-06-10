@@ -181,6 +181,8 @@ export class ConvexQueryClient {
 				return
 			}
 
+			// if (event.query.isDisabled()) return
+
 			switch (event.type) {
 				// A query has been GC'd so no stale value will be available.
 				// In Convex this means we should unsubscribe.
@@ -201,7 +203,6 @@ export class ConvexQueryClient {
 						{},
 					]
 
-					console.log(event.query.queryKey, args)
 					const watch = this.convexClient.watchQuery(
 						func,
 						args,

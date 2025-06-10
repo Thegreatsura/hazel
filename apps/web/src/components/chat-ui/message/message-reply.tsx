@@ -23,12 +23,19 @@ export function MessageReply(props: MessageReplyProps) {
 
 	const replyToMessageId = createMemo(() => props.message().replyToMessageId)
 
+	console.log("XDA")
+
 	const replyToMessageQuery = useQuery(() => ({
-		...convexQuery(api.messages.getMessage, {
-			id: replyToMessageId()!,
-			channelId: state.channelId,
-			serverId: state.serverId,
-		}),
+		...convexQuery(
+			api.messages.getMessage,
+			!replyToMessageId()
+				? "skip"
+				: {
+						id: replyToMessageId()!,
+						channelId: state.channelId,
+						serverId: state.serverId,
+					},
+		),
 		enabled: !!replyToMessageId(),
 	}))
 

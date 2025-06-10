@@ -466,11 +466,16 @@ function ReplyInfo(props: {
 	const channelId = createMemo(() => state.channelId)
 
 	const messageQuery = useQuery(() => ({
-		...convexQuery(api.messages.getMessage, {
-			id: replyToMessageId(),
-			channelId: channelId(),
-			serverId: state.serverId,
-		}),
+		...convexQuery(
+			api.messages.getMessage,
+			!replyToMessageId()
+				? "skip"
+				: {
+						id: replyToMessageId(),
+						channelId: channelId(),
+						serverId: state.serverId,
+					},
+		),
 		enabled: !!replyToMessageId(),
 	}))
 
