@@ -49,7 +49,7 @@ export const getMessages = userQuery({
 			if (message.threadChannelId) {
 				const threadMessages = await ctx.db
 					.query("messages")
-					.filter((q) => q.eq(q.field("channelId"), message.threadChannelId))
+					.withIndex("by_channelId", (q) => q.eq("channelId", message.threadChannelId!))
 					.collect()
 
 				const threadMessagesWithAuthor = await asyncMap(threadMessages, async (message) => {
