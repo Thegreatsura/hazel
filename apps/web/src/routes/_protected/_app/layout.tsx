@@ -1,4 +1,11 @@
+import { api } from "@hazel/backend/api"
+import { useQuery } from "@tanstack/solid-query"
 import { Outlet, createFileRoute } from "@tanstack/solid-router"
+import { Match, Switch, createEffect } from "solid-js"
+import { IconLoader } from "~/components/icons/loader"
+import { Logo } from "~/components/logo"
+import { convexQuery } from "~/lib/convex-query"
+import { useConvexAuth } from "~/lib/convex/convex-auth-state"
 import { NotificationManager } from "~/lib/notification-manager"
 
 export const Route = createFileRoute("/_protected/_app")({
@@ -6,9 +13,44 @@ export const Route = createFileRoute("/_protected/_app")({
 })
 
 function RouteComponent() {
+	const navigate = Route.useNavigate()
+
+	const { isLoading, isAuthenticated } = useConvexAuth()
+
+	const accountsQuery = useQuery(() => convexQuery(api.me.get, isAuthenticated() ? {} : "skip"))
+
+	createEffect(() => {
+		if (accountsQuery.isPending) {
+			return
+		}
+
+		if (accountsQuery.isError || !accountsQuery.data) {
+			navigate({
+				to: "/onboarding",
+				search: {
+					step: "user",
+				},
+				replace: true,
+			})
+		}
+	})
+
 	return (
-		<NotificationManager>
-			<Outlet />
-		</NotificationManager>
+		<Switch>
+			<Match when={isLoading() || accountsQuery.status === "pending" || !accountsQuery.data}>
+				<div class="flex min-h-screen items-center justify-center">
+					<div class="flex flex-col items-center justify-center gap-3">
+						<Logo class="h-12" />
+						<IconLoader class="animate-spin" />
+						<p>Loading your account...</p>
+					</div>
+				</div>
+			</Match>
+			<Match when={true}>
+				<NotificationManager>
+					<Outlet />
+				</NotificationManager>
+			</Match>
+		</Switch>
 	)
 }
