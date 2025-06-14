@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button"
 import { toaster } from "~/components/ui/toaster"
 import { createMutation } from "~/lib/convex"
 
-export const Route = createFileRoute("/invite/$code")({
+export const Route = createFileRoute("/_protected/invite/$code")({
 	component: RouteComponent,
 })
 

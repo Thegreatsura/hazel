@@ -11,12 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedLayoutRouteImport } from './routes/_protected/layout'
 import { Route as AuthLayoutRouteImport } from './routes/_auth/layout'
-import { Route as InviteCodeRouteImport } from './routes/invite/$code'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as ProtectedAppLayoutRouteImport } from './routes/_protected/_app/layout'
 import { Route as ProtectedOnboardingIndexRouteImport } from './routes/_protected/onboarding/index'
 import { Route as ProtectedAppIndexRouteImport } from './routes/_protected/_app/index'
+import { Route as ProtectedInviteCodeRouteImport } from './routes/_protected/invite/$code'
 import { Route as ProtectedAppServerIdLayoutRouteImport } from './routes/_protected/_app/$serverId/layout'
 import { Route as ProtectedAppServerIdIndexRouteImport } from './routes/_protected/_app/$serverId/index'
 import { Route as ProtectedAppServerIdVideoRouteImport } from './routes/_protected/_app/$serverId/video'
@@ -31,11 +31,6 @@ const ProtectedLayoutRoute = ProtectedLayoutRouteImport.update({
 } as any)
 const AuthLayoutRoute = AuthLayoutRouteImport.update({
   id: '/_auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InviteCodeRoute = InviteCodeRouteImport.update({
-  id: '/invite/$code',
-  path: '/invite/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignUpRoute = AuthSignUpRouteImport.update({
@@ -62,6 +57,11 @@ const ProtectedAppIndexRoute = ProtectedAppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedAppLayoutRoute,
+} as any)
+const ProtectedInviteCodeRoute = ProtectedInviteCodeRouteImport.update({
+  id: '/invite/$code',
+  path: '/invite/$code',
+  getParentRoute: () => ProtectedLayoutRoute,
 } as any)
 const ProtectedAppServerIdLayoutRoute =
   ProtectedAppServerIdLayoutRouteImport.update({
@@ -110,8 +110,8 @@ export interface FileRoutesByFullPath {
   '': typeof ProtectedAppLayoutRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/invite/$code': typeof InviteCodeRoute
   '/$serverId': typeof ProtectedAppServerIdLayoutRouteWithChildren
+  '/invite/$code': typeof ProtectedInviteCodeRoute
   '/': typeof ProtectedAppIndexRoute
   '/onboarding': typeof ProtectedOnboardingIndexRoute
   '/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
@@ -125,7 +125,7 @@ export interface FileRoutesByTo {
   '': typeof ProtectedLayoutRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/invite/$code': typeof InviteCodeRoute
+  '/invite/$code': typeof ProtectedInviteCodeRoute
   '/': typeof ProtectedAppIndexRoute
   '/onboarding': typeof ProtectedOnboardingIndexRoute
   '/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
@@ -142,8 +142,8 @@ export interface FileRoutesById {
   '/_protected/_app': typeof ProtectedAppLayoutRouteWithChildren
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/invite/$code': typeof InviteCodeRoute
   '/_protected/_app/$serverId': typeof ProtectedAppServerIdLayoutRouteWithChildren
+  '/_protected/invite/$code': typeof ProtectedInviteCodeRoute
   '/_protected/_app/': typeof ProtectedAppIndexRoute
   '/_protected/onboarding/': typeof ProtectedOnboardingIndexRoute
   '/_protected/_app/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
@@ -159,8 +159,8 @@ export interface FileRouteTypes {
     | ''
     | '/sign-in'
     | '/sign-up'
-    | '/invite/$code'
     | '/$serverId'
+    | '/invite/$code'
     | '/'
     | '/onboarding'
     | '/$serverId/billing'
@@ -190,8 +190,8 @@ export interface FileRouteTypes {
     | '/_protected/_app'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
-    | '/invite/$code'
     | '/_protected/_app/$serverId'
+    | '/_protected/invite/$code'
     | '/_protected/_app/'
     | '/_protected/onboarding/'
     | '/_protected/_app/$serverId/billing'
@@ -205,7 +205,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthLayoutRoute: typeof AuthLayoutRouteWithChildren
   ProtectedLayoutRoute: typeof ProtectedLayoutRouteWithChildren
-  InviteCodeRoute: typeof InviteCodeRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -222,13 +221,6 @@ declare module '@tanstack/solid-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AuthLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite/$code': {
-      id: '/invite/$code'
-      path: '/invite/$code'
-      fullPath: '/invite/$code'
-      preLoaderRoute: typeof InviteCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/sign-up': {
@@ -265,6 +257,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/'
       preLoaderRoute: typeof ProtectedAppIndexRouteImport
       parentRoute: typeof ProtectedAppLayoutRoute
+    }
+    '/_protected/invite/$code': {
+      id: '/_protected/invite/$code'
+      path: '/invite/$code'
+      fullPath: '/invite/$code'
+      preLoaderRoute: typeof ProtectedInviteCodeRouteImport
+      parentRoute: typeof ProtectedLayoutRoute
     }
     '/_protected/_app/$serverId': {
       id: '/_protected/_app/$serverId'
@@ -371,11 +370,13 @@ const ProtectedAppLayoutRouteWithChildren =
 
 interface ProtectedLayoutRouteChildren {
   ProtectedAppLayoutRoute: typeof ProtectedAppLayoutRouteWithChildren
+  ProtectedInviteCodeRoute: typeof ProtectedInviteCodeRoute
   ProtectedOnboardingIndexRoute: typeof ProtectedOnboardingIndexRoute
 }
 
 const ProtectedLayoutRouteChildren: ProtectedLayoutRouteChildren = {
   ProtectedAppLayoutRoute: ProtectedAppLayoutRouteWithChildren,
+  ProtectedInviteCodeRoute: ProtectedInviteCodeRoute,
   ProtectedOnboardingIndexRoute: ProtectedOnboardingIndexRoute,
 }
 
@@ -386,7 +387,6 @@ const ProtectedLayoutRouteWithChildren = ProtectedLayoutRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthLayoutRoute: AuthLayoutRouteWithChildren,
   ProtectedLayoutRoute: ProtectedLayoutRouteWithChildren,
-  InviteCodeRoute: InviteCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
