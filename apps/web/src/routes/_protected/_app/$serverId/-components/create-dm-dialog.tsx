@@ -24,7 +24,8 @@ export interface CreateDmDialogProps {
 export const CreateDmDialog = (props: CreateDmDialogProps) => {
 	const friendsQuery = useQuery(() => convexQuery(api.social.getFriends, { serverId: props.serverId() }))
 
-	const createDmChannelMutation = createMutation(api.channels.createChannel)
+	const createChannelMutation = createMutation(api.channels.createChannel)
+	const createDmChannelMutation = createMutation(api.channels.creatDmChannel)
 
 	const [friendFilter, setFriendFilter] = createSignal<string>("")
 
@@ -157,12 +158,21 @@ export const CreateDmDialog = (props: CreateDmDialogProps) => {
 					<Button
 						intent="default"
 						onClick={async () => {
-							const channelId = await createDmChannelMutation({
-								serverId: props.serverId() as Id<"servers">,
-								userIds: selectFriends().map((friend) => friend._id as Id<"users">),
-								type: "direct",
-								name: "Dm Channel",
-							})
+							let channelId: Id<"channels"> | undefined
+
+							if (selectFriends().length === 1) {
+								channelId = await createDmChannelMutation({
+									serverId: props.serverId() as Id<"servers">,
+									userId: selectFriends()[0]._id as Id<"users">,
+								})
+							} else {
+								channelId = await createChannelMutation({
+									serverId: props.serverId() as Id<"servers">,
+									userIds: selectFriends().map((friend) => friend._id as Id<"users">),
+									type: "direct",
+									name: "Dm Channel",
+								})
+							}
 
 							setDialogOpen(false)
 

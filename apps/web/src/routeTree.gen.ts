@@ -107,7 +107,6 @@ const ProtectedAppServerIdChatIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '': typeof ProtectedAppLayoutRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/$serverId': typeof ProtectedAppServerIdLayoutRouteWithChildren
@@ -122,7 +121,6 @@ export interface FileRoutesByFullPath {
   '/$serverId/profile/$id': typeof ProtectedAppServerIdProfileIdRoute
 }
 export interface FileRoutesByTo {
-  '': typeof ProtectedLayoutRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/invite/$code': typeof ProtectedInviteCodeRoute
@@ -156,7 +154,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | ''
     | '/sign-in'
     | '/sign-up'
     | '/$serverId'
@@ -171,7 +168,6 @@ export interface FileRouteTypes {
     | '/$serverId/profile/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | ''
     | '/sign-in'
     | '/sign-up'
     | '/invite/$code'

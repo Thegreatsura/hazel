@@ -34,7 +34,7 @@ import { useQuery } from "@tanstack/solid-query"
 import type { FunctionReturnType } from "convex/server"
 import { UserAvatar } from "~/components/ui/user-avatar"
 import { createMutation } from "~/lib/convex"
-import { createPresence } from "~/lib/convex-presence"
+import { createPresence, usePresenceState } from "~/lib/convex-presence"
 import { convexQuery } from "~/lib/convex-query"
 import { cn } from "~/lib/utils"
 import { CreateChannelForm } from "./create-channel-form"
@@ -61,7 +61,7 @@ export const AppSidebar = (props: SidebarProps) => {
 
 	const [createChannelModalOpen, setCreateChannelModalOpen] = createSignal(false)
 
-	const presenceState = createPresence(serverId, () => meQuery.data?._id!)
+	const presenceState = usePresenceState()
 
 	return (
 		<Sidebar {...props}>
@@ -133,7 +133,7 @@ export const AppSidebar = (props: SidebarProps) => {
 							<Index each={dmChannels()}>
 								{(channel) => (
 									<DmChannelLink
-										userPresence={presenceState}
+										userPresence={presenceState.presenceList}
 										channel={channel}
 										serverId={serverId}
 									/>

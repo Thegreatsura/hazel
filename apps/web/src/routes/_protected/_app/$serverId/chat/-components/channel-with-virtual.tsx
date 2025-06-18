@@ -135,12 +135,11 @@ export function ChannelWithVirtual(props: {
 		},
 	)
 
-	// Create virtualizer
 	const virtualizer = createVirtualizer({
 		get count() {
 			return processedMessages().length
 		},
-		getScrollElement: () => scrollContainerRef,
+		getScrollElement: () => scrollContainerRef as any,
 		estimateSize: (index) => {
 			const messageData = processedMessages()[index]
 			if (!messageData) return 32
@@ -149,7 +148,7 @@ export function ChannelWithVirtual(props: {
 			return messageData.isGroupStart() ? 44 : 24
 		},
 		overscan: 10,
-		// getItemKey: (index) => processedMessages()[index]?.message._id ?? index,
+		getItemKey: (index) => processedMessages()[index]?.message._id ?? index,
 	})
 
 	// Auto-scroll to bottom for new messages
@@ -171,46 +170,39 @@ export function ChannelWithVirtual(props: {
 	// )
 
 	// Scroll to bottom on initial load
-	onMount(() => {
-		setTimeout(() => {
-			if (scrollContainerRef && processedMessages().length > 0) {
-				virtualizer.scrollToIndex(processedMessages().length - 1, {
-					align: "end",
-					behavior: "auto",
-				})
-			}
-			setIsInitialRender(false)
-		}, 100)
-	})
-
-	const handleScroll = (e: Event) => {
-		const target = e.currentTarget as HTMLDivElement
-		if (!target || isInitialRender()) return
-
-		const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 120
-		setShouldStickToBottom(isAtBottom && !messagesQuery.hasPreviousPage)
-
-		// Trigger fetching older messages when scrolling to the top
-		const isAtTop = target.scrollTop < 900
-		if (isAtTop && messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage && !isFetchingUp()) {
-			// Set fetching state and capture current scroll height
-			setIsFetchingUp(true)
-			setScrollSnapshot({ height: target.scrollHeight })
-			// messagesQuery.fetchNextPage()
-		}
-
-		if (isAtBottom) {
-			if (messagesQuery.hasPreviousPage && !messagesQuery.isFetchingPreviousPage) {
-				// messagesQuery.fetchPreviousPage()
-			}
-		}
-	}
+	// onMount(() => {
+	// 	setTimeout(() => {
+	// 		if (scrollContainerRef && processedMessages().length > 0) {
+	// 			virtualizer.scrollToIndex(processedMessages().length - 1, {
+	// 				align: "end",
+	// 				behavior: "auto",
+	// 			})
+	// 		}
+	// 		setIsInitialRender(false)
+	// 	}, 100)
+	// })
 
 	const items = createMemo(() => virtualizer.getVirtualItems())
 
+	createEffect(() => {
+		const [lastItem] = [...items()].reverse()
+
+		if (!lastItem) {
+			return
+		}
+
+		if (
+			lastItem.index >= processedMessages().length - 1 &&
+			messagesQuery.hasNextPage &&
+			!messagesQuery.isFetchingNextPage
+		) {
+			messagesQuery.fetchNextPage()
+		}
+	})
+
 	return (
 		<div class="flex flex-1 flex-col overflow-hidden">
-			<div class="flex-1 overflow-y-auto" onScroll={handleScroll}>
+			<div class="flex-1 overflow-y-auto">
 				<Show
 					when={!messagesQuery.isLoading}
 					fallback={

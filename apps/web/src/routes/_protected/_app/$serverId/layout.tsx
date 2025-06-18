@@ -4,7 +4,10 @@ import { api } from "@hazel/backend/api"
 import { useQuery, useQueryClient } from "@tanstack/solid-query"
 import { Outlet, createFileRoute } from "@tanstack/solid-router"
 import { Suspense, createEffect } from "solid-js"
+import { CommandBar } from "~/components/command-bar/command-bar"
 import { Sidebar } from "~/components/ui/sidebar"
+import { ConvexProvider } from "~/lib/convex"
+import { PresenceProvider } from "~/lib/convex-presence"
 import { convexQuery } from "~/lib/convex-query"
 import { removeCurrentServerId, setCurrentServerId } from "~/lib/helpers/localstorage"
 import { AppSidebar } from "./-components/app-sidebar"
@@ -25,6 +28,10 @@ function RouteComponent() {
 	const navigate = Route.useNavigate()
 	const serverQuery = useQuery(() =>
 		convexQuery(api.servers.getServerForUser, { serverId: params().serverId as Id<"servers"> }),
+	)
+
+	const meQuery = useQuery(() =>
+		convexQuery(api.me.getUser, { serverId: params().serverId as Id<"servers"> }),
 	)
 
 	createEffect(async () => {
@@ -58,12 +65,18 @@ function RouteComponent() {
 
 	return (
 		<Suspense>
-			<Sidebar.Provider>
-				<AppSidebar />
-				<Sidebar.Inset>
-					<Outlet />
-				</Sidebar.Inset>
-			</Sidebar.Provider>
+			<PresenceProvider
+				roomId={() => params().serverId as Id<"servers">}
+				userId={() => meQuery.data?._id!}
+			>
+				<CommandBar serverId={() => params().serverId as Id<"servers">} />
+				<Sidebar.Provider>
+					<AppSidebar />
+					<Sidebar.Inset>
+						<Outlet />
+					</Sidebar.Inset>
+				</Sidebar.Provider>
+			</PresenceProvider>
 		</Suspense>
 	)
 }

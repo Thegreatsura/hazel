@@ -1,11 +1,11 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/solid-query"
+import { useMutation, useQuery } from "@tanstack/solid-query"
 import { useParams } from "@tanstack/solid-router"
 import { For, createMemo } from "solid-js"
 import { IconPin } from "~/components/icons/pin"
 import { createMutation } from "~/lib/convex"
-import { convexQuery } from "~/lib/convex-query"
+import { convexAction, convexQuery } from "~/lib/convex-query"
 import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
@@ -24,7 +24,9 @@ export function PinnedModal() {
 		}),
 	)
 
-	const deletePinnedMessageMutation = createMutation(api.pinnedMessages.deletePinnedMessage)
+	const deletePinnedMessageMutation = useMutation(() => ({
+		mutationFn: createMutation(api.pinnedMessages.deletePinnedMessage),
+	}))
 
 	const sortedPins = createMemo(() =>
 		[...(pinnedMessagesQuery.data || [])].sort((a, b) => a.pinnedAt - b.pinnedAt),
@@ -66,7 +68,7 @@ export function PinnedModal() {
 										<Button
 											onClick={(e) => {
 												e.stopPropagation()
-												deletePinnedMessageMutation({
+												deletePinnedMessageMutation.mutate({
 													channelId: channelId() as Id<"channels">,
 													messageId: pinnedMessage.messageId,
 													serverId: serverId() as Id<"servers">,
