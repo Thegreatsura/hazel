@@ -3,7 +3,6 @@
 
 
 # Chat 
-- Add inline code highlighting
 - Replace Reaction Badges with Pills
 
 # Features
@@ -20,12 +19,6 @@
 
 
 - Investigate previous cursor (maybe this guys solution helps https://discord.com/channels/1019350475847499849/1019350478817079338/1255262027731964016)
-
-
-
-# Improvements 
-- Add optimsitic updates
-
 
 
 
