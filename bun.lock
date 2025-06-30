@@ -15,7 +15,7 @@
       "dependencies": {
         "@convex-dev/expo-push-notifications": "^0.2.4",
         "@convex-dev/presence": "^0.1.5",
-        "confect-plus": "0.0.28",
+        "@rjdellecese/confect": "^0.0.26",
         "convex": "^1.25.0",
         "effect": "^3.16.10",
       },
@@ -710,6 +710,8 @@
     "@react-navigation/native-stack": ["@react-navigation/native-stack@7.3.14", "", { "dependencies": { "@react-navigation/elements": "^2.4.3", "warn-once": "^0.1.1" }, "peerDependencies": { "@react-navigation/native": "^7.1.10", "react": ">= 18.2.0", "react-native": "*", "react-native-safe-area-context": ">= 4.0.0", "react-native-screens": ">= 4.0.0" } }, "sha512-45Sf7ReqSCIySXS5nrKtLGmNlFXm5x+u32YQMwKDONCqVGOBCfo4ryKqeQq1EMJ7Py6IDyOwHMhA+jhNOxnfPw=="],
 
     "@react-navigation/routers": ["@react-navigation/routers@7.4.0", "", { "dependencies": { "nanoid": "^3.3.11" } }, "sha512-th5THnuWKJlmr7GGHiicy979di11ycDWub9iIXbEDvQwmwmsRzppmVbfs2nD8bC/MgyMgqWu/gxfys+HqN+kcw=="],
+
+    "@rjdellecese/confect": ["@rjdellecese/confect@0.0.26", "", { "peerDependencies": { "@effect/platform": "^0.80.15", "convex": "^1.23.0", "effect": "^3.14.15" } }, "sha512-gyBaQ7+CneLj7xDmLRveB6GEtSEtP9NJTCYLFX7UUhrrqV1UC55W/CM8Tk6vkTSdNW/KNtZi1h5W3EkI2zLwUA=="],
 
     "@rollup/plugin-alias": ["@rollup/plugin-alias@5.1.1", "", { "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-PR9zDb+rOzkRb2VD+EuKB7UC41vU5DIwZ5qqCpk0KJudcWAyi8rvYOhS7+L5aZCspw1stTViLgN5v6FF1p5cgQ=="],
 
@@ -1490,8 +1492,6 @@
     "concat-map": ["concat-map@0.0.1", "", {}, "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="],
 
     "confbox": ["confbox@0.2.2", "", {}, "sha512-1NB+BKqhtNipMsov4xI/NnhCKp9XG9NamYp5PVm9klAT0fsrNPjaFICsCFhNhwZJKNh7zB/3q8qXz0E9oaMNtQ=="],
-
-    "confect-plus": ["confect-plus@0.0.28", "", { "peerDependencies": { "@effect/platform": "^0.80.15", "convex": "^1.23.0", "effect": "^3.14.15" } }, "sha512-8R785wglTrdP4RS8tD8WARq7/vtipNv+jPEqpxWghwmKThutvWM5sWJoznEO/RcWyPfl0wpHJ5JfAocg0pljFA=="],
 
     "connect": ["connect@3.7.0", "", { "dependencies": { "debug": "2.6.9", "finalhandler": "1.1.2", "parseurl": "~1.3.3", "utils-merge": "1.0.1" } }, "sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ=="],
 

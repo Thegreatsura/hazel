@@ -1,1 +1,0 @@
-For EffectTS specific things, please use the Effect MCP and always make sure to use modern Effect Features like Effect.fn and Effect.Service over Context and Effect.Gen

@@ -5,29 +5,16 @@ import {
 	type ConfectDoc as ConfectDocType,
 	ConfectMutationCtx as ConfectMutationCtxService,
 	type ConfectMutationCtx as ConfectMutationCtxType,
-	type ConfectMutationHandler,
 	ConfectQueryCtx as ConfectQueryCtxService,
 	type ConfectQueryCtx as ConfectQueryCtxType,
 	makeFunctions,
-	makeGenericFunctions,
 	type TableNamesInConfectDataModel,
-} from "confect-plus/server"
-import { Effect, Schema } from "effect"
+} from "@rjdellecese/confect/server"
+
 import { confectSchema } from "./schema"
 
 export const { action, internalAction, internalMutation, internalQuery, mutation, query } =
 	makeFunctions(confectSchema)
-
-const _test = query({
-	args: Schema.Struct({ a: Schema.String }),
-	returns: Schema.String,
-	handler: Effect.fn(function* ({ a }) {
-		return a
-	}),
-})
-
-export const { queryGeneric, confectQueryFunction, mutationGeneric, confectMutationFunction } =
-	makeGenericFunctions(confectSchema)
 
 type ConfectSchema = typeof confectSchema
 
