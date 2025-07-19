@@ -4,9 +4,8 @@ import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 
 import { routeTree } from "./routeTree.gen"
-
-import "./styles/globals.css"
 import reportWebVitals from "./reportWebVitals.ts"
+import "@/styles/globals.css";
 
 const router = createRouter({
 	routeTree,

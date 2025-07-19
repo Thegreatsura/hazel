@@ -1,6 +1,6 @@
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/solid-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router"
 import { createEffect, For } from "solid-js"
 import { Card } from "~/components/ui/card"
 import { convexQuery } from "~/lib/convex-query"
@@ -34,6 +34,11 @@ function App() {
 		if (serversQuery.data?.length === 0) {
 			navigate({
 				to: "/onboarding",
+			})
+		} else if (serversQuery.data && serversQuery.data.length > 0) {
+			// Since one organization = one server, redirect directly to the app
+			navigate({
+				to: "/app/chat",
 			})
 		}
 	})

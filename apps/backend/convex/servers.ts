@@ -115,6 +115,19 @@ export const createServer = accountMutation({
 			updatedAt: Date.now(),
 		})
 
+		// Create the owner user for this server
+		await ctx.db.insert("users", {
+			accountId: ctx.account.doc._id,
+			serverId: serverId,
+			displayName: ctx.account.doc.displayName,
+			tag: ctx.account.doc.displayName,
+			avatarUrl: ctx.account.doc.avatarUrl,
+			role: "owner",
+			status: "online",
+			joinedAt: Date.now(),
+			lastSeen: Date.now(),
+		})
+
 		await ctx.db.insert("channels", {
 			serverId: serverId,
 			name: "general",

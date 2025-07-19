@@ -1,4 +1,5 @@
 import { LifeBuoy01, LogOut01, Settings01 } from "@untitledui/icons"
+import { useAuth } from "@workos-inc/authkit-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useState } from "react"
 import {
@@ -6,7 +7,6 @@ import {
 	DialogTrigger as AriaDialogTrigger,
 	Popover as AriaPopover,
 } from "react-aria-components"
-import { useAuth } from "@workos-inc/authkit-react"
 import { Avatar } from "@/components/base/avatar/avatar"
 import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group"
 import { Button } from "@/components/base/buttons/button"
@@ -102,7 +102,7 @@ export const SidebarNavigationSlim = ({
 						</ul>
 					)}
 
-					{user ? (
+					{user && (
 						<AriaDialogTrigger>
 							<AriaButton
 								className={({ isPressed, isFocused }) =>
@@ -115,7 +115,10 @@ export const SidebarNavigationSlim = ({
 							>
 								<Avatar
 									status="online"
-									src={user.profilePictureUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`}
+									src={
+										user.profilePictureUrl ||
+										`https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`
+									}
 									size="md"
 									alt={user.email}
 								/>
@@ -137,10 +140,6 @@ export const SidebarNavigationSlim = ({
 								<NavAccountMenu />
 							</AriaPopover>
 						</AriaDialogTrigger>
-					) : (
-						<Button size="sm" color="primary" onClick={() => signIn()}>
-							Sign in
-						</Button>
 					)}
 				</div>
 			</div>
@@ -188,12 +187,20 @@ export const SidebarNavigationSlim = ({
 							<div className="relative mt-auto flex justify-between border-secondary border-t px-2 pt-5">
 								<div>
 									<p className="font-semibold text-primary text-sm">
-										{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+										{user.firstName && user.lastName
+											? `${user.firstName} ${user.lastName}`
+											: user.email}
 									</p>
 									<p className="text-sm text-tertiary">{user.email}</p>
 								</div>
 								<div className="absolute top-2.5 right-0">
-									<ButtonUtility size="sm" color="tertiary" tooltip="Log out" icon={LogOut01} onClick={() => signOut()} />
+									<ButtonUtility
+										size="sm"
+										color="tertiary"
+										tooltip="Log out"
+										icon={LogOut01}
+										onClick={() => signOut()}
+									/>
 								</div>
 							</div>
 						)}
@@ -257,8 +264,15 @@ export const SidebarNavigationSlim = ({
 								<AvatarLabelGroup
 									status="online"
 									size="md"
-									src={user.profilePictureUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`}
-									title={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+									src={
+										user.profilePictureUrl ||
+										`https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`
+									}
+									title={
+										user.firstName && user.lastName
+											? `${user.firstName} ${user.lastName}`
+											: user.email
+									}
 									subtitle={user.email}
 								/>
 
@@ -275,7 +289,7 @@ export const SidebarNavigationSlim = ({
 								</div>
 							</div>
 						) : (
-							<div className="border-secondary border-t pt-6 px-2">
+							<div className="border-secondary border-t px-2 pt-6">
 								<Button size="md" color="primary" onClick={() => signIn()} className="w-full">
 									Sign in
 								</Button>

@@ -5,7 +5,6 @@ import { BookOpen01, ChevronSelectorVertical, LogOut01, Plus, Settings01, User01
 import { useFocusManager } from "react-aria";
 import type { DialogProps as AriaDialogProps } from "react-aria-components";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
-import { useAuth } from "@workos-inc/authkit-react";
 import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group";
 import { Button } from "@/components/base/buttons/button";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
@@ -50,7 +49,6 @@ export const NavAccountMenu = ({
 }: AriaDialogProps & { className?: string; accounts?: NavAccountType[]; selectedAccountId?: string }) => {
     const focusManager = useFocusManager();
     const dialogRef = useRef<HTMLDivElement>(null);
-    const { signOut } = useAuth();
 
     const onKeyDown = (e: KeyboardEvent) => {
         switch (e.key) {
@@ -110,7 +108,7 @@ export const NavAccountMenu = ({
             </div>
 
             <div className="pt-1 pb-1.5">
-                <NavAccountCardMenuItem label="Sign out" icon={LogOut01} shortcut="⌥⇧Q" onClick={() => signOut()} />
+                <NavAccountCardMenuItem label="Sign out" icon={LogOut01} shortcut="⌥⇧Q" />
             </div>
         </AriaDialog>
     );
@@ -120,16 +118,14 @@ const NavAccountCardMenuItem = ({
     icon: Icon,
     label,
     shortcut,
-    onClick,
     ...buttonProps
 }: {
     icon?: FC<{ className?: string }>;
     label: string;
     shortcut?: string;
-    onClick?: () => void;
 } & HTMLAttributes<HTMLButtonElement>) => {
     return (
-        <button {...buttonProps} onClick={onClick} className={cx("group/item w-full cursor-pointer px-1.5 focus:outline-hidden", buttonProps.className)}>
+        <button {...buttonProps} className={cx("group/item w-full cursor-pointer px-1.5 focus:outline-hidden", buttonProps.className)}>
             <div
                 className={cx(
                     "flex w-full items-center justify-between gap-3 rounded-md p-2 group-hover/item:bg-primary_hover",
@@ -160,15 +156,8 @@ export const NavAccountCard = ({
 }) => {
     const triggerRef = useRef<HTMLDivElement>(null);
     const isDesktop = useBreakpoint("lg");
-    const { user } = useAuth();
 
-    const selectedAccount = user ? {
-        id: user.id || "current-user",
-        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
-        email: user.email,
-        avatar: user.profilePictureUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`,
-        status: "online" as const,
-    } : placeholderAccounts.find((account) => account.id === selectedAccountId);
+    const selectedAccount = placeholderAccounts.find((account) => account.id === selectedAccountId);
 
     if (!selectedAccount) {
         console.warn(`Account with ID ${selectedAccountId} not found in <NavAccountCard />`);

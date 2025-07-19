@@ -56,13 +56,13 @@ export const Serveronboarding = () => {
 							}
 
 							try {
-								const serverId = await createServer({
+								await createServer({
 									name: serverName.toString(),
 								})
 
 								setCreateModalOpen(false)
 								navigate({
-									to: "/app",
+									to: "/app/chat",
 								})
 							} catch (error) {
 								console.error("Failed to create server:", error)
