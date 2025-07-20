@@ -1,11 +1,14 @@
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { useEffect } from "react"
 import IconChatChatting1 from "./icons/IconChatChatting1"
-import IconChatChattingDuoSolid from "./icons/IconChatChattingDuoSolid"
 import IconGridDashboard01DuoSolid from "./icons/IconGridDashboard01DuoSolid"
 import IconNotificationBellOn1 from "./icons/IconNotificationBellOn1"
+import IconPlusStroke from "./icons/IconPlusStroke"
+import { IconButton } from "./ui/button"
+import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog"
 import {
 	Sidebar,
 	SidebarContent,
@@ -20,6 +23,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "./ui/sidebar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 
 export const AppSidebar = () => {
 	return (
@@ -30,23 +34,29 @@ export const AppSidebar = () => {
 					<SidebarGroup>
 						<SidebarGroupContent>
 							<SidebarMenuItem>
-								<SidebarMenuButton
-									className="px-2.5 md:px-2"
-									// as={Link}
-									// to="/app"
-									// activeOptions={{
-									// 	exact: true,
-									// }}
-								>
-									<IconGridDashboard01DuoSolid />
-									<span>Home</span>
+								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
+									<Link
+										to="/app"
+										activeOptions={{
+											exact: true,
+										}}
+									>
+										<IconGridDashboard01DuoSolid />
+										<span>Home</span>
+									</Link>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarMenuItem>
-								<SidebarMenuButton className="px-2.5 md:px-2">
-									<IconChatChatting1 />
-									<IconChatChattingDuoSolid />
-									<span>Chat</span>
+								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
+									<Link
+										to="/app/chat"
+										activeOptions={{
+											exact: true,
+										}}
+									>
+										<IconChatChatting1 />
+										<span>Chat</span>
+									</Link>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarGroupContent>
@@ -78,36 +88,34 @@ export const AppSidebar = () => {
 					<SidebarGroup>
 						<SidebarGroupLabel>Channels</SidebarGroupLabel>
 						<SidebarGroupAction>
-							{/* <Dialog
-								open={createChannelModalOpen()}
-								onOpenChange={(details) => setCreateChannelModalOpen(details.open)}
+							<Dialog
+							// open={createChannelModalOpen()}
+							// onOpenChange={(details) => setCreateChannelModalOpen(details.open)}
 							>
-								<Dialog.Trigger
-									asChild={(props) => (
-										<IconButton className="size-4.5" {...props}>
-											<IconPlusStroke />
-										</IconButton>
-									)}
-								/>
-								<Dialog.Content>
+								<DialogTrigger asChild>
+									<IconButton className="size-4.5" asChild>
+										<IconPlusStroke />
+									</IconButton>
+								</DialogTrigger>
+								<DialogContent>
 									<Tabs defaultValue={"join"}>
-										<Tabs.List>
-											<Tabs.Trigger value="join">Join</Tabs.Trigger>
-											<Tabs.Trigger value="create">Create New</Tabs.Trigger>
-										</Tabs.List>
-										<Tabs.Content value="join">
-											<JoinPublicChannel
+										<TabsList>
+											<TabsTrigger value="join">Join</TabsTrigger>
+											<TabsTrigger value="create">Create New</TabsTrigger>
+										</TabsList>
+										<TabsContent value="join">
+											{/* <JoinPublicChannel
 												onSuccess={() => setCreateChannelModalOpen(false)}
-											/>
-										</Tabs.Content>
-										<Tabs.Content value="create">
-											<CreateChannelForm
+											/> */}
+										</TabsContent>
+										<TabsContent value="create">
+											{/* <CreateChannelForm
 												onSuccess={() => setCreateChannelModalOpen(false)}
-											/>
-										</Tabs.Content>
+											/> */}
+										</TabsContent>
 									</Tabs>
-								</Dialog.Content>
-							</Dialog> */}
+								</DialogContent>
+							</Dialog>
 						</SidebarGroupAction>
 						<SidebarGroupContent>
 							<SidebarMenu>
