@@ -2,6 +2,8 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import type * as React from "react"
 
+import { Button as AriaButton, type ButtonProps } from "react-aria-components"
+
 import { cn } from "~/lib/utils"
 
 const buttonVariants = cva(
@@ -51,10 +53,10 @@ const IconButton = ({
 	className,
 	asChild,
 	...props
-}: React.ComponentProps<"button"> & {
+}: ButtonProps & {
 	asChild?: boolean
 }) => {
-	const Comp = asChild ? Slot : "button"
+	const Comp = asChild ? Slot : AriaButton
 
 	return (
 		<Comp
@@ -63,6 +65,7 @@ const IconButton = ({
 				`flex size-6 items-center justify-center gap-2 whitespace-nowrap text-muted-foreground hover:text-primary`,
 				className,
 			)}
+			aria-trigger="true"
 		/>
 	)
 }

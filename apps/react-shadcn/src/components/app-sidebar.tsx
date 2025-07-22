@@ -3,6 +3,7 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
+import { NewProjectModal } from "./application/modals/new-channel-modal"
 import { ChannelItem, DmChannelLink } from "./channel-item"
 import IconChatChatting1 from "./icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "./icons/IconGridDashboard01DuoSolid"
@@ -37,7 +38,7 @@ export const AppSidebar = () => {
 
 	const dmChannels = useMemo(() => channelsQuery.data?.dmChannels || [], [channelsQuery.data])
 
-	const [createChannelModalOpen, setCreateChannelModalOpen] = useState(false)
+	const [_createChannelModalOpen, _setCreateChannelModalOpenn] = useState(false)
 
 	// TODO: Add presence state when available
 	const presenceState = { presenceList: [] }
@@ -107,34 +108,7 @@ export const AppSidebar = () => {
 					<SidebarGroup>
 						<SidebarGroupLabel>Channels</SidebarGroupLabel>
 						<SidebarGroupAction>
-							<Dialog
-								open={createChannelModalOpen}
-								onOpenChange={setCreateChannelModalOpen}
-							>
-								<DialogTrigger asChild>
-									<IconButton className="size-4.5" asChild>
-										<IconPlusStroke />
-									</IconButton>
-								</DialogTrigger>
-								<DialogContent>
-									<Tabs defaultValue={"join"}>
-										<TabsList>
-											<TabsTrigger value="join">Join</TabsTrigger>
-											<TabsTrigger value="create">Create New</TabsTrigger>
-										</TabsList>
-										<TabsContent value="join">
-											{/* <JoinPublicChannel
-												onSuccess={() => setCreateChannelModalOpen(false)}
-											/> */}
-										</TabsContent>
-										<TabsContent value="create">
-											{/* <CreateChannelForm
-												onSuccess={() => setCreateChannelModalOpen(false)}
-											/> */}
-										</TabsContent>
-									</Tabs>
-								</DialogContent>
-							</Dialog>
+							<NewProjectModal />
 						</SidebarGroupAction>
 						<SidebarGroupContent>
 							<SidebarMenu>
