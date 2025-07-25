@@ -18,6 +18,7 @@ import type { BadgeColors } from "~/components/base/badges/badge-types"
 import { Badge, type BadgeColor, BadgeWithDot } from "~/components/base/badges/badges"
 import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
+import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
 
 export const Route = createFileRoute("/app/settings/team")({
 	component: RouteComponent,
@@ -28,6 +29,7 @@ function RouteComponent() {
 		column: "status",
 		direction: "ascending",
 	})
+	const [showInviteModal, setShowInviteModal] = useState(false)
 
 	const teamMembersQuery = useConvexQuery(api.users.getUsers, {})
 	const isLoading = teamMembersQuery === undefined
@@ -86,7 +88,7 @@ function RouteComponent() {
 					}
 					contentTrailing={
 						<div className="flex gap-3">
-							<Button size="md" iconLeading={Plus}>
+							<Button size="md" iconLeading={Plus} onClick={() => setShowInviteModal(true)}>
 								Invite user
 							</Button>
 						</div>
@@ -122,7 +124,7 @@ function RouteComponent() {
 												alt={member.name}
 											/>
 											<div>
-												<p className="font-medium text-sm text-primary">
+												<p className="font-medium text-primary text-sm">
 													{member.name}
 												</p>
 												<p className="text-sm text-tertiary">{member.username}</p>
@@ -182,6 +184,11 @@ function RouteComponent() {
 				)}
 				<PaginationCardDefault page={1} total={Math.ceil(teamMembers.length / 10)} />
 			</TableCard.Root>
+			
+			<EmailInviteModal 
+				isOpen={showInviteModal}
+				onOpenChange={setShowInviteModal}
+			/>
 		</Form>
 	)
 }

@@ -130,3 +130,28 @@ export const updateUser = internalAction({
 		}
 	},
 })
+
+// Send invitation to join an organization
+export const sendInvitation = internalAction({
+	args: v.object({
+		email: v.string(),
+		organizationId: v.string(),
+		role: v.optional(v.string()),
+		inviterUserId: v.optional(v.string()),
+	}),
+	handler: async (_ctx, { email, organizationId, role, inviterUserId }) => {
+		try {
+			const invitation = await workos.userManagement.sendInvitation({
+				email,
+				organizationId,
+				...(role && { roleSlug: role }),
+				...(inviterUserId && { inviterUserId }),
+			})
+
+			return { success: true, invitation }
+		} catch (err: any) {
+			console.error("Error sending WorkOS invitation:", err)
+			return { success: false, error: err.message }
+		}
+	},
+})

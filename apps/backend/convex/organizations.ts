@@ -1,6 +1,8 @@
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import { internalQuery, query } from "./_generated/server"
 import { accountMutation, accountQuery } from "./middleware/withAccount"
+import { organizationServerMutation } from "./middleware/withOrganization"
 
 export const create = accountMutation({
 	args: {
@@ -117,35 +119,31 @@ export const listMembers = accountQuery({
 	},
 })
 
-export const inviteMember = accountMutation({
+export const inviteMember = organizationServerMutation({
 	args: {
-		organizationId: v.id("organizations"),
 		email: v.string(),
 		role: v.union(v.literal("member"), v.literal("admin")),
 	},
-	handler: async (ctx, args) => {
+	handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
 		// Check if user has permission to invite members
-		const membership = await ctx.db
-			.query("organizationMembers")
-			.withIndex("by_organizationId_userId", (q) =>
-				q.eq("organizationId", args.organizationId).eq("userId", ctx.account.doc._id),
-			)
-			.first()
-
-		if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+		// organizationMembership is already available in context
+		if (ctx.organizationMembership.role !== "owner" && ctx.organizationMembership.role !== "admin") {
 			throw new Error("You don't have permission to invite members to this organization")
 		}
 
-		// In a real implementation, you would:
-		// 1. Send an invitation email
-		// 2. Create an invitation record
-		// 3. Handle the invitation acceptance flow
-
-		// For now, we'll just return a placeholder
-		return {
-			message: "Invitation functionality not yet implemented",
+		// Schedule invitation to be sent via WorkOS
+		// organization is already available in context
+		await ctx.scheduler.runAfter(0, internal.workosActions.sendInvitation, {
 			email: args.email,
+			organizationId: ctx.organization.workosId,
 			role: args.role,
+			inviterUserId: ctx.account.doc.externalId,
+		})
+
+		// Return success immediately - the invitation will be sent asynchronously
+		return {
+			success: true,
+			message: `Invitation is being sent to ${args.email}`,
 		}
 	},
 })
