@@ -18,7 +18,6 @@ export const WorkspaceSwitcher = () => {
 	// Get current organization
 	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
 
-	// Get all organizations for the user
 	const userOrganizationsQuery = useQuery(convexQuery(api.organizations.getUserOrganizations, {}))
 
 	const currentOrg = organizationQuery.data?.directive === "success" ? organizationQuery.data.data : null
@@ -27,7 +26,8 @@ export const WorkspaceSwitcher = () => {
 	const handleOrganizationSwitch = async (workosOrgId: string) => {
 		try {
 			await switchToOrganization({ organizationId: workosOrgId })
-			// The page should refresh automatically after switching
+			// Reload the page to refresh the session and update the UI
+			window.location.reload()
 		} catch (error) {
 			console.error("Failed to switch organization:", error)
 		}
