@@ -63,17 +63,6 @@ function RouteComponent() {
 				console.log("Form data:", data)
 			}}
 		>
-			<SectionHeader.Root>
-				<SectionHeader.Group>
-					<div className="flex flex-1 flex-col justify-center gap-0.5 self-stretch">
-						<SectionHeader.Heading>Team</SectionHeader.Heading>
-						<SectionHeader.Subheading>
-							Manage your team members and invite new ones.
-						</SectionHeader.Subheading>
-					</div>
-				</SectionHeader.Group>
-			</SectionHeader.Root>
-
 			<TableCard.Root className="rounded-none bg-transparent shadow-none ring-0 lg:rounded-xl lg:bg-primary lg:shadow-xs lg:ring-1">
 				<TableCard.Header
 					title="Team members"

@@ -4,6 +4,7 @@
 - Add Join Existing Channel
 - Add Change Role + Quick User
 - Readd User Status Indicator
+- Display Invited Users
 
 
 

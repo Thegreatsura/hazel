@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import { SearchLg } from "@untitledui/icons"
-import { WorkOsWidgets } from "@workos-inc/widgets"
 import { useEffect, useState } from "react"
 import { TabList, Tabs } from "~/components/application/tabs/tabs"
 import { Input } from "~/components/base/input/input"
@@ -15,7 +14,6 @@ const tabs = [
 	{ id: "appearance", label: "Appearance" },
 	{ id: "team", label: "Team" },
 	{ id: "billing", label: "Billing" },
-	{ id: "email", label: "Email" },
 	{ id: "notifications", label: "Notifications", badge: 2 },
 	{ id: "integrations", label: "Integrations" },
 ]
