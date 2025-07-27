@@ -34,6 +34,29 @@ export const confectSchema = defineSchema({
 		.index("by_organizationId", ["organizationId"])
 		.index("by_userId", ["userId"])
 		.index("by_organizationId_userId", ["organizationId", "userId"]),
+	invitations: defineTable(
+		Schema.Struct({
+			workosInvitationId: Schema.String,
+			organizationId: Id.Id("organizations"),
+			email: Schema.String,
+			role: Schema.String,
+			invitedBy: Schema.optional(Id.Id("users")),
+			invitedAt: Schema.Number,
+			expiresAt: Schema.Number,
+			status: Schema.Union(
+				Schema.Literal("pending"),
+				Schema.Literal("accepted"),
+				Schema.Literal("expired"),
+				Schema.Literal("revoked"),
+			),
+			acceptedAt: Schema.optional(Schema.Number),
+			acceptedBy: Schema.optional(Id.Id("users")),
+		}),
+	)
+		.index("by_workosInvitationId", ["workosInvitationId"])
+		.index("by_organizationId", ["organizationId"])
+		.index("by_email", ["email"])
+		.index("by_status", ["status"]),
 	channels: defineTable(
 		Schema.Struct({
 			name: Schema.String,

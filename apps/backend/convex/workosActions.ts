@@ -157,6 +157,36 @@ export const sendInvitation = internalAction({
 	},
 })
 
+// Fetch all invitations for an organization from WorkOS
+export const fetchWorkosInvitations = internalAction({
+	args: v.object({
+		organizationId: v.string(),
+	}),
+	handler: async (_ctx, { organizationId }) => {
+		const invitations = []
+		let after: string | null = null
+
+		try {
+			// Paginate through all invitations
+			do {
+				const response = await workos.userManagement.listInvitations({
+					organizationId,
+					after: after || undefined,
+					limit: 100,
+				})
+
+				invitations.push(...response.data)
+				after = response.listMetadata?.after || null
+			} while (after)
+
+			return { success: true, invitations }
+		} catch (err: any) {
+			console.error(`Error fetching WorkOS invitations for org ${organizationId}:`, err)
+			return { success: false, error: err.message, invitations: [] }
+		}
+	},
+})
+
 // Create a new organization in WorkOS
 export const createWorkosOrganization = internalAction({
 	args: v.object({

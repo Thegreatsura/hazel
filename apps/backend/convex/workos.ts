@@ -185,6 +185,100 @@ export const processWorkosEvents = internalMutation({
 
 					break
 				}
+				// Handle invitation events - cast as any since WorkOS types don't include these yet
+				case "invitation.created" as any: {
+					const eventData = typedEvent.data as any
+					const organization = await ctx.db
+						.query("organizations")
+						.withIndex("by_workosId", (q) => q.eq("workosId", eventData.organizationId))
+						.first()
+
+					if (!organization) {
+						throw new Error(`Organization ${eventData.organizationId} not found`)
+					}
+
+					let invitedBy: any = undefined
+					if (eventData.inviterUserId) {
+						const inviter = await ctx.db
+							.query("users")
+							.withIndex("by_externalId", (q) =>
+								q.eq("externalId", eventData.inviterUserId as string),
+							)
+							.first()
+						if (inviter) {
+							invitedBy = inviter._id
+						}
+					}
+
+					await ctx.db.insert("invitations", {
+						workosInvitationId: eventData.id,
+						organizationId: organization._id,
+						email: eventData.email,
+						role: eventData.role?.slug || "member",
+						invitedBy,
+						invitedAt: new Date(eventData.createdAt).getTime(),
+						expiresAt: new Date(eventData.expiresAt).getTime(),
+						status: "pending",
+					})
+					break
+				}
+				case "invitation.accepted" as any: {
+					const eventData = typedEvent.data as any
+					const invitation = await ctx.db
+						.query("invitations")
+						.withIndex("by_workosInvitationId", (q) =>
+							q.eq("workosInvitationId", eventData.id),
+						)
+						.first()
+
+					if (invitation) {
+						const acceptedByUser = await ctx.db
+							.query("users")
+							.withIndex("by_externalId", (q) =>
+								q.eq("externalId", eventData.acceptedByUserId),
+							)
+							.first()
+
+						await ctx.db.patch(invitation._id, {
+							status: "accepted",
+							acceptedAt: Date.now(),
+							acceptedBy: acceptedByUser?._id,
+						})
+					}
+					break
+				}
+				case "invitation.expired" as any: {
+					const eventData = typedEvent.data as any
+					const invitation = await ctx.db
+						.query("invitations")
+						.withIndex("by_workosInvitationId", (q) =>
+							q.eq("workosInvitationId", eventData.id),
+						)
+						.first()
+
+					if (invitation) {
+						await ctx.db.patch(invitation._id, {
+							status: "expired",
+						})
+					}
+					break
+				}
+				case "invitation.revoked" as any: {
+					const eventData = typedEvent.data as any
+					const invitation = await ctx.db
+						.query("invitations")
+						.withIndex("by_workosInvitationId", (q) =>
+							q.eq("workosInvitationId", eventData.id),
+						)
+						.first()
+
+					if (invitation) {
+						await ctx.db.patch(invitation._id, {
+							status: "revoked",
+						})
+					}
+					break
+				}
 			}
 			return { success: true } as const
 		} catch (err: any) {
@@ -423,6 +517,139 @@ export const syncOrganizationMemberships = internalMutation({
 	},
 })
 
+// Sync invitations from WorkOS to Convex
+export const syncInvitations = internalMutation({
+	args: v.object({
+		organizationId: v.id("organizations"),
+		workosOrgId: v.string(),
+		invitations: v.array(v.any()),
+	}),
+	handler: async (ctx, { organizationId, invitations }) => {
+		const results = {
+			created: 0,
+			updated: 0,
+			expired: 0,
+			errors: [] as string[],
+		}
+
+		try {
+			// Get all existing invitations for this organization
+			const existingInvitations = await ctx.db
+				.query("invitations")
+				.withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId))
+				.collect()
+
+			// Create a map of existing invitations by WorkOS ID
+			const existingInvitationMap = new Map(
+				existingInvitations.map((inv) => [inv.workosInvitationId, inv]),
+			)
+
+			// Track which invitations we've seen from WorkOS
+			const seenInvitationIds = new Set<string>()
+
+			// Create or update invitations from WorkOS
+			for (const workosInvitation of invitations) {
+				try {
+					seenInvitationIds.add(workosInvitation.id)
+					const existingInvitation = existingInvitationMap.get(workosInvitation.id)
+
+					// Determine status based on WorkOS data
+					let status: "pending" | "accepted" | "expired" | "revoked" = "pending"
+					if (workosInvitation.state === "accepted") {
+						status = "accepted"
+					} else if (workosInvitation.state === "expired") {
+						status = "expired"
+					} else if (workosInvitation.state === "revoked") {
+						status = "revoked"
+					}
+
+					// Find inviter user if available
+					let invitedBy: any = undefined
+					if (workosInvitation.inviterUserId) {
+						const inviter = await ctx.db
+							.query("users")
+							.withIndex("by_externalId", (q) =>
+								q.eq("externalId", workosInvitation.inviterUserId),
+							)
+							.first()
+						if (inviter) {
+							invitedBy = inviter._id
+						}
+					}
+
+					if (existingInvitation) {
+						// Update existing invitation if status changed
+						if (existingInvitation.status !== status) {
+							const updateData: any = { status }
+
+							// Add acceptedAt if just accepted
+							if (status === "accepted" && !existingInvitation.acceptedAt) {
+								updateData.acceptedAt = Date.now()
+
+								// Try to find accepted by user
+								if (workosInvitation.acceptedByUserId) {
+									const acceptedByUser = await ctx.db
+										.query("users")
+										.withIndex("by_externalId", (q) =>
+											q.eq("externalId", workosInvitation.acceptedByUserId),
+										)
+										.first()
+									if (acceptedByUser) {
+										updateData.acceptedBy = acceptedByUser._id
+									}
+								}
+							}
+
+							await ctx.db.patch(existingInvitation._id, updateData)
+							results.updated++
+						}
+					} else {
+						// Create new invitation
+						await ctx.db.insert("invitations", {
+							workosInvitationId: workosInvitation.id,
+							organizationId,
+							email: workosInvitation.email,
+							role: workosInvitation.role?.slug || "member",
+							invitedBy,
+							invitedAt: new Date(workosInvitation.createdAt).getTime(),
+							expiresAt: new Date(workosInvitation.expiresAt).getTime(),
+							status,
+							...(status === "accepted" && workosInvitation.acceptedAt
+								? { acceptedAt: new Date(workosInvitation.acceptedAt).getTime() }
+								: {}),
+						})
+						results.created++
+					}
+				} catch (err: any) {
+					results.errors.push(`Error syncing invitation ${workosInvitation.id}: ${err.message}`)
+				}
+			}
+
+			// Mark invitations as expired if they're not in WorkOS anymore and are still pending
+			for (const existingInvitation of existingInvitations) {
+				if (
+					!seenInvitationIds.has(existingInvitation.workosInvitationId) &&
+					existingInvitation.status === "pending" &&
+					Date.now() > existingInvitation.expiresAt
+				) {
+					try {
+						await ctx.db.patch(existingInvitation._id, {
+							status: "expired",
+						})
+						results.expired++
+					} catch (err: any) {
+						results.errors.push(`Error expiring invitation: ${err.message}`)
+					}
+				}
+			}
+		} catch (err: any) {
+			results.errors.push(`Fatal error in syncInvitations: ${err.message}`)
+		}
+
+		return results
+	},
+})
+
 // Main sync orchestrator that coordinates the full sync process
 export const syncWorkosData = internalAction({
 	args: v.object({}),
@@ -431,6 +658,7 @@ export const syncWorkosData = internalAction({
 			users: { created: 0, updated: 0, deleted: 0, errors: [] as string[] },
 			organizations: { created: 0, updated: 0, deleted: 0, errors: [] as string[] },
 			memberships: { created: 0, updated: 0, deleted: 0, errors: [] as string[] },
+			invitations: { created: 0, updated: 0, expired: 0, errors: [] as string[] },
 			totalErrors: 0,
 			startTime: Date.now(),
 			endTime: 0,
@@ -521,11 +749,62 @@ export const syncWorkosData = internalAction({
 				)
 			}
 
+			// Step 4: Sync invitations for each organization
+			if (orgsResult.success && orgsResult.organizations.length > 0) {
+				console.log("Syncing invitations for each organization...")
+
+				// Get all organizations from Convex to map WorkOS IDs to Convex IDs
+				const convexOrgs = await ctx.runQuery(internal.organizations.getAllOrganizations, {})
+				const workosIdToConvexId = new Map(convexOrgs.map((org) => [org.workosId, org._id]))
+
+				for (const workosOrg of orgsResult.organizations) {
+					const convexOrgId = workosIdToConvexId.get(workosOrg.id)
+					if (!convexOrgId) {
+						results.invitations.errors.push(`Organization ${workosOrg.id} not found in Convex`)
+						continue
+					}
+
+					try {
+						const invitationsResult = await ctx.runAction(
+							internal.workosActions.fetchWorkosInvitations,
+							{ organizationId: workosOrg.id },
+						)
+
+						if (invitationsResult.success) {
+							const syncInvitationsResult = await ctx.runMutation(
+								internal.workos.syncInvitations,
+								{
+									organizationId: convexOrgId,
+									workosOrgId: workosOrg.id,
+									invitations: invitationsResult.invitations,
+								},
+							)
+							results.invitations.created += syncInvitationsResult.created
+							results.invitations.updated += syncInvitationsResult.updated
+							results.invitations.expired += syncInvitationsResult.expired
+							results.invitations.errors.push(...syncInvitationsResult.errors)
+						} else {
+							results.invitations.errors.push(
+								`Failed to fetch invitations for org ${workosOrg.id}: ${invitationsResult.error}`,
+							)
+						}
+					} catch (err: any) {
+						results.invitations.errors.push(
+							`Error syncing invitations for org ${workosOrg.id}: ${err.message}`,
+						)
+					}
+				}
+				console.log(
+					`Invitations sync complete: created=${results.invitations.created}, updated=${results.invitations.updated}, expired=${results.invitations.expired}`,
+				)
+			}
+
 			// Calculate total errors
 			results.totalErrors =
 				results.users.errors.length +
 				results.organizations.errors.length +
-				results.memberships.errors.length
+				results.memberships.errors.length +
+				results.invitations.errors.length
 
 			results.endTime = Date.now()
 			const duration = (results.endTime - results.startTime) / 1000
@@ -537,6 +816,7 @@ export const syncWorkosData = internalAction({
 					users: results.users.errors,
 					organizations: results.organizations.errors,
 					memberships: results.memberships.errors,
+					invitations: results.invitations.errors,
 				})
 			}
 
