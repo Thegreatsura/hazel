@@ -1,19 +1,18 @@
-import type { QueryClient } from "@tanstack/solid-query"
-import { createRootRouteWithContext, Outlet } from "@tanstack/solid-router"
-import type { Client } from "authkit-solidjs"
+import type { ConvexQueryClient } from "@convex-dev/react-query"
+import type { QueryClient } from "@tanstack/react-query"
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
+import type { ConvexReactClient } from "convex/react"
 
-import type { ConvexSolidClient } from "~/lib/convex"
-
-interface RootContext {
-	convex: ConvexSolidClient
+export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient
-	authClient: Client
-}
-
-export const Route = createRootRouteWithContext<RootContext>()({
-	component: RootComponent,
+	convexClient: ConvexReactClient
+	convexQueryClient: ConvexQueryClient
+}>()({
+	component: () => (
+		<>
+			<Outlet />
+			<TanStackRouterDevtools position="bottom-right" />
+		</>
+	),
 })
-
-function RootComponent() {
-	return <Outlet />
-}

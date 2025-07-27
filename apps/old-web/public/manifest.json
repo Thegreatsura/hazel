@@ -1,6 +1,6 @@
 {
-	"short_name": "Hazel",
-	"name": "Hazel Chat",
+	"short_name": "TanStack App",
+	"name": "Create TanStack App Sample",
 	"icons": [
 		{
 			"src": "icon.svg",

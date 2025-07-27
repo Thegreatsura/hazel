@@ -1,44 +1,32 @@
-import { createRouter, RouterProvider } from "@tanstack/solid-router"
-import { render, Show, Suspense } from "solid-js/web"
+import { createRouter, RouterProvider } from "@tanstack/react-router"
+import { StrictMode } from "react"
+import ReactDOM from "react-dom/client"
 
-import "solid-devtools"
-
+// Import the generated route tree
 import { routeTree } from "./routeTree.gen"
 
-import "./styles/root.css"
-import "./styles/toast.css"
+import "@fontsource/inter/400.css"
+import "@fontsource/inter/400-italic.css"
+import "./styles/styles.css"
 
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
-import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
-import { AuthKitProvider, useAuth } from "authkit-solidjs"
-import { FpsCounter } from "./components/devtools/fps-counter"
-import { IconLoader } from "./components/icons/loader"
-import { Logo } from "./components/logo"
-import { Toaster } from "./components/ui/toaster"
-import { ConvexSolidClient } from "./lib/convex"
-import { ConvexQueryClient } from "./lib/convex-query"
-import { HotkeyProvider } from "./lib/hotkey-manager"
-import { KeyboardSoundsProvider } from "./lib/keyboard-sounds"
-import { applyInitialTheme, ThemeProvider } from "./lib/theme"
+import { ConvexQueryClient } from "@convex-dev/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react"
+import { ConvexReactClient } from "convex/react"
+import { Toaster } from "./components/application/notifications/toaster.tsx"
+import { ConvexProviderWithAuthKit } from "./components/convex-provider-with-authkit.tsx"
+import { ThemeProvider } from "./components/theme-provider.tsx"
+import reportWebVitals from "./reportWebVitals.ts"
 
-import "@fontsource-variable/geist-mono/index.css"
-import "@fontsource-variable/geist/index.css"
-import { createMemo } from "solid-js"
-import { ConvexProviderWithWorkOS } from "./lib/convex-workos"
-
-applyInitialTheme()
-
-const convex = new ConvexSolidClient(import.meta.env.VITE_CONVEX_URL)
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
 
 const convexQueryClient = new ConvexQueryClient(convex)
 
-const queryClient = new QueryClient({
+const queryClient: QueryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			queryKeyHashFn: convexQueryClient.hashFn(),
 			queryFn: convexQueryClient.queryFn(),
-
-			gcTime: 1000 * 60 * 60 * 24,
 		},
 	},
 })
@@ -47,98 +35,42 @@ convexQueryClient.connect(queryClient)
 
 const router = createRouter({
 	routeTree,
+	context: { queryClient, convexClient: convex, convexQueryClient },
 	defaultPreload: "intent",
-	scrollToTopSelectors: ["#chat-scrollarea"],
-	scrollRestoration: false,
+	scrollRestoration: true,
+	defaultStructuralSharing: true,
 	defaultPreloadStaleTime: 0,
-
-	defaultViewTransition: true,
-
-	context: {
-		convex: convex,
-		queryClient,
-		authClient: undefined!,
-	},
-	defaultErrorComponent: (err) => {
-		console.error(err)
-		return (
-			<div class="flex min-h-screen items-center justify-center">
-				<div class="flex flex-col items-center justify-center gap-3">
-					<Logo class="h-12" />
-					<div class="text-center text-red-500">
-						<h1>Error</h1>
-						<p>Something went wrong.</p>
-					</div>
-				</div>
-			</div>
-		)
-	},
-	defaultPendingComponent: () => (
-		<div class="flex min-h-screen items-center justify-center">
-			<div class="flex flex-col items-center justify-center gap-3">
-				<Logo class="h-12" />
-				<IconLoader class="animate-spin" />
-			</div>
-		</div>
+	Wrap: ({ children }) => (
+		<ThemeProvider>
+			<QueryClientProvider client={queryClient}>
+				<AuthKitProvider
+					clientId={import.meta.env.VITE_WORKOS_CLIENT_ID || "client_01HGZR2CV5G9VPBYK6XFA8YG17"}
+					redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
+				>
+					<ConvexProviderWithAuthKit client={convexQueryClient.convexClient} useAuth={useAuth}>
+						<Toaster />
+						{children}
+					</ConvexProviderWithAuthKit>
+				</AuthKitProvider>
+			</QueryClientProvider>
+		</ThemeProvider>
 	),
 })
 
-declare module "@tanstack/solid-router" {
+declare module "@tanstack/react-router" {
 	interface Register {
 		router: typeof router
 	}
 }
 
-const InnerProviders = () => {
-	const auth = useAuth()
-
-	createMemo(() => {
-		console.log("auth1", auth.isLoading, !!auth.user)
-	})
-
-	return (
-		<RouterProvider
-			router={router}
-			context={{
-				authClient: auth,
-			}}
-		/>
-	)
-}
-
-function App() {
-	return (
-		<QueryClientProvider client={queryClient}>
-			<SolidQueryDevtools />
-			<ThemeProvider>
-				<KeyboardSoundsProvider>
-					<AuthKitProvider
-						clientId={
-							import.meta.env.VITE_WORKOS_CLIENT_ID || "client_01HGZR2CV5G9VPBYK6XFA8YG17"
-						}
-						onRedirectCallback={({ state }) => {
-							if (state?.returnTo) {
-								router.navigate(state.returnTo)
-							}
-						}}
-					>
-						<ConvexProviderWithWorkOS client={convex} useAuth={useAuth}>
-							<HotkeyProvider>
-								<Toaster />
-								<InnerProviders />
-								<Show when={import.meta.env.DEV}>
-									<FpsCounter />
-								</Show>
-							</HotkeyProvider>
-						</ConvexProviderWithWorkOS>
-					</AuthKitProvider>
-				</KeyboardSoundsProvider>
-			</ThemeProvider>
-		</QueryClientProvider>
-	)
-}
-
 const rootElement = document.getElementById("app")
-if (rootElement) {
-	render(() => <App />, rootElement)
+if (rootElement && !rootElement.innerHTML) {
+	const root = ReactDOM.createRoot(rootElement)
+	root.render(
+		<StrictMode>
+			<RouterProvider router={router} />
+		</StrictMode>,
+	)
 }
+
+reportWebVitals()

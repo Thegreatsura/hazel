@@ -9,417 +9,373 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ProtectedLayoutRouteImport } from './routes/_protected/layout'
-import { Route as AuthLayoutRouteImport } from './routes/_auth/layout'
-import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
-import { Route as ProtectedAppLayoutRouteImport } from './routes/_protected/_app/layout'
-import { Route as ProtectedOnboardingIndexRouteImport } from './routes/_protected/onboarding/index'
-import { Route as ProtectedAppIndexRouteImport } from './routes/_protected/_app/index'
-import { Route as ProtectedInviteCodeRouteImport } from './routes/_protected/invite/$code'
-import { Route as ProtectedAppAppLayoutRouteImport } from './routes/_protected/_app/app/layout'
-import { Route as ProtectedAppAppIndexRouteImport } from './routes/_protected/_app/app/index'
-import { Route as ProtectedAppAppVideoRouteImport } from './routes/_protected/_app/app/video'
-import { Route as ProtectedAppAppTestRouteImport } from './routes/_protected/_app/app/test'
-import { Route as ProtectedAppAppSettingsRouteImport } from './routes/_protected/_app/app/settings'
-import { Route as ProtectedAppAppNotificationsRouteImport } from './routes/_protected/_app/app/notifications'
-import { Route as ProtectedAppAppBillingRouteImport } from './routes/_protected/_app/app/billing'
-import { Route as ProtectedAppAppChatIndexRouteImport } from './routes/_protected/_app/app/chat/index'
-import { Route as ProtectedAppAppProfileIdRouteImport } from './routes/_protected/_app/app/profile/$id'
-import { Route as ProtectedAppAppChatIdRouteImport } from './routes/_protected/_app/app/chat/$id'
+import { Route as AppLayoutRouteImport } from './routes/app/layout'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
+import { Route as AppChatRouteImport } from './routes/app/chat'
+import { Route as AppSettingsLayoutRouteImport } from './routes/app/settings/layout'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
+import { Route as AppSettingsProfileRouteImport } from './routes/app/settings/profile'
+import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings/notifications'
+import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings/integrations'
+import { Route as AppSettingsEmailRouteImport } from './routes/app/settings/email'
+import { Route as AppSettingsBillingRouteImport } from './routes/app/settings/billing'
+import { Route as AppChatIdRouteImport } from './routes/app/chat/$id'
 
-const ProtectedLayoutRoute = ProtectedLayoutRouteImport.update({
-  id: '/_protected',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthLayoutRoute = AuthLayoutRouteImport.update({
-  id: '/_auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthSignInRoute = AuthSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => AuthLayoutRoute,
-} as any)
-const ProtectedAppLayoutRoute = ProtectedAppLayoutRouteImport.update({
-  id: '/_app',
-  getParentRoute: () => ProtectedLayoutRoute,
-} as any)
-const ProtectedOnboardingIndexRoute =
-  ProtectedOnboardingIndexRouteImport.update({
-    id: '/onboarding/',
-    path: '/onboarding/',
-    getParentRoute: () => ProtectedLayoutRoute,
-  } as any)
-const ProtectedAppIndexRoute = ProtectedAppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProtectedAppLayoutRoute,
-} as any)
-const ProtectedInviteCodeRoute = ProtectedInviteCodeRouteImport.update({
-  id: '/invite/$code',
-  path: '/invite/$code',
-  getParentRoute: () => ProtectedLayoutRoute,
-} as any)
-const ProtectedAppAppLayoutRoute = ProtectedAppAppLayoutRouteImport.update({
+const AppLayoutRoute = AppLayoutRouteImport.update({
   id: '/app',
   path: '/app',
-  getParentRoute: () => ProtectedAppLayoutRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedAppAppIndexRoute = ProtectedAppAppIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedAppAppVideoRoute = ProtectedAppAppVideoRouteImport.update({
-  id: '/video',
-  path: '/video',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLayoutRoute,
 } as any)
-const ProtectedAppAppTestRoute = ProtectedAppAppTestRouteImport.update({
-  id: '/test',
-  path: '/test',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedAppAppSettingsRoute = ProtectedAppAppSettingsRouteImport.update({
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
+const AppSettingsLayoutRoute = AppSettingsLayoutRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+  getParentRoute: () => AppLayoutRoute,
 } as any)
-const ProtectedAppAppNotificationsRoute =
-  ProtectedAppAppNotificationsRouteImport.update({
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
+const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
+const AppSettingsProfileRoute = AppSettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
+const AppSettingsNotificationsRoute =
+  AppSettingsNotificationsRouteImport.update({
     id: '/notifications',
     path: '/notifications',
-    getParentRoute: () => ProtectedAppAppLayoutRoute,
+    getParentRoute: () => AppSettingsLayoutRoute,
   } as any)
-const ProtectedAppAppBillingRoute = ProtectedAppAppBillingRouteImport.update({
+const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
+const AppSettingsEmailRoute = AppSettingsEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
+const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+  getParentRoute: () => AppSettingsLayoutRoute,
 } as any)
-const ProtectedAppAppChatIndexRoute =
-  ProtectedAppAppChatIndexRouteImport.update({
-    id: '/chat/',
-    path: '/chat/',
-    getParentRoute: () => ProtectedAppAppLayoutRoute,
-  } as any)
-const ProtectedAppAppProfileIdRoute =
-  ProtectedAppAppProfileIdRouteImport.update({
-    id: '/profile/$id',
-    path: '/profile/$id',
-    getParentRoute: () => ProtectedAppAppLayoutRoute,
-  } as any)
-const ProtectedAppAppChatIdRoute = ProtectedAppAppChatIdRouteImport.update({
-  id: '/chat/$id',
-  path: '/chat/$id',
-  getParentRoute: () => ProtectedAppAppLayoutRoute,
+const AppChatIdRoute = AppChatIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppChatRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/sign-in': typeof AuthSignInRoute
-  '/app': typeof ProtectedAppAppLayoutRouteWithChildren
-  '/invite/$code': typeof ProtectedInviteCodeRoute
-  '/': typeof ProtectedAppIndexRoute
-  '/onboarding': typeof ProtectedOnboardingIndexRoute
-  '/app/billing': typeof ProtectedAppAppBillingRoute
-  '/app/notifications': typeof ProtectedAppAppNotificationsRoute
-  '/app/settings': typeof ProtectedAppAppSettingsRoute
-  '/app/test': typeof ProtectedAppAppTestRoute
-  '/app/video': typeof ProtectedAppAppVideoRoute
-  '/app/': typeof ProtectedAppAppIndexRoute
-  '/app/chat/$id': typeof ProtectedAppAppChatIdRoute
-  '/app/profile/$id': typeof ProtectedAppAppProfileIdRoute
-  '/app/chat': typeof ProtectedAppAppChatIndexRoute
+  '/': typeof IndexRoute
+  '/app': typeof AppLayoutRouteWithChildren
+  '/app/settings': typeof AppSettingsLayoutRouteWithChildren
+  '/app/chat': typeof AppChatRouteWithChildren
+  '/app/notifications': typeof AppNotificationsRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/app/': typeof AppIndexRoute
+  '/app/chat/$id': typeof AppChatIdRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/email': typeof AppSettingsEmailRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/sign-in': typeof AuthSignInRoute
-  '/invite/$code': typeof ProtectedInviteCodeRoute
-  '/': typeof ProtectedAppIndexRoute
-  '/onboarding': typeof ProtectedOnboardingIndexRoute
-  '/app/billing': typeof ProtectedAppAppBillingRoute
-  '/app/notifications': typeof ProtectedAppAppNotificationsRoute
-  '/app/settings': typeof ProtectedAppAppSettingsRoute
-  '/app/test': typeof ProtectedAppAppTestRoute
-  '/app/video': typeof ProtectedAppAppVideoRoute
-  '/app': typeof ProtectedAppAppIndexRoute
-  '/app/chat/$id': typeof ProtectedAppAppChatIdRoute
-  '/app/profile/$id': typeof ProtectedAppAppProfileIdRoute
-  '/app/chat': typeof ProtectedAppAppChatIndexRoute
+  '/': typeof IndexRoute
+  '/app/chat': typeof AppChatRouteWithChildren
+  '/app/notifications': typeof AppNotificationsRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/app': typeof AppIndexRoute
+  '/app/chat/$id': typeof AppChatIdRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/email': typeof AppSettingsEmailRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_auth': typeof AuthLayoutRouteWithChildren
-  '/_protected': typeof ProtectedLayoutRouteWithChildren
-  '/_protected/_app': typeof ProtectedAppLayoutRouteWithChildren
-  '/_auth/sign-in': typeof AuthSignInRoute
-  '/_protected/_app/app': typeof ProtectedAppAppLayoutRouteWithChildren
-  '/_protected/invite/$code': typeof ProtectedInviteCodeRoute
-  '/_protected/_app/': typeof ProtectedAppIndexRoute
-  '/_protected/onboarding/': typeof ProtectedOnboardingIndexRoute
-  '/_protected/_app/app/billing': typeof ProtectedAppAppBillingRoute
-  '/_protected/_app/app/notifications': typeof ProtectedAppAppNotificationsRoute
-  '/_protected/_app/app/settings': typeof ProtectedAppAppSettingsRoute
-  '/_protected/_app/app/test': typeof ProtectedAppAppTestRoute
-  '/_protected/_app/app/video': typeof ProtectedAppAppVideoRoute
-  '/_protected/_app/app/': typeof ProtectedAppAppIndexRoute
-  '/_protected/_app/app/chat/$id': typeof ProtectedAppAppChatIdRoute
-  '/_protected/_app/app/profile/$id': typeof ProtectedAppAppProfileIdRoute
-  '/_protected/_app/app/chat/': typeof ProtectedAppAppChatIndexRoute
+  '/': typeof IndexRoute
+  '/app': typeof AppLayoutRouteWithChildren
+  '/app/settings': typeof AppSettingsLayoutRouteWithChildren
+  '/app/chat': typeof AppChatRouteWithChildren
+  '/app/notifications': typeof AppNotificationsRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/app/': typeof AppIndexRoute
+  '/app/chat/$id': typeof AppChatIdRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/email': typeof AppSettingsEmailRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/notifications': typeof AppSettingsNotificationsRoute
+  '/app/settings/profile': typeof AppSettingsProfileRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/sign-in'
-    | '/app'
-    | '/invite/$code'
     | '/'
-    | '/onboarding'
-    | '/app/billing'
-    | '/app/notifications'
+    | '/app'
     | '/app/settings'
-    | '/app/test'
-    | '/app/video'
+    | '/app/chat'
+    | '/app/notifications'
+    | '/auth/login'
     | '/app/'
     | '/app/chat/$id'
-    | '/app/profile/$id'
-    | '/app/chat'
+    | '/app/settings/billing'
+    | '/app/settings/email'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
+    | '/app/settings/profile'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/sign-in'
-    | '/invite/$code'
     | '/'
-    | '/onboarding'
-    | '/app/billing'
+    | '/app/chat'
     | '/app/notifications'
-    | '/app/settings'
-    | '/app/test'
-    | '/app/video'
+    | '/auth/login'
     | '/app'
     | '/app/chat/$id'
-    | '/app/profile/$id'
-    | '/app/chat'
+    | '/app/settings/billing'
+    | '/app/settings/email'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
+    | '/app/settings/profile'
+    | '/app/settings/team'
+    | '/app/settings'
   id:
     | '__root__'
-    | '/_auth'
-    | '/_protected'
-    | '/_protected/_app'
-    | '/_auth/sign-in'
-    | '/_protected/_app/app'
-    | '/_protected/invite/$code'
-    | '/_protected/_app/'
-    | '/_protected/onboarding/'
-    | '/_protected/_app/app/billing'
-    | '/_protected/_app/app/notifications'
-    | '/_protected/_app/app/settings'
-    | '/_protected/_app/app/test'
-    | '/_protected/_app/app/video'
-    | '/_protected/_app/app/'
-    | '/_protected/_app/app/chat/$id'
-    | '/_protected/_app/app/profile/$id'
-    | '/_protected/_app/app/chat/'
+    | '/'
+    | '/app'
+    | '/app/settings'
+    | '/app/chat'
+    | '/app/notifications'
+    | '/auth/login'
+    | '/app/'
+    | '/app/chat/$id'
+    | '/app/settings/billing'
+    | '/app/settings/email'
+    | '/app/settings/integrations'
+    | '/app/settings/notifications'
+    | '/app/settings/profile'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthLayoutRoute: typeof AuthLayoutRouteWithChildren
-  ProtectedLayoutRoute: typeof ProtectedLayoutRouteWithChildren
+  IndexRoute: typeof IndexRoute
+  AppLayoutRoute: typeof AppLayoutRouteWithChildren
+  AuthLoginRoute: typeof AuthLoginRoute
 }
 
-declare module '@tanstack/solid-router' {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_protected': {
-      id: '/_protected'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof ProtectedLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth/sign-in': {
-      id: '/_auth/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof AuthSignInRouteImport
-      parentRoute: typeof AuthLayoutRoute
-    }
-    '/_protected/_app': {
-      id: '/_protected/_app'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof ProtectedAppLayoutRouteImport
-      parentRoute: typeof ProtectedLayoutRoute
-    }
-    '/_protected/onboarding/': {
-      id: '/_protected/onboarding/'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof ProtectedOnboardingIndexRouteImport
-      parentRoute: typeof ProtectedLayoutRoute
-    }
-    '/_protected/_app/': {
-      id: '/_protected/_app/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof ProtectedAppIndexRouteImport
-      parentRoute: typeof ProtectedAppLayoutRoute
-    }
-    '/_protected/invite/$code': {
-      id: '/_protected/invite/$code'
-      path: '/invite/$code'
-      fullPath: '/invite/$code'
-      preLoaderRoute: typeof ProtectedInviteCodeRouteImport
-      parentRoute: typeof ProtectedLayoutRoute
-    }
-    '/_protected/_app/app': {
-      id: '/_protected/_app/app'
+    '/app': {
+      id: '/app'
       path: '/app'
       fullPath: '/app'
-      preLoaderRoute: typeof ProtectedAppAppLayoutRouteImport
-      parentRoute: typeof ProtectedAppLayoutRoute
+      preLoaderRoute: typeof AppLayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_protected/_app/app/': {
-      id: '/_protected/_app/app/'
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
       path: '/'
       fullPath: '/app/'
-      preLoaderRoute: typeof ProtectedAppAppIndexRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
-    '/_protected/_app/app/video': {
-      id: '/_protected/_app/app/video'
-      path: '/video'
-      fullPath: '/app/video'
-      preLoaderRoute: typeof ProtectedAppAppVideoRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_protected/_app/app/test': {
-      id: '/_protected/_app/app/test'
-      path: '/test'
-      fullPath: '/app/test'
-      preLoaderRoute: typeof ProtectedAppAppTestRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
-    }
-    '/_protected/_app/app/settings': {
-      id: '/_protected/_app/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof ProtectedAppAppSettingsRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
-    }
-    '/_protected/_app/app/notifications': {
-      id: '/_protected/_app/app/notifications'
+    '/app/notifications': {
+      id: '/app/notifications'
       path: '/notifications'
       fullPath: '/app/notifications'
-      preLoaderRoute: typeof ProtectedAppAppNotificationsRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
-    '/_protected/_app/app/billing': {
-      id: '/_protected/_app/app/billing'
-      path: '/billing'
-      fullPath: '/app/billing'
-      preLoaderRoute: typeof ProtectedAppAppBillingRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
-    }
-    '/_protected/_app/app/chat/': {
-      id: '/_protected/_app/app/chat/'
+    '/app/chat': {
+      id: '/app/chat'
       path: '/chat'
       fullPath: '/app/chat'
-      preLoaderRoute: typeof ProtectedAppAppChatIndexRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+      preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
-    '/_protected/_app/app/profile/$id': {
-      id: '/_protected/_app/app/profile/$id'
-      path: '/profile/$id'
-      fullPath: '/app/profile/$id'
-      preLoaderRoute: typeof ProtectedAppAppProfileIdRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsLayoutRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
-    '/_protected/_app/app/chat/$id': {
-      id: '/_protected/_app/app/chat/$id'
-      path: '/chat/$id'
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/team': {
+      id: '/app/settings/team'
+      path: '/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/profile': {
+      id: '/app/settings/profile'
+      path: '/profile'
+      fullPath: '/app/settings/profile'
+      preLoaderRoute: typeof AppSettingsProfileRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/notifications': {
+      id: '/app/settings/notifications'
+      path: '/notifications'
+      fullPath: '/app/settings/notifications'
+      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/integrations': {
+      id: '/app/settings/integrations'
+      path: '/integrations'
+      fullPath: '/app/settings/integrations'
+      preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/email': {
+      id: '/app/settings/email'
+      path: '/email'
+      fullPath: '/app/settings/email'
+      preLoaderRoute: typeof AppSettingsEmailRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/settings/billing': {
+      id: '/app/settings/billing'
+      path: '/billing'
+      fullPath: '/app/settings/billing'
+      preLoaderRoute: typeof AppSettingsBillingRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
+    '/app/chat/$id': {
+      id: '/app/chat/$id'
+      path: '/$id'
       fullPath: '/app/chat/$id'
-      preLoaderRoute: typeof ProtectedAppAppChatIdRouteImport
-      parentRoute: typeof ProtectedAppAppLayoutRoute
+      preLoaderRoute: typeof AppChatIdRouteImport
+      parentRoute: typeof AppChatRoute
     }
   }
 }
 
-interface AuthLayoutRouteChildren {
-  AuthSignInRoute: typeof AuthSignInRoute
+interface AppSettingsLayoutRouteChildren {
+  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsEmailRoute: typeof AppSettingsEmailRoute
+  AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
+  AppSettingsProfileRoute: typeof AppSettingsProfileRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
-const AuthLayoutRouteChildren: AuthLayoutRouteChildren = {
-  AuthSignInRoute: AuthSignInRoute,
+const AppSettingsLayoutRouteChildren: AppSettingsLayoutRouteChildren = {
+  AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsEmailRoute: AppSettingsEmailRoute,
+  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
+  AppSettingsProfileRoute: AppSettingsProfileRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
-const AuthLayoutRouteWithChildren = AuthLayoutRoute._addFileChildren(
-  AuthLayoutRouteChildren,
-)
+const AppSettingsLayoutRouteWithChildren =
+  AppSettingsLayoutRoute._addFileChildren(AppSettingsLayoutRouteChildren)
 
-interface ProtectedAppAppLayoutRouteChildren {
-  ProtectedAppAppBillingRoute: typeof ProtectedAppAppBillingRoute
-  ProtectedAppAppNotificationsRoute: typeof ProtectedAppAppNotificationsRoute
-  ProtectedAppAppSettingsRoute: typeof ProtectedAppAppSettingsRoute
-  ProtectedAppAppTestRoute: typeof ProtectedAppAppTestRoute
-  ProtectedAppAppVideoRoute: typeof ProtectedAppAppVideoRoute
-  ProtectedAppAppIndexRoute: typeof ProtectedAppAppIndexRoute
-  ProtectedAppAppChatIdRoute: typeof ProtectedAppAppChatIdRoute
-  ProtectedAppAppProfileIdRoute: typeof ProtectedAppAppProfileIdRoute
-  ProtectedAppAppChatIndexRoute: typeof ProtectedAppAppChatIndexRoute
+interface AppChatRouteChildren {
+  AppChatIdRoute: typeof AppChatIdRoute
 }
 
-const ProtectedAppAppLayoutRouteChildren: ProtectedAppAppLayoutRouteChildren = {
-  ProtectedAppAppBillingRoute: ProtectedAppAppBillingRoute,
-  ProtectedAppAppNotificationsRoute: ProtectedAppAppNotificationsRoute,
-  ProtectedAppAppSettingsRoute: ProtectedAppAppSettingsRoute,
-  ProtectedAppAppTestRoute: ProtectedAppAppTestRoute,
-  ProtectedAppAppVideoRoute: ProtectedAppAppVideoRoute,
-  ProtectedAppAppIndexRoute: ProtectedAppAppIndexRoute,
-  ProtectedAppAppChatIdRoute: ProtectedAppAppChatIdRoute,
-  ProtectedAppAppProfileIdRoute: ProtectedAppAppProfileIdRoute,
-  ProtectedAppAppChatIndexRoute: ProtectedAppAppChatIndexRoute,
+const AppChatRouteChildren: AppChatRouteChildren = {
+  AppChatIdRoute: AppChatIdRoute,
 }
 
-const ProtectedAppAppLayoutRouteWithChildren =
-  ProtectedAppAppLayoutRoute._addFileChildren(
-    ProtectedAppAppLayoutRouteChildren,
-  )
+const AppChatRouteWithChildren =
+  AppChatRoute._addFileChildren(AppChatRouteChildren)
 
-interface ProtectedAppLayoutRouteChildren {
-  ProtectedAppAppLayoutRoute: typeof ProtectedAppAppLayoutRouteWithChildren
-  ProtectedAppIndexRoute: typeof ProtectedAppIndexRoute
+interface AppLayoutRouteChildren {
+  AppSettingsLayoutRoute: typeof AppSettingsLayoutRouteWithChildren
+  AppChatRoute: typeof AppChatRouteWithChildren
+  AppNotificationsRoute: typeof AppNotificationsRoute
+  AppIndexRoute: typeof AppIndexRoute
 }
 
-const ProtectedAppLayoutRouteChildren: ProtectedAppLayoutRouteChildren = {
-  ProtectedAppAppLayoutRoute: ProtectedAppAppLayoutRouteWithChildren,
-  ProtectedAppIndexRoute: ProtectedAppIndexRoute,
+const AppLayoutRouteChildren: AppLayoutRouteChildren = {
+  AppSettingsLayoutRoute: AppSettingsLayoutRouteWithChildren,
+  AppChatRoute: AppChatRouteWithChildren,
+  AppNotificationsRoute: AppNotificationsRoute,
+  AppIndexRoute: AppIndexRoute,
 }
 
-const ProtectedAppLayoutRouteWithChildren =
-  ProtectedAppLayoutRoute._addFileChildren(ProtectedAppLayoutRouteChildren)
-
-interface ProtectedLayoutRouteChildren {
-  ProtectedAppLayoutRoute: typeof ProtectedAppLayoutRouteWithChildren
-  ProtectedInviteCodeRoute: typeof ProtectedInviteCodeRoute
-  ProtectedOnboardingIndexRoute: typeof ProtectedOnboardingIndexRoute
-}
-
-const ProtectedLayoutRouteChildren: ProtectedLayoutRouteChildren = {
-  ProtectedAppLayoutRoute: ProtectedAppLayoutRouteWithChildren,
-  ProtectedInviteCodeRoute: ProtectedInviteCodeRoute,
-  ProtectedOnboardingIndexRoute: ProtectedOnboardingIndexRoute,
-}
-
-const ProtectedLayoutRouteWithChildren = ProtectedLayoutRoute._addFileChildren(
-  ProtectedLayoutRouteChildren,
+const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
+  AppLayoutRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  AuthLayoutRoute: AuthLayoutRouteWithChildren,
-  ProtectedLayoutRoute: ProtectedLayoutRouteWithChildren,
+  IndexRoute: IndexRoute,
+  AppLayoutRoute: AppLayoutRouteWithChildren,
+  AuthLoginRoute: AuthLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

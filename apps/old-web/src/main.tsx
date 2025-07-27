@@ -1,0 +1,144 @@
+import { createRouter, RouterProvider } from "@tanstack/solid-router"
+import { render, Show, Suspense } from "solid-js/web"
+
+import "solid-devtools"
+
+import { routeTree } from "./routeTree.gen"
+
+import "./styles/root.css"
+import "./styles/toast.css"
+
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
+import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
+import { AuthKitProvider, useAuth } from "authkit-solidjs"
+import { FpsCounter } from "./components/devtools/fps-counter"
+import { IconLoader } from "./components/icons/loader"
+import { Logo } from "./components/logo"
+import { Toaster } from "./components/ui/toaster"
+import { ConvexSolidClient } from "./lib/convex"
+import { ConvexQueryClient } from "./lib/convex-query"
+import { HotkeyProvider } from "./lib/hotkey-manager"
+import { KeyboardSoundsProvider } from "./lib/keyboard-sounds"
+import { applyInitialTheme, ThemeProvider } from "./lib/theme"
+
+import "@fontsource-variable/geist-mono/index.css"
+import "@fontsource-variable/geist/index.css"
+import { createMemo } from "solid-js"
+import { ConvexProviderWithWorkOS } from "./lib/convex-workos"
+
+applyInitialTheme()
+
+const convex = new ConvexSolidClient(import.meta.env.VITE_CONVEX_URL)
+
+const convexQueryClient = new ConvexQueryClient(convex)
+
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			queryKeyHashFn: convexQueryClient.hashFn(),
+			queryFn: convexQueryClient.queryFn(),
+
+			gcTime: 1000 * 60 * 60 * 24,
+		},
+	},
+})
+
+convexQueryClient.connect(queryClient)
+
+const router = createRouter({
+	routeTree,
+	defaultPreload: "intent",
+	scrollToTopSelectors: ["#chat-scrollarea"],
+	scrollRestoration: false,
+	defaultPreloadStaleTime: 0,
+
+	defaultViewTransition: true,
+
+	context: {
+		convex: convex,
+		queryClient,
+		authClient: undefined!,
+	},
+	defaultErrorComponent: (err) => {
+		console.error(err)
+		return (
+			<div class="flex min-h-screen items-center justify-center">
+				<div class="flex flex-col items-center justify-center gap-3">
+					<Logo class="h-12" />
+					<div class="text-center text-red-500">
+						<h1>Error</h1>
+						<p>Something went wrong.</p>
+					</div>
+				</div>
+			</div>
+		)
+	},
+	defaultPendingComponent: () => (
+		<div class="flex min-h-screen items-center justify-center">
+			<div class="flex flex-col items-center justify-center gap-3">
+				<Logo class="h-12" />
+				<IconLoader class="animate-spin" />
+			</div>
+		</div>
+	),
+})
+
+declare module "@tanstack/solid-router" {
+	interface Register {
+		router: typeof router
+	}
+}
+
+const InnerProviders = () => {
+	const auth = useAuth()
+
+	createMemo(() => {
+		console.log("auth1", auth.isLoading, !!auth.user)
+	})
+
+	return (
+		<RouterProvider
+			router={router}
+			context={{
+				authClient: auth,
+			}}
+		/>
+	)
+}
+
+function App() {
+	return (
+		<QueryClientProvider client={queryClient}>
+			<SolidQueryDevtools />
+			<ThemeProvider>
+				<KeyboardSoundsProvider>
+					<AuthKitProvider
+						clientId={
+							import.meta.env.VITE_WORKOS_CLIENT_ID || "client_01HGZR2CV5G9VPBYK6XFA8YG17"
+						}
+						onRedirectCallback={({ state }) => {
+							if (state?.returnTo) {
+								router.navigate(state.returnTo)
+							}
+						}}
+					>
+						<ConvexProviderWithWorkOS client={convex} useAuth={useAuth}>
+							<HotkeyProvider>
+								<Toaster />
+								<InnerProviders />
+								<Show when={import.meta.env.DEV}>
+									<FpsCounter />
+								</Show>
+							</HotkeyProvider>
+						</ConvexProviderWithWorkOS>
+					</AuthKitProvider>
+				</KeyboardSoundsProvider>
+			</ThemeProvider>
+		</QueryClientProvider>
+	)
+}
+
+const rootElement = document.getElementById("app")
+if (rootElement) {
+	render(() => <App />, rootElement)
+}

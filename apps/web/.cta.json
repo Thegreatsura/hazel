@@ -1,13 +1,11 @@
 {
-	"framework": "solid",
-	"projectName": "maki-chat",
+	"projectName": "react-shadcn",
+	"mode": "file-router",
 	"typescript": true,
 	"tailwind": true,
-	"packageManager": "npm",
-	"toolchain": "none",
-	"mode": "file-router",
+	"packageManager": "bun",
 	"git": true,
-	"variableValues": {},
 	"version": 1,
-	"existingAddOns": []
+	"framework": "react-cra",
+	"chosenAddOns": ["shadcn"]
 }
