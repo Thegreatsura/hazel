@@ -29,10 +29,11 @@ http.route({
 	method: "POST",
 	handler: httpAction(async (ctx, request) => {
 		const signature = request.headers.get("workos-signature")!
-		const payload = await request.text()
+
+		const body = await request.json()
 
 		const result = await ctx.runAction(internal.workosActions.verifyWorkosWebhook, {
-			payload,
+			payload: body,
 			signature,
 		})
 

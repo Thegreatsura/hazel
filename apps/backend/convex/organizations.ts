@@ -11,13 +11,11 @@ export const create = action({
 		logoUrl: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		// Get the user identity from auth
 		const identity = await ctx.auth.getUserIdentity()
 		if (!identity) {
 			throw new Error("Not authenticated")
 		}
 
-		// Check if slug already exists
 		const existingOrg = await ctx.runQuery(internal.organizations.checkSlugExists, {
 			slug: args.slug,
 		})
@@ -26,13 +24,12 @@ export const create = action({
 			throw new Error("Organization slug already exists")
 		}
 
-		// Create the organization directly in WorkOS
 		const workosResult: { success: boolean; organization?: any; error?: string } = await ctx.runAction(
 			internal.workosActions.createWorkosOrganization,
 			{
 				name: args.name,
 				slug: args.slug,
-				creatorUserId: identity.subject, // Use the WorkOS user ID from identity
+				creatorUserId: identity.subject,
 			},
 		)
 
@@ -70,7 +67,7 @@ export const update = accountMutation({
 			)
 			.first()
 
-		if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+		if (!membership || membership.role !== "admin") {
 			throw new Error("You don't have permission to update this organization")
 		}
 
@@ -133,9 +130,7 @@ export const inviteMember = organizationServerMutation({
 		role: v.union(v.literal("member"), v.literal("admin")),
 	},
 	handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
-		// Check if user has permission to invite members
-		// organizationMembership is already available in context
-		if (ctx.organizationMembership.role !== "owner" && ctx.organizationMembership.role !== "admin") {
+		if (ctx.organizationMembership.role !== "admin") {
 			throw new Error("You don't have permission to invite members to this organization")
 		}
 
@@ -170,8 +165,8 @@ export const removeMember = accountMutation({
 			)
 			.first()
 
-		if (!currentUserMembership || currentUserMembership.role !== "owner") {
-			throw new Error("Only organization owners can remove members")
+		if (!currentUserMembership || currentUserMembership.role !== "admin") {
+			throw new Error("Only organization admins can remove members")
 		}
 
 		// Find the member to remove
@@ -186,16 +181,16 @@ export const removeMember = accountMutation({
 			throw new Error("Member not found in organization")
 		}
 
-		// Don't allow removing the last owner
-		if (memberToRemove.role === "owner") {
-			const ownerCount = await ctx.db
+		// Don't allow removing the last
+		if (memberToRemove.role === "admin") {
+			const adminCount = await ctx.db
 				.query("organizationMembers")
 				.withIndex("by_organizationId", (q) => q.eq("organizationId", args.organizationId))
-				.filter((q) => q.eq(q.field("role"), "owner"))
+				.filter((q) => q.eq(q.field("role"), "admin"))
 				.collect()
 
-			if (ownerCount.length === 1) {
-				throw new Error("Cannot remove the last owner of an organization")
+			if (adminCount.length === 1) {
+				throw new Error("Cannot remove the last admin of an organization")
 			}
 		}
 
