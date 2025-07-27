@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router"
 import { Authenticated, Unauthenticated } from "convex/react"
 import { AppSidebar } from "~/components/app-sidebar/app-sidebar"
+import { PresenceProvider } from "~/components/presence/presence-provider"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 
 export const Route = createFileRoute("/app")({
@@ -11,12 +12,14 @@ function RouteComponent() {
 	return (
 		<>
 			<Authenticated>
-				<SidebarProvider>
-					<AppSidebar />
-					<SidebarInset>
-						<Outlet />
-					</SidebarInset>
-				</SidebarProvider>
+				<PresenceProvider>
+					<SidebarProvider>
+						<AppSidebar />
+						<SidebarInset>
+							<Outlet />
+						</SidebarInset>
+					</SidebarProvider>
+				</PresenceProvider>
 			</Authenticated>
 			<Unauthenticated>
 				<Navigate
