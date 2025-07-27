@@ -302,16 +302,14 @@ function RouteComponent() {
 												color="tertiary"
 												tooltip="Resend invitation"
 												icon={RefreshCcw02}
-												onPress={() => handleResendInvitation(invitation._id)}
-												isDisabled={resendInvitationMutation.isPending}
+												onClick={() => handleResendInvitation(invitation._id)}
 											/>
 											<ButtonUtility
 												size="xs"
 												color="tertiary"
 												tooltip="Revoke invitation"
 												icon={XClose}
-												onPress={() => handleRevokeInvitation(invitation._id)}
-												isDisabled={revokeInvitationMutation.isPending}
+												onClick={() => handleRevokeInvitation(invitation._id)}
 											/>
 										</div>
 									</Table.Cell>

@@ -126,7 +126,7 @@
     "apps/web": {
       "name": "react-shadcn",
       "dependencies": {
-        "@convex-dev/presence": "",
+        "@convex-dev/presence": "^0.1.5",
         "@convex-dev/react-query": "^0.0.0-alpha.11",
         "@fontsource/inter": "^5.2.6",
         "@hazel/backend": "workspace:*",
@@ -168,6 +168,7 @@
         "tailwindcss-react-aria-components": "^2.0.0",
       },
       "devDependencies": {
+        "@react-types/overlays": "^3.9.0",
         "@react-types/shared": "^3.31.0",
         "@tailwindcss/postcss": "^4.1.11",
         "@testing-library/dom": "^10.4.0",

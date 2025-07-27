@@ -187,6 +187,25 @@ export const fetchWorkosInvitations = internalAction({
 	},
 })
 
+// Revoke an invitation in WorkOS
+export const revokeWorkosInvitation = internalAction({
+	args: v.object({
+		invitationId: v.string(),
+	}),
+	handler: async (_ctx, { invitationId }) => {
+		try {
+			await workos.userManagement.revokeInvitation({
+				id: invitationId,
+			})
+
+			return { success: true }
+		} catch (err: any) {
+			console.error("Error revoking WorkOS invitation:", err)
+			return { success: false, error: err.message }
+		}
+	},
+})
+
 // Create a new organization in WorkOS
 export const createWorkosOrganization = internalAction({
 	args: v.object({

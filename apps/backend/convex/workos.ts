@@ -120,11 +120,8 @@ export const processWorkosEvents = internalMutation({
 					const pendingInvitation = await ctx.db
 						.query("invitations")
 						.withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id))
-						.filter((q) => 
-							q.and(
-								q.eq(q.field("email"), account.email),
-								q.eq(q.field("status"), "pending")
-							)
+						.filter((q) =>
+							q.and(q.eq(q.field("email"), account.email), q.eq(q.field("status"), "pending")),
 						)
 						.first()
 
@@ -218,7 +215,7 @@ export const processWorkosEvents = internalMutation({
 							throw new Error(`Organization ${eventData.organizationId} not found`)
 						}
 
-						let invitedBy = undefined
+						let invitedBy
 						if (eventData.inviterUserId) {
 							const inviter = await ctx.db
 								.query("users")
@@ -529,7 +526,7 @@ export const syncInvitations = internalMutation({
 					}
 
 					// Find inviter user if available
-					let invitedBy: any = undefined
+					let invitedBy: any
 					if (workosInvitation.inviterUserId) {
 						const inviter = await ctx.db
 							.query("users")
@@ -592,10 +589,7 @@ export const syncInvitations = internalMutation({
 
 			// Mark invitations as expired if they are past expiration date
 			for (const existingInvitation of existingInvitations) {
-				if (
-					existingInvitation.status === "pending" &&
-					Date.now() > existingInvitation.expiresAt
-				) {
+				if (existingInvitation.status === "pending" && Date.now() > existingInvitation.expiresAt) {
 					try {
 						await ctx.db.patch(existingInvitation._id, {
 							status: "expired",

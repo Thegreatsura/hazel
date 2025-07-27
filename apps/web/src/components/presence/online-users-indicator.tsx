@@ -11,7 +11,8 @@ export function OnlineUsersIndicator() {
 	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
 	const userQuery = useQuery(convexQuery(api.me.getCurrentUser, {}))
 
-	const organizationId = organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
+	const organizationId =
+		organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
 	const userId = userQuery.data?._id
 
 	// Get online users count

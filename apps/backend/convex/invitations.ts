@@ -1,4 +1,5 @@
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import { organizationServerMutation, organizationServerQuery } from "./middleware/withOrganization"
 
 export const getInvitations = organizationServerQuery({
@@ -59,10 +60,33 @@ export const resendInvitation = organizationServerMutation({
 			throw new Error("Can only resend pending invitations")
 		}
 
-		// For now, we'll just update the expiration time
-		// In a real implementation, you'd call WorkOS to resend the email
+		// First, revoke the existing invitation in WorkOS
+		const revokeResult = await ctx.runAction(internal.workosActions.revokeWorkosInvitation, {
+			invitationId: invitation.workosInvitationId,
+		})
+
+		if (!revokeResult.success) {
+			// If revoke fails, it might already be expired/revoked in WorkOS
+			console.warn("Failed to revoke invitation in WorkOS:", revokeResult.error)
+		}
+
+		// Send a new invitation
+		const sendResult = await ctx.runAction(internal.workosActions.sendInvitation, {
+			email: invitation.email,
+			organizationId: ctx.organization.workosId,
+			role: invitation.role,
+			inviterUserId: ctx.account.doc.externalId,
+		})
+
+		if (!sendResult.success) {
+			throw new Error(`Failed to resend invitation: ${sendResult.error}`)
+		}
+
+		// Update the local invitation with new WorkOS ID and expiration
 		await ctx.db.patch(args.invitationId, {
-			expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
+			workosInvitationId: sendResult.invitation.id,
+			expiresAt: new Date(sendResult.invitation.expiresAt).getTime(),
+			invitedAt: Date.now(),
 		})
 
 		return { success: true, message: "Invitation resent successfully" }
@@ -74,7 +98,6 @@ export const revokeInvitation = organizationServerMutation({
 		invitationId: v.id("invitations"),
 	},
 	handler: async (ctx, args) => {
-		// Check if user has permission
 		if (ctx.organizationMembership.role !== "admin") {
 			throw new Error("Only admins can revoke invitations")
 		}
@@ -92,12 +115,19 @@ export const revokeInvitation = organizationServerMutation({
 			throw new Error("Can only revoke pending invitations")
 		}
 
+		// Revoke the invitation in WorkOS
+		const revokeResult = await ctx.runAction(internal.workosActions.revokeWorkosInvitation, {
+			invitationId: invitation.workosInvitationId,
+		})
+
+		if (!revokeResult.success) {
+			throw new Error(`Failed to revoke invitation: ${revokeResult.error}`)
+		}
+
 		// Update status to revoked
 		await ctx.db.patch(args.invitationId, {
 			status: "revoked",
 		})
-
-		// In a real implementation, you'd also call WorkOS to revoke the invitation
 
 		return { success: true, message: "Invitation revoked successfully" }
 	},
