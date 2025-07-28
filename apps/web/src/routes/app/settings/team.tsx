@@ -19,7 +19,6 @@ import { Table, TableCard } from "~/components/application/table/table"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Badge, type BadgeColor, BadgeWithDot } from "~/components/base/badges/badges"
 import { Button } from "~/components/base/buttons/button"
-import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
@@ -64,7 +63,6 @@ function RouteComponent() {
 			role: user.role,
 		})) || []
 
-
 	const roleToBadgeColorsMap: Record<string, BadgeColor<"pill-color">> = {
 		owner: "brand",
 		admin: "pink",
@@ -75,8 +73,6 @@ function RouteComponent() {
 		const [firstName, lastName] = name.split(" ")
 		return `${firstName.charAt(0)}${lastName.charAt(0)}`
 	}
-
-
 
 	const handleRemoveUser = async (userId: Id<"users">) => {
 		if (!organizationId) return
@@ -237,7 +233,6 @@ function RouteComponent() {
 				)}
 				<PaginationCardDefault page={1} total={Math.ceil(teamMembers.length / 10)} />
 			</TableCard.Root>
-
 
 			<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
 
