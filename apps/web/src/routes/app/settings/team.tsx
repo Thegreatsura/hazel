@@ -6,23 +6,23 @@ import { Form } from "~/components/base/form/form"
 import "@workos-inc/widgets/styles.css"
 
 import type { Id } from "@hazel/backend"
-import { Plus, RefreshCcw02, Trash01, XClose, User02, AlertTriangle } from "@untitledui/icons"
+import { AlertTriangle, Plus, Trash01, User02 } from "@untitledui/icons"
 import { useState } from "react"
 import type { SortDescriptor } from "react-aria-components"
-import { toast } from "sonner"
-import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
-import { ChangeRoleModal } from "~/components/application/modals/change-role-modal"
-import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
-import { CloseButton } from "~/components/base/buttons/close-button"
-import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
+import { toast } from "sonner"
+import { ChangeRoleModal } from "~/components/application/modals/change-role-modal"
+import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
+import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { PaginationCardDefault } from "~/components/application/pagination/pagination"
 import { Table, TableCard } from "~/components/application/table/table"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Badge, type BadgeColor, BadgeWithDot } from "~/components/base/badges/badges"
 import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
+import { CloseButton } from "~/components/base/buttons/close-button"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
+import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { usePresence } from "~/components/presence/presence-provider"
 
 export const Route = createFileRoute("/app/settings/team")({
@@ -34,18 +34,15 @@ function RouteComponent() {
 		column: "status",
 		direction: "ascending",
 	})
-	const [invitationsSortDescriptor, setInvitationsSortDescriptor] = useState<SortDescriptor>({
-		column: "email",
-		direction: "ascending",
-	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
-	const [changeRoleUser, setChangeRoleUser] = useState<{ id: Id<"users">, name: string, role: string } | null>(null)
+	const [changeRoleUser, setChangeRoleUser] = useState<{
+		id: Id<"users">
+		name: string
+		role: string
+	} | null>(null)
 	const [removeUserId, setRemoveUserId] = useState<Id<"users"> | null>(null)
 
 	const teamMembersQuery = useConvexQuery(api.users.getUsers, {})
-	const invitationsQuery = useConvexQuery(api.invitations.getInvitations, {})
-	const resendInvitationMutation = useConvexMutation(api.invitations.resendInvitation)
-	const revokeInvitationMutation = useConvexMutation(api.invitations.revokeInvitation)
 	const removeMemberMutation = useConvexMutation(api.organizations.removeMember)
 	const currentUserQuery = useConvexQuery(api.me.get)
 	const organizationQuery = useConvexQuery(api.me.getOrganization)
@@ -53,7 +50,6 @@ function RouteComponent() {
 	const { isUserOnline } = usePresence()
 
 	const isLoading = teamMembersQuery === undefined
-	const isInvitationsLoading = invitationsQuery === undefined
 	const currentUser = currentUserQuery
 	const organization = organizationQuery?.directive === "success" ? organizationQuery.data : null
 	const organizationId = organization?._id
@@ -68,7 +64,6 @@ function RouteComponent() {
 			role: user.role,
 		})) || []
 
-	const pendingInvitations = invitationsQuery?.filter((inv) => !inv.isExpired) || []
 
 	const roleToBadgeColorsMap: Record<string, BadgeColor<"pill-color">> = {
 		owner: "brand",
@@ -81,50 +76,11 @@ function RouteComponent() {
 		return `${firstName.charAt(0)}${lastName.charAt(0)}`
 	}
 
-	const formatTimeRemaining = (milliseconds: number) => {
-		if (milliseconds <= 0) return "Expired"
 
-		const days = Math.floor(milliseconds / (1000 * 60 * 60 * 24))
-		const hours = Math.floor((milliseconds % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-		if (days > 0) {
-			return `Expires in ${days} day${days > 1 ? "s" : ""}`
-		}
-		if (hours > 0) {
-			return `Expires in ${hours} hour${hours > 1 ? "s" : ""}`
-		}
-		return "Expires soon"
-	}
-
-	const handleResendInvitation = async (invitationId: Id<"invitations">) => {
-		try {
-			await resendInvitationMutation({ invitationId: invitationId })
-			toast.info("Invitation resent", {
-				description: "The invitation has been resent successfully.",
-			})
-		} catch (error) {
-			toast.error("Failed to resend invitation", {
-				description: error instanceof Error ? error.message : "An error occurred",
-			})
-		}
-	}
-
-	const handleRevokeInvitation = async (invitationId: Id<"invitations">) => {
-		try {
-			await revokeInvitationMutation({ invitationId })
-			toast.info("Invitation revoked", {
-				description: "The invitation has been revoked successfully.",
-			})
-		} catch (error) {
-			toast.error("Failed to revoke invitation", {
-				description: error instanceof Error ? error.message : "An error occurred",
-			})
-		}
-	}
 
 	const handleRemoveUser = async (userId: Id<"users">) => {
 		if (!organizationId) return
-		
+
 		try {
 			await removeMemberMutation({ organizationId, userId })
 			toast.success("Member removed", {
@@ -140,29 +96,22 @@ function RouteComponent() {
 
 	const canManageUser = (_userRole: string, targetUserRole: string) => {
 		if (!currentUser) return false
-		const currentUserMember = teamMembers.find(m => m.id === currentUser._id)
+		const currentUserMember = teamMembers.find((m) => m.id === currentUser._id)
 		if (!currentUserMember) return false
-		
+
 		const currentRole = currentUserMember.role
-		
+
 		// Owners can manage everyone
 		if (currentRole === "owner") return true
-		
+
 		// Admins can only manage members
 		if (currentRole === "admin" && targetUserRole === "member") return true
-		
+
 		return false
 	}
 
 	return (
-		<Form
-			className="flex flex-col gap-6 px-4 lg:px-8"
-			onSubmit={(e) => {
-				e.preventDefault()
-				const data = Object.fromEntries(new FormData(e.currentTarget))
-				console.log("Form data:", data)
-			}}
-		>
+		<div className="flex flex-col gap-6 px-4 lg:px-8">
 			<TableCard.Root className="rounded-none bg-transparent shadow-none ring-0 lg:rounded-xl lg:bg-primary lg:shadow-xs lg:ring-1">
 				<TableCard.Header
 					title="Team members"
@@ -245,29 +194,41 @@ function RouteComponent() {
 									</Table.Cell>
 
 									<Table.Cell className="px-4">
-										{currentUser && member.id !== currentUser._id && canManageUser(member.role, member.role) && (
-											<Dropdown.Root>
-												<Dropdown.DotsButton />
-												<Dropdown.Popover>
-													<Dropdown.Menu onAction={(key) => {
-														const action = key as string
-														if (action === "change-role") {
-															setChangeRoleUser({ id: member.id, name: member.name, role: member.role })
-														} else if (action === "remove") {
-															setRemoveUserId(member.id)
-														}
-													}}>
-														<Dropdown.Item id="change-role" label="Change role" icon={User02} />
-														<Dropdown.Separator />
-														<Dropdown.Item 
-															id="remove" 
-															label="Remove from team" 
-															icon={Trash01}
-														/>
-													</Dropdown.Menu>
-												</Dropdown.Popover>
-											</Dropdown.Root>
-										)}
+										{currentUser &&
+											member.id !== currentUser._id &&
+											canManageUser(member.role, member.role) && (
+												<Dropdown.Root>
+													<Dropdown.DotsButton />
+													<Dropdown.Popover>
+														<Dropdown.Menu
+															onAction={(key) => {
+																const action = key as string
+																if (action === "change-role") {
+																	setChangeRoleUser({
+																		id: member.id,
+																		name: member.name,
+																		role: member.role,
+																	})
+																} else if (action === "remove") {
+																	setRemoveUserId(member.id)
+																}
+															}}
+														>
+															<Dropdown.Item
+																id="change-role"
+																label="Change role"
+																icon={User02}
+															/>
+															<Dropdown.Separator />
+															<Dropdown.Item
+																id="remove"
+																label="Remove from team"
+																icon={Trash01}
+															/>
+														</Dropdown.Menu>
+													</Dropdown.Popover>
+												</Dropdown.Root>
+											)}
 									</Table.Cell>
 								</Table.Row>
 							)}
@@ -277,109 +238,24 @@ function RouteComponent() {
 				<PaginationCardDefault page={1} total={Math.ceil(teamMembers.length / 10)} />
 			</TableCard.Root>
 
-			{/* Pending Invitations Section */}
-			<TableCard.Root className="rounded-none bg-transparent shadow-none ring-0 lg:rounded-xl lg:bg-primary lg:shadow-xs lg:ring-1">
-				<TableCard.Header
-					title="Pending invitations"
-					description="Manage pending invitations sent to team members."
-					className="pb-5"
-					badge={
-						<Badge color="gray" type="modern" size="sm">
-							{pendingInvitations.length} pending
-						</Badge>
-					}
-				/>
-				{isInvitationsLoading ? (
-					<div className="flex h-64 items-center justify-center">
-						<p className="text-sm text-tertiary">Loading invitations...</p>
-					</div>
-				) : pendingInvitations.length === 0 ? (
-					<div className="flex h-64 items-center justify-center">
-						<p className="text-sm text-tertiary">No pending invitations</p>
-					</div>
-				) : (
-					<Table
-						aria-label="Pending invitations"
-						selectionMode="multiple"
-						sortDescriptor={invitationsSortDescriptor}
-						onSortChange={setInvitationsSortDescriptor}
-						className="bg-primary"
-					>
-						<Table.Header className="bg-primary">
-							<Table.Head
-								id="email"
-								isRowHeader
-								label="Email"
-								allowsSorting
-								className="w-full"
-							/>
-							<Table.Head id="invitedBy" label="Invited by" allowsSorting />
-							<Table.Head id="status" label="Status" />
-							<Table.Head id="expiry" label="Expiration" allowsSorting />
-							<Table.Head id="actions" />
-						</Table.Header>
-						<Table.Body items={pendingInvitations}>
-							{(invitation) => (
-								<Table.Row id={invitation._id} className="odd:bg-secondary_subtle">
-									<Table.Cell>
-										<p className="font-medium text-primary text-sm">{invitation.email}</p>
-									</Table.Cell>
-
-									<Table.Cell>
-										<p className="text-sm text-tertiary">
-											{invitation.inviterName || "System"}
-										</p>
-									</Table.Cell>
-									<Table.Cell>
-										<BadgeWithDot color="warning" size="sm" type="modern">
-											Pending
-										</BadgeWithDot>
-									</Table.Cell>
-									<Table.Cell>
-										<p className="text-sm text-tertiary">
-											{formatTimeRemaining(invitation.timeUntilExpiry)}
-										</p>
-									</Table.Cell>
-									<Table.Cell className="px-4">
-										<div className="flex justify-end gap-0.5">
-											<ButtonUtility
-												size="xs"
-												color="tertiary"
-												tooltip="Resend invitation"
-												icon={RefreshCcw02}
-												onClick={() => handleResendInvitation(invitation._id)}
-											/>
-											<ButtonUtility
-												size="xs"
-												color="tertiary"
-												tooltip="Revoke invitation"
-												icon={XClose}
-												onClick={() => handleRevokeInvitation(invitation._id)}
-											/>
-										</div>
-									</Table.Cell>
-								</Table.Row>
-							)}
-						</Table.Body>
-					</Table>
-				)}
-				<PaginationCardDefault page={1} total={Math.ceil(pendingInvitations.length / 10)} />
-			</TableCard.Root>
 
 			<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
-			
+
 			{changeRoleUser && organizationId && currentUser && (
 				<ChangeRoleModal
 					isOpen={!!changeRoleUser}
 					onOpenChange={(open) => !open && setChangeRoleUser(null)}
 					user={changeRoleUser}
 					organizationId={organizationId}
-					currentUserRole={teamMembers.find(m => m.id === currentUser._id)?.role || "member"}
+					currentUserRole={teamMembers.find((m) => m.id === currentUser._id)?.role || "member"}
 				/>
 			)}
 
 			{removeUserId && (
-				<AriaDialogTrigger isOpen={!!removeUserId} onOpenChange={(open) => !open && setRemoveUserId(null)}>
+				<AriaDialogTrigger
+					isOpen={!!removeUserId}
+					onOpenChange={(open) => !open && setRemoveUserId(null)}
+				>
 					<ModalOverlay isDismissable>
 						<Modal>
 							<Dialog>
@@ -392,14 +268,23 @@ function RouteComponent() {
 									/>
 									<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
 										<div className="relative w-max">
-											<FeaturedIcon color="error" size="lg" theme="modern" icon={AlertTriangle} />
+											<FeaturedIcon
+												color="error"
+												size="lg"
+												theme="modern"
+												icon={AlertTriangle}
+											/>
 										</div>
 										<div className="z-10 flex flex-col gap-0.5">
-											<AriaHeading slot="title" className="text-md font-semibold text-primary">
+											<AriaHeading
+												slot="title"
+												className="text-md font-semibold text-primary"
+											>
 												Remove team member
 											</AriaHeading>
 											<p className="text-sm text-tertiary">
-												Are you sure you want to remove this member from your team? They will lose access to all channels and messages.
+												Are you sure you want to remove this member from your team?
+												They will lose access to all channels and messages.
 											</p>
 										</div>
 									</div>
@@ -425,6 +310,6 @@ function RouteComponent() {
 					</ModalOverlay>
 				</AriaDialogTrigger>
 			)}
-		</Form>
+		</div>
 	)
 }

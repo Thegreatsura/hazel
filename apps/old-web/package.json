@@ -47,7 +47,7 @@
 		"clerk-solidjs": "^2.0.10",
 		"cmdk-solid": "^1.1.2",
 		"convex": "^1.25.4",
-		"convex-helpers": "^0.1.99",
+		"convex-helpers": "^0.1.100",
 		"remark-gfm": "^4.0.1",
 		"remark-html": "^16.0.1",
 		"remark-sugar-high": "^0.6.0",

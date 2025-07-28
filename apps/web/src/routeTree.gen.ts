@@ -20,6 +20,7 @@ import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/inde
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 import { Route as AppSettingsProfileRouteImport } from './routes/app/settings/profile'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/app/settings/notifications'
+import { Route as AppSettingsInvitationsRouteImport } from './routes/app/settings/invitations'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings/integrations'
 import { Route as AppSettingsEmailRouteImport } from './routes/app/settings/email'
 import { Route as AppSettingsBillingRouteImport } from './routes/app/settings/billing'
@@ -81,6 +82,11 @@ const AppSettingsNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AppSettingsLayoutRoute,
   } as any)
+const AppSettingsInvitationsRoute = AppSettingsInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => AppSettingsLayoutRoute,
+} as any)
 const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/email': typeof AppSettingsEmailRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/invitations': typeof AppSettingsInvitationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/email': typeof AppSettingsEmailRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/invitations': typeof AppSettingsInvitationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/email': typeof AppSettingsEmailRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/app/settings/invitations': typeof AppSettingsInvitationsRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/profile': typeof AppSettingsProfileRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/app/settings/billing'
     | '/app/settings/email'
     | '/app/settings/integrations'
+    | '/app/settings/invitations'
     | '/app/settings/notifications'
     | '/app/settings/profile'
     | '/app/settings/team'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/app/settings/billing'
     | '/app/settings/email'
     | '/app/settings/integrations'
+    | '/app/settings/invitations'
     | '/app/settings/notifications'
     | '/app/settings/profile'
     | '/app/settings/team'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/app/settings/billing'
     | '/app/settings/email'
     | '/app/settings/integrations'
+    | '/app/settings/invitations'
     | '/app/settings/notifications'
     | '/app/settings/profile'
     | '/app/settings/team'
@@ -289,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsNotificationsRouteImport
       parentRoute: typeof AppSettingsLayoutRoute
     }
+    '/app/settings/invitations': {
+      id: '/app/settings/invitations'
+      path: '/invitations'
+      fullPath: '/app/settings/invitations'
+      preLoaderRoute: typeof AppSettingsInvitationsRouteImport
+      parentRoute: typeof AppSettingsLayoutRoute
+    }
     '/app/settings/integrations': {
       id: '/app/settings/integrations'
       path: '/integrations'
@@ -324,6 +343,7 @@ interface AppSettingsLayoutRouteChildren {
   AppSettingsBillingRoute: typeof AppSettingsBillingRoute
   AppSettingsEmailRoute: typeof AppSettingsEmailRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsInvitationsRoute: typeof AppSettingsInvitationsRoute
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsProfileRoute: typeof AppSettingsProfileRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
@@ -334,6 +354,7 @@ const AppSettingsLayoutRouteChildren: AppSettingsLayoutRouteChildren = {
   AppSettingsBillingRoute: AppSettingsBillingRoute,
   AppSettingsEmailRoute: AppSettingsEmailRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsInvitationsRoute: AppSettingsInvitationsRoute,
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsProfileRoute: AppSettingsProfileRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,

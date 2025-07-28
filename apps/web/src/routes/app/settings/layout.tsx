@@ -13,6 +13,7 @@ const tabs = [
 	{ id: "profile", label: "Profile" },
 	{ id: "appearance", label: "Appearance" },
 	{ id: "team", label: "Team" },
+	{ id: "invitations", label: "Invitations" },
 	{ id: "billing", label: "Billing" },
 	{ id: "notifications", label: "Notifications", badge: 2 },
 	{ id: "integrations", label: "Integrations" },
