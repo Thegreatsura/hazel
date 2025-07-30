@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useChat } from "~/hooks/use-chat"
 
 import { MessageItem } from "./message-item"
@@ -46,18 +46,52 @@ export function MessageList() {
 		)
 	}
 
-	// Group messages by date
-	const groupedMessages = messages.reduce(
-		(groups, message) => {
-			const date = new Date(message._creationTime).toDateString()
-			if (!groups[date]) {
-				groups[date] = []
+	// Process messages to determine grouping
+	const processedMessages = useMemo(() => {
+		const timeThreshold = 5 * 60 * 1000 // 5 minutes
+
+		return messages.map((message, index) => {
+			// Determine isGroupStart
+			const prevMessage = index > 0 ? messages[index - 1] : null
+			const isGroupStart = !prevMessage || 
+				message.authorId !== prevMessage.authorId ||
+				message._creationTime - prevMessage._creationTime > timeThreshold ||
+				!!prevMessage.replyToMessageId
+
+			// Determine isGroupEnd
+			const nextMessage = index < messages.length - 1 ? messages[index + 1] : null
+			const isGroupEnd = !nextMessage ||
+				message.authorId !== nextMessage.authorId ||
+				nextMessage._creationTime - message._creationTime > timeThreshold
+
+			// TODO: Implement these when channel data is available
+			const isFirstNewMessage = false // Will be based on lastSeenMessageId
+			const isPinned = false // Will be based on channel.pinnedMessages
+
+			return {
+				message,
+				isGroupStart,
+				isGroupEnd,
+				isFirstNewMessage,
+				isPinned,
 			}
-			groups[date].push(message)
-			return groups
-		},
-		{} as Record<string, typeof messages>,
-	)
+		})
+	}, [messages])
+
+	// Group messages by date
+	const groupedMessages = useMemo(() => {
+		return processedMessages.reduce(
+			(groups, processedMessage) => {
+				const date = new Date(processedMessage.message._creationTime).toDateString()
+				if (!groups[date]) {
+					groups[date] = []
+				}
+				groups[date].push(processedMessage)
+				return groups
+			},
+			{} as Record<string, typeof processedMessages>,
+		)
+	}, [processedMessages])
 
 	// Auto-scroll to bottom on new messages
 	useEffect(() => {
@@ -111,9 +145,9 @@ export function MessageList() {
 								{date}
 							</span>
 						</div>
-						{dateMessages.map((message, index) => (
+						{dateMessages.map((processedMessage, index) => (
 							<div
-								key={message._id}
+								key={processedMessage.message._id}
 								ref={
 									index === dateMessages.length - 1 &&
 									date ===
@@ -130,6 +164,7 @@ export function MessageList() {
 			{hasMoreMessages && (
 				<div className="py-2 text-center">
 					<button
+						type="button"
 						onClick={loadMoreMessages}
 						className="text-muted-foreground text-xs hover:text-foreground"
 					>
