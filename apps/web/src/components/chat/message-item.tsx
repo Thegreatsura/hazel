@@ -98,7 +98,7 @@ export function MessageItem({
 		<div
 			id={`message-${message._id}`}
 			className={cx(
-				`group relative transition-colors flex flex-col rounded-md rounded-l-none px-4 py-0.5 transition-colors hover:bg-secondary`,
+				`group relative flex flex-col rounded-md rounded-l-none px-4 py-0.5 transition-colors hover:bg-secondary`,
 				isGroupStart ? "mt-2" : "",
 				isGroupEnd ? "mb-2" : "",
 				isFirstNewMessage
