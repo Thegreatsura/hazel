@@ -4,7 +4,7 @@ import { useChat } from "~/hooks/use-chat"
 import { MessageItem } from "./message-item"
 
 export function MessageList() {
-	const { messages, isLoadingMessages, hasMoreMessages, loadMoreMessages } = useChat()
+	const { messages, isLoadingMessages, isLoadingNext, isLoadingPrev, loadNext, loadPrev } = useChat()
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const lastMessageRef = useRef<HTMLDivElement>(null)
 
@@ -62,15 +62,6 @@ export function MessageList() {
 		}
 	}, [])
 
-	const handleScroll = () => {
-		const container = scrollContainerRef.current
-		if (!container || !hasMoreMessages) return
-
-		if (container.scrollTop === 0) {
-			loadMoreMessages()
-		}
-	}
-
 	if (isLoadingMessages) {
 		return (
 			<div className="flex h-full items-center justify-center">
@@ -95,11 +86,19 @@ export function MessageList() {
 	}
 
 	return (
-		<div
-			ref={scrollContainerRef}
-			onScroll={handleScroll}
-			className="flex h-full flex-col-reverse overflow-y-auto py-2 pr-4"
-		>
+		<div ref={scrollContainerRef} className="flex h-full flex-col-reverse overflow-y-auto py-2 pr-4">
+			{loadNext && (
+				<div className="py-2 text-center">
+					<button
+						type="button"
+						onClick={loadNext}
+						className="text-muted-foreground text-xs hover:text-foreground"
+						disabled={isLoadingNext}
+					>
+						{isLoadingNext ? "Loading..." : "Load newer messages"}
+					</button>
+				</div>
+			)}
 			{Object.entries(groupedMessages)
 				.reverse()
 				.map(([date, dateMessages]) => (
@@ -131,14 +130,15 @@ export function MessageList() {
 						))}
 					</div>
 				))}
-			{hasMoreMessages && (
+			{loadPrev && (
 				<div className="py-2 text-center">
 					<button
 						type="button"
-						onClick={loadMoreMessages}
+						onClick={loadPrev}
 						className="text-muted-foreground text-xs hover:text-foreground"
+						disabled={isLoadingPrev}
 					>
-						Load more messages
+						{isLoadingPrev ? "Loading..." : "Load older messages"}
 					</button>
 				</div>
 			)}
