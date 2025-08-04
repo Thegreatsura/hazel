@@ -29,10 +29,10 @@ export const DeleteMessageModal = ({ isOpen, onOpenChange, onConfirm }: DeleteMe
 								<div className="relative w-max">
 									<FeaturedIcon color="error" size="lg" theme="light" icon={Trash01} />
 
-									<BackgroundPattern pattern="circle" size="sm" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+									<BackgroundPattern pattern="circle" size="sm" className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2" />
 								</div>
 								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="text-md font-semibold text-primary">
+									<AriaHeading slot="title" className="font-semibold text-md text-primary">
 										Delete message
 									</AriaHeading>
 									<p className="text-sm text-tertiary">Are you sure you want to delete this message? This action cannot be undone.</p>
