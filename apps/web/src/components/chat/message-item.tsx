@@ -35,7 +35,16 @@ export function MessageItem({
 	isFirstNewMessage = false,
 	isPinned = false,
 }: MessageItemProps) {
-	const { editMessage, deleteMessage, addReaction, removeReaction, setReplyToMessageId, pinMessage, unpinMessage, pinnedMessages } = useChat()
+	const {
+		editMessage,
+		deleteMessage,
+		addReaction,
+		removeReaction,
+		setReplyToMessageId,
+		pinMessage,
+		unpinMessage,
+		pinnedMessages,
+	} = useChat()
 	const [isEditing, setIsEditing] = useState(false)
 
 	const { data: currentUser } = useQuery(convexQuery(api.me.getCurrentUser, {}))
@@ -43,7 +52,7 @@ export function MessageItem({
 
 	const showAvatar = isGroupStart || !!message.replyToMessageId
 	const isRepliedTo = !!message.replyToMessageId
-	const isMessagePinned = pinnedMessages?.some(p => p.messageId === message._id) || false
+	const isMessagePinned = pinnedMessages?.some((p) => p.messageId === message._id) || false
 
 	const handleReaction = (emoji: string) => {
 		const existingReaction = message.reactions?.find(

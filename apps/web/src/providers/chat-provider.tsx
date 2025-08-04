@@ -91,7 +91,10 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 
 	// Fetch pinned messages
 	const pinnedMessagesQuery = useQuery(
-		convexQuery(api.pinnedMessages.getPinnedMessages, organizationId ? { channelId, organizationId } : "skip"),
+		convexQuery(
+			api.pinnedMessages.getPinnedMessages,
+			organizationId ? { channelId, organizationId } : "skip",
+		),
 	)
 
 	// Fetch typing users - TODO: Implement when API is available

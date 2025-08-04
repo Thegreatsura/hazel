@@ -188,7 +188,13 @@ export function MessageToolbar({
 							{onMarkUnread && (
 								<Dropdown.Item onAction={onMarkUnread} icon={Mail01} label="Mark as unread" />
 							)}
-							{onPin && <Dropdown.Item onAction={onPin} icon={Stars02} label={isPinned ? "Unpin message" : "Pin message"} />}
+							{onPin && (
+								<Dropdown.Item
+									onAction={onPin}
+									icon={Stars02}
+									label={isPinned ? "Unpin message" : "Pin message"}
+								/>
+							)}
 
 							<Dropdown.Separator />
 

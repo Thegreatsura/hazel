@@ -46,7 +46,7 @@ export function PinnedMessagesModal() {
 							{sortedPins.length === 0 ? (
 								<div className="px-4 py-8 text-center">
 									<p className="text-secondary text-sm">No pinned messages yet</p>
-									<p className="mt-1 text-xs text-quaternary">
+									<p className="mt-1 text-quaternary text-xs">
 										Pin important messages to keep them easily accessible
 									</p>
 								</div>
@@ -56,7 +56,7 @@ export function PinnedMessagesModal() {
 										<button
 											key={pinnedMessage.messageId}
 											onClick={() => scrollToMessage(pinnedMessage.messageId)}
-											className="group relative w-full cursor-pointer border-b border-primary px-4 py-3 text-left transition-colors hover:bg-secondary last:border-b-0"
+											className="group relative w-full cursor-pointer border-primary border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary"
 											type="button"
 										>
 											{/* Unpin Button */}
@@ -84,21 +84,21 @@ export function PinnedMessagesModal() {
 															{pinnedMessage.messageAuthor.firstName}{" "}
 															{pinnedMessage.messageAuthor.lastName}
 														</span>
-														<span className="text-xs text-secondary">
+														<span className="text-secondary text-xs">
 															{format(
 																pinnedMessage.message._creationTime,
 																"MMM d, h:mm a",
 															)}
 														</span>
 													</div>
-													<p className="mt-1 line-clamp-2 text-sm text-secondary">
+													<p className="mt-1 line-clamp-2 text-secondary text-sm">
 														{pinnedMessage.message.content}
 													</p>
 												</div>
 											</div>
 
 											{/* Pinned Date */}
-											<div className="mt-2 text-xs text-secondary">
+											<div className="mt-2 text-secondary text-xs">
 												Pinned {format(pinnedMessage.pinnedAt, "MMM d 'at' h:mm a")}
 											</div>
 										</button>
