@@ -10,13 +10,7 @@ type MessagesResponse = FunctionReturnType<typeof api.messages.getMessages>
 type Message = MessagesResponse["page"][0]
 type Channel = FunctionReturnType<typeof api.channels.getChannel>
 type PinnedMessage = FunctionReturnType<typeof api.pinnedMessages.getPinnedMessages>[0]
-interface TypingUser {
-	userId: string
-	user: {
-		firstName: string
-		lastName: string
-	}
-}
+type TypingUser = FunctionReturnType<typeof api.typingIndicator.list>[0]
 type TypingUsers = TypingUser[]
 
 interface ChatContextValue {
