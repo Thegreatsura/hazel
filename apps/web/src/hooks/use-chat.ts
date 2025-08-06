@@ -1,1 +1,1 @@
-export { useChat } from "~/providers/global-chat-provider"
+export { useChat } from "~/providers/chat-provider"

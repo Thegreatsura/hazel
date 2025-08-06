@@ -1,12 +1,11 @@
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import type { FunctionReturnType } from "convex/server"
 import { useCallback } from "react"
 import { Pressable } from "react-aria"
-import { useChat } from "~/hooks/use-chat"
 import { cn } from "~/lib/utils"
 import { cx } from "~/utils/cx"
 import { Avatar } from "../base/avatar/avatar"
@@ -27,11 +26,16 @@ export interface ChannelItemProps {
 }
 
 export const ChannelItem = ({ channel }: ChannelItemProps) => {
-	const { prefetchChannel } = useChat()
+	const queryClient = useQueryClient()
 	const leaveChannelMutation = useConvexMutation(api.channels.leaveChannelForOrganization)
 	const updateChannelPreferencesMutation = useConvexMutation(
 		api.channels.updateChannelPreferencesForOrganization,
 	)
+	
+	// Get organization ID for prefetching
+	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
+	const organizationId =
+		organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
 
 	const handleLeaveChannel = useCallback(() => {
 		leaveChannelMutation({
@@ -55,8 +59,15 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 
 	const handleMouseEnter = useCallback(() => {
 		// Prefetch channel data on hover
-		prefetchChannel(channel._id as Id<"channels">)
-	}, [channel._id, prefetchChannel])
+		if (organizationId) {
+			queryClient.prefetchQuery(
+				convexQuery(api.channels.getChannel, { 
+					channelId: channel._id as Id<"channels">, 
+					organizationId 
+				})
+			)
+		}
+	}, [channel._id, organizationId, queryClient])
 
 	return (
 		<SidebarMenuItem onMouseEnter={handleMouseEnter}>
@@ -146,10 +157,15 @@ interface DmChannelLinkProps {
 
 export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => {
 	const { data: me } = useQuery(convexQuery(api.me.getCurrentUser, {}))
-	const { prefetchChannel } = useChat()
+	const queryClient = useQueryClient()
 	const updateChannelPreferencesMutation = useConvexMutation(
 		api.channels.updateChannelPreferencesForOrganization,
 	)
+	
+	// Get organization ID for prefetching
+	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
+	const organizationId =
+		organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
 
 	const filteredMembers = channel.members.filter((member) => member.userId !== me?._id)
 
@@ -176,8 +192,15 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 
 	const handleMouseEnter = useCallback(() => {
 		// Prefetch channel data on hover
-		prefetchChannel(channel._id as Id<"channels">)
-	}, [channel._id, prefetchChannel])
+		if (organizationId) {
+			queryClient.prefetchQuery(
+				convexQuery(api.channels.getChannel, { 
+					channelId: channel._id as Id<"channels">, 
+					organizationId 
+				})
+			)
+		}
+	}, [channel._id, organizationId, queryClient])
 
 	return (
 		<SidebarMenuItem onMouseEnter={handleMouseEnter}>

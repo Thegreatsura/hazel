@@ -1,15 +1,18 @@
+import type { Id } from "@hazel/backend"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useRef } from "react"
 import { ChatHeader } from "~/components/chat/chat-header"
 import { MessageComposer, type MessageComposerRef } from "~/components/chat/message-composer"
 import { MessageList } from "~/components/chat/message-list"
 import { TypingIndicator } from "~/components/chat/typing-indicator"
+import { ChatProvider } from "~/providers/chat-provider"
 
 export const Route = createFileRoute("/app/chat/$id")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
+	const { id } = Route.useParams()
 	const messageComposerRef = useRef<MessageComposerRef>(null)
 
 	useEffect(() => {
@@ -77,15 +80,17 @@ function RouteComponent() {
 	}, [])
 
 	return (
-		<div className="flex h-screen flex-col">
-			<ChatHeader />
-			<div className="flex-1 overflow-hidden">
-				<MessageList />
+		<ChatProvider channelId={id as Id<"channels">}>
+			<div className="flex h-screen flex-col">
+				<ChatHeader />
+				<div className="flex-1 overflow-hidden">
+					<MessageList />
+				</div>
+				<div className="px-4 pt-2 pb-4">
+					<MessageComposer ref={messageComposerRef} />
+					<TypingIndicator />
+				</div>
 			</div>
-			<div className="px-4 pt-2 pb-4">
-				<MessageComposer ref={messageComposerRef} />
-				<TypingIndicator />
-			</div>
-		</div>
+		</ChatProvider>
 	)
 }
