@@ -183,10 +183,21 @@ export function MessageList() {
 		}
 	}, [isLoadingNext, isLoadingPrev, messages.length, restoreScrollPosition, finishLoading])
 
+	// Show skeleton loader only when no cached messages exist
 	if (isLoadingMessages && messages.length === 0) {
 		return (
-			<div className="flex h-full items-center justify-center">
-				<div className="text-muted-foreground text-sm">Loading messages...</div>
+			<div className="flex h-full flex-col gap-4 p-4">
+				{/* Skeleton loader for messages */}
+				{[...Array(5)].map((_, index) => (
+					<div key={index} className="flex gap-3 animate-pulse">
+						<div className="size-10 rounded-full bg-muted" />
+						<div className="flex-1 space-y-2">
+							<div className="h-4 w-32 rounded bg-muted" />
+							<div className="h-4 w-3/4 rounded bg-muted" />
+							{index % 2 === 0 && <div className="h-4 w-1/2 rounded bg-muted" />}
+						</div>
+					</div>
+				))}
 			</div>
 		)
 	}
@@ -210,10 +221,11 @@ export function MessageList() {
 		<div
 			ref={scrollContainerRef}
 			onScroll={handleScroll}
-			className="flex h-full flex-col overflow-y-auto py-2 pr-4"
+			className="flex h-full flex-col overflow-y-auto py-2 pr-4 transition-opacity duration-200"
 			style={{
 				overflowAnchor: "auto",
 				scrollBehavior: "auto",
+				opacity: isLoadingMessages && messages.length > 0 ? 0.7 : 1,
 			}}
 		>
 			{/* Top sentinel for loading older messages */}

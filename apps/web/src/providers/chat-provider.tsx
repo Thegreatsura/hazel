@@ -4,7 +4,7 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import type { FunctionReturnType } from "convex/server"
 import { useNextPrevPaginatedQuery } from "convex-use-next-prev-paginated-query"
-import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react"
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 type MessagesResponse = FunctionReturnType<typeof api.messages.getMessages>
 type Message = MessagesResponse["page"][0]
@@ -64,9 +64,24 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 
 	// Keep track of previous messages to show during loading
 	const previousMessagesRef = useRef<Message[]>([])
+	// Keep track of the channel ID to clear messages when switching channels
+	const previousChannelIdRef = useRef<Id<"channels"> | null>(null)
 	// Keep track of pagination functions to avoid losing them during loading
 	const loadNextRef = useRef<(() => void) | undefined>(undefined)
 	const loadPrevRef = useRef<(() => void) | undefined>(undefined)
+
+	// Clear previous messages when channel changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We only want to run this when channelId changes
+	useEffect(() => {
+		if (previousChannelIdRef.current && previousChannelIdRef.current !== channelId) {
+			// Channel has changed, clear previous messages to prevent stale data
+			previousMessagesRef.current = []
+			loadNextRef.current = undefined
+			loadPrevRef.current = undefined
+			setReplyToMessageId(null)
+		}
+		previousChannelIdRef.current = channelId
+	}, [channelId])
 
 	const channelQuery = useQuery(
 		convexQuery(api.channels.getChannel, organizationId ? { channelId, organizationId } : "skip"),
