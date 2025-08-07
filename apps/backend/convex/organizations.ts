@@ -323,6 +323,35 @@ export const getUserOrganizations = accountQuery({
 	},
 })
 
+export const getOrganizationById = accountQuery({
+	args: {
+		organizationId: v.id("organizations"),
+	},
+	handler: async (ctx, args) => {
+		// Get the organization
+		const organization = await ctx.db.get(args.organizationId)
+		
+		if (!organization) {
+			return null
+		}
+
+		// Check if the current user is a member
+		const membership = await ctx.db
+			.query("organizationMembers")
+			.withIndex("by_organizationId_userId", (q) =>
+				q.eq("organizationId", args.organizationId).eq("userId", ctx.account.doc._id),
+			)
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.first()
+
+		if (!membership) {
+			return null
+		}
+
+		return organization
+	},
+})
+
 // Internal query to get all organizations (for sync purposes)
 export const getAllOrganizations = internalQuery({
 	args: {},

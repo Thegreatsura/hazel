@@ -1,7 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query"
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useParams } from "@tanstack/react-router"
 import { useAuth } from "@workos-inc/authkit-react"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
@@ -18,20 +19,35 @@ export const WorkspaceSwitcher = () => {
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
 	const { switchToOrganization } = useAuth()
 	const navigate = useNavigate()
+	const params = useParams({ strict: false })
 
-	// Get current organization
-	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
+	// Get organization ID from URL params
+	const organizationId = params.orgId as Id<"organizations"> | undefined
+
+	// Get current organization by ID from URL
+	const organizationByIdQuery = useQuery(
+		organizationId
+			? convexQuery(api.organizations.getOrganizationById, { organizationId })
+			: { enabled: false }
+	)
+
+	// Fall back to session-based query if no URL param
+	const organizationFromSessionQuery = useQuery(
+		!organizationId ? convexQuery(api.me.getOrganization, {}) : { enabled: false }
+	)
 
 	const userOrganizationsQuery = useQuery(convexQuery(api.organizations.getUserOrganizations, {}))
 
-	const currentOrg = organizationQuery.data?.directive === "success" ? organizationQuery.data.data : null
+	// Use URL-based org if available, otherwise fall back to session
+	const currentOrg = organizationId
+		? organizationByIdQuery.data
+		: organizationFromSessionQuery.data?.directive === "success"
+			? organizationFromSessionQuery.data.data
+			: null
 	const organizations = userOrganizationsQuery.data || []
 
 	const handleOrganizationSwitch = async (workosOrgId: string) => {
 		try {
-			// First switch the WorkOS session
-			await switchToOrganization({ organizationId: workosOrgId })
-			
 			// Find the organization to get its Convex ID
 			const targetOrg = organizations.find(org => org.workosId === workosOrgId)
 			if (targetOrg) {
@@ -51,8 +67,14 @@ export const WorkspaceSwitcher = () => {
 					}
 				}
 				
-				// Navigate to the new organization path
+				// Navigate to the new organization path first (this updates the UI immediately)
 				await navigate({ to: targetRoute as any })
+				
+				// Then switch the WorkOS session and reload to sync everything
+				await switchToOrganization({ organizationId: workosOrgId })
+				
+				// Force a reload to ensure session is fully synced
+				window.location.reload()
 			}
 		} catch (error) {
 			console.error("Failed to switch organization:", error)
