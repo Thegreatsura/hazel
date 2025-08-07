@@ -10,8 +10,6 @@ export const Route = createFileRoute("/app/")({
 function RouteComponent() {
 	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
 
-	console.log("Organization query:", organizationQuery)
-
 	if (organizationQuery.isLoading) {
 		return (
 			<div className="flex h-full items-center justify-center">
@@ -25,16 +23,13 @@ function RouteComponent() {
 		return <Navigate to="/app/$orgId" params={{ orgId }} />
 	}
 
-	// Handle redirect to onboarding or login
 	if (organizationQuery.data?.directive === "redirect") {
 		if (organizationQuery.data.to === "/auth/login") {
 			return <Navigate to="/auth/login" search={{ returnTo: "/app" }} />
 		}
-		// For any other redirects, just navigate to the path
-		return <Navigate to={organizationQuery.data.to as any} />
+		return <Navigate to={(organizationQuery.data as any).to as any} />
 	}
 
-	// No organization found
 	return (
 		<div className="flex h-full items-center justify-center">
 			<div className="text-center">

@@ -15,7 +15,7 @@ export function MessageList() {
 	const [isAtBottom, setIsAtBottom] = useState(true)
 	const prevMessageCountRef = useRef(messages.length)
 	const isUserScrollingRef = useRef(false)
-	const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>()
+	const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 	const loadingDirectionRef = useRef<"top" | "bottom" | null>(null)
 
 	const [topSentinelRef, isTopVisible] = useDebouncedIntersection({

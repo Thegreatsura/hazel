@@ -1,6 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query"
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
+import { useParams } from "@tanstack/react-router"
 import { useOnlineUsersCount } from "~/hooks/usePresenceData"
 
 /**
@@ -8,14 +10,17 @@ import { useOnlineUsersCount } from "~/hooks/usePresenceData"
  */
 export function OnlineUsersIndicator() {
 	// Get current organization and user
-	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
-	const userQuery = useQuery(convexQuery(api.me.getCurrentUser, {}))
+	const { orgId } = useParams({ from: "/app/$orgId" })
 
-	const organizationId =
-		organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
+	const organizationId = orgId as Id<"organizations">
+	const userQuery = useQuery(
+		convexQuery(api.me.getCurrentUser, {
+			organizationId,
+		}),
+	)
+
 	const userId = userQuery.data?._id
 
-	// Get online users count
 	const onlineCount = useOnlineUsersCount(organizationId, userId)
 
 	if (!organizationId || !userId) {

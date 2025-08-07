@@ -3,6 +3,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
+import { useParams } from "@tanstack/react-router"
 import { createContext, type ReactNode, useContext } from "react"
 
 interface PresenceContextValue {
@@ -59,12 +60,15 @@ function PresenceTracker({ organizationId, userId, children }: PresenceTrackerPr
 }
 
 export function PresenceProvider({ children }: PresenceProviderProps) {
-	// Fetch organization and user data
-	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
-	const userQuery = useQuery(convexQuery(api.me.getCurrentUser, {}))
+	const { orgId } = useParams({ from: "/app/$orgId" })
 
-	const organizationId =
-		organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
+	const organizationId = orgId as Id<"organizations">
+	const userQuery = useQuery(
+		convexQuery(api.me.getCurrentUser, {
+			organizationId,
+		}),
+	)
+
 	const userId = userQuery.data?._id
 
 	// Only render PresenceTracker when both IDs are available

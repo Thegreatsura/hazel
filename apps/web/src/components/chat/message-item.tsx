@@ -1,6 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query"
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
+import { useParams } from "@tanstack/react-router"
 import type { Editor } from "@tiptap/react"
 import type { FunctionReturnType } from "convex/server"
 import { format } from "date-fns"
@@ -35,6 +37,7 @@ export function MessageItem({
 	isFirstNewMessage = false,
 	isPinned = false,
 }: MessageItemProps) {
+	const { orgId } = useParams({ from: "/app/$orgId" })
 	const {
 		editMessage,
 		deleteMessage,
@@ -47,7 +50,11 @@ export function MessageItem({
 	} = useChat()
 	const [isEditing, setIsEditing] = useState(false)
 
-	const { data: currentUser } = useQuery(convexQuery(api.me.getCurrentUser, {}))
+	const { data: currentUser } = useQuery(
+		convexQuery(api.me.getCurrentUser, {
+			organizationId: orgId as Id<"organizations">,
+		}),
+	)
 	const isOwnMessage = currentUser?._id === message.authorId
 
 	const showAvatar = isGroupStart || !!message.replyToMessageId

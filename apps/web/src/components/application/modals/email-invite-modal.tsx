@@ -1,5 +1,7 @@
 import { useConvexMutation } from "@convex-dev/react-query"
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
+import { useParams } from "@tanstack/react-router"
 import { Mail01, Plus, Trash01, UsersPlus } from "@untitledui/icons"
 import { useState } from "react"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
@@ -28,6 +30,9 @@ interface InviteEntry {
 export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps) => {
 	const [invites, setInvites] = useState<InviteEntry[]>([{ id: "1", email: "", role: "member" }])
 	const [isSubmitting, setIsSubmitting] = useState(false)
+
+	const params = useParams({ from: "/app/$orgId" })
+	const organizationId = params?.orgId as Id<"organizations">
 
 	const inviteMemberMutation = useConvexMutation(api.organizations.inviteMember)
 
@@ -74,6 +79,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 				await inviteMemberMutation({
 					email: invite.email,
 					role: invite.role,
+					organizationId,
 				})
 				successCount++
 			} catch (error) {

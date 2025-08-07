@@ -27,19 +27,9 @@ export interface ChannelItemProps {
 
 export const ChannelItem = ({ channel }: ChannelItemProps) => {
 	const queryClient = useQueryClient()
-	const params = useParams({ from: "/app/$orgId", strict: false })
-	const orgIdFromRoute = params?.orgId as Id<"organizations"> | undefined
-	
-	// Fall back to getting organization from session if not in route
-	const organizationQuery = useQuery(
-		convexQuery(api.me.getOrganization, orgIdFromRoute ? "skip" : {})
-	)
-	const orgIdFromSession = organizationQuery.data?.directive === "success" 
-		? organizationQuery.data.data._id 
-		: undefined
-	
-	const organizationId = orgIdFromRoute || orgIdFromSession
-	
+	const params = useParams({ from: "/app/$orgId" })
+	const organizationId = params?.orgId as Id<"organizations">
+
 	const leaveChannelMutation = useConvexMutation(api.channels.leaveChannelForOrganization)
 	const updateChannelPreferencesMutation = useConvexMutation(
 		api.channels.updateChannelPreferencesForOrganization,
@@ -78,10 +68,10 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 		// Prefetch channel data on hover
 		if (organizationId) {
 			queryClient.prefetchQuery(
-				convexQuery(api.channels.getChannel, { 
-					channelId: channel._id as Id<"channels">, 
-					organizationId 
-				})
+				convexQuery(api.channels.getChannel, {
+					channelId: channel._id as Id<"channels">,
+					organizationId,
+				}),
 			)
 		}
 	}, [channel._id, organizationId, queryClient])
@@ -89,10 +79,7 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 	return (
 		<SidebarMenuItem onMouseEnter={handleMouseEnter}>
 			<SidebarMenuButton asChild>
-				<Link 
-					to="/app/$orgId/chat/$id"
-					params={{ orgId: organizationId || "", id: channel._id }}
-				>
+				<Link to="/app/$orgId/chat/$id" params={{ orgId: organizationId || "", id: channel._id }}>
 					<IconHashtagStroke className="size-5" />
 					<p className={cn("text-ellipsis text-nowrap", channel.isMuted && "opacity-60")}>
 						{channel.name}
@@ -176,20 +163,12 @@ interface DmChannelLinkProps {
 }
 
 export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => {
-	const params = useParams({ from: "/app/$orgId", strict: false })
-	const orgIdFromRoute = params?.orgId as Id<"organizations"> | undefined
-	
-	// Fall back to getting organization from session if not in route
-	const organizationQuery2 = useQuery(
-		convexQuery(api.me.getOrganization, orgIdFromRoute ? "skip" : {})
+	const params = useParams({ from: "/app/$orgId" })
+	const organizationId = params?.orgId as Id<"organizations">
+
+	const { data: me } = useQuery(
+		convexQuery(api.me.getCurrentUser, organizationId ? { organizationId } : "skip"),
 	)
-	const orgIdFromSession = organizationQuery2.data?.directive === "success" 
-		? organizationQuery2.data.data._id 
-		: undefined
-	
-	const organizationId = orgIdFromRoute || orgIdFromSession
-	
-	const { data: me } = useQuery(convexQuery(api.me.getCurrentUser, organizationId ? { organizationId } : "skip"))
 	const queryClient = useQueryClient()
 	const updateChannelPreferencesMutation = useConvexMutation(
 		api.channels.updateChannelPreferencesForOrganization,
@@ -231,10 +210,10 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 		// Prefetch channel data on hover
 		if (organizationId) {
 			queryClient.prefetchQuery(
-				convexQuery(api.channels.getChannel, { 
-					channelId: channel._id as Id<"channels">, 
-					organizationId 
-				})
+				convexQuery(api.channels.getChannel, {
+					channelId: channel._id as Id<"channels">,
+					organizationId,
+				}),
 			)
 		}
 	}, [channel._id, organizationId, queryClient])
@@ -242,10 +221,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 	return (
 		<SidebarMenuItem onMouseEnter={handleMouseEnter}>
 			<SidebarMenuButton asChild>
-				<Link 
-					to="/app/$orgId/chat/$id"
-					params={{ orgId: organizationId || "", id: channel._id }}
-				>
+				<Link to="/app/$orgId/chat/$id" params={{ orgId: organizationId || "", id: channel._id }}>
 					<div className="-space-x-4 flex items-center justify-center">
 						{channel.type === "single" && filteredMembers.length === 1 ? (
 							<div className="flex items-center justify-center gap-3">
