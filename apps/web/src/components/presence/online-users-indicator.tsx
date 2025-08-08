@@ -10,7 +10,7 @@ import { useOnlineUsersCount } from "~/hooks/usePresenceData"
  */
 export function OnlineUsersIndicator() {
 	// Get current organization and user
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 
 	const organizationId = orgId as Id<"organizations">
 	const userQuery = useQuery(

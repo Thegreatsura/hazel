@@ -24,7 +24,7 @@ type ChannelFormData = typeof channelSchema.infer
 
 export const NewChannelModal = () => {
 	const [isOpen, setIsOpen] = useState(false)
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const organizationId = orgId as Id<"organizations">
 
 	const createChannelMutation = useConvexMutation(api.channels.createChannelForOrganization)

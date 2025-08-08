@@ -196,7 +196,11 @@ export function MessageToolbar({
 					<Dropdown.Popover placement="bottom end">
 						<Dropdown.Menu>
 							{onThread && (
-								<Dropdown.Item onAction={onThread} icon={IconThread} label="Reply in thread" />
+								<Dropdown.Item
+									onAction={onThread}
+									icon={IconThread}
+									label="Reply in thread"
+								/>
 							)}
 							{onForward && (
 								<Dropdown.Item onAction={onForward} icon={Share06} label="Forward message" />

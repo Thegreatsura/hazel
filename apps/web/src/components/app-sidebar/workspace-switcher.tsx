@@ -39,12 +39,12 @@ export const WorkspaceSwitcher = () => {
 				const currentPath = window.location.pathname
 				const pathSegments = currentPath.split("/")
 
-				let targetRoute = `/app/${targetOrg._id}`
+				let targetRoute = `/_app/${targetOrg._id}`
 
 				if (pathSegments.length > 3 && pathSegments[1] === "app") {
 					const subPath = pathSegments.slice(3).join("/")
 					if (subPath) {
-						targetRoute = `/app/${targetOrg._id}/${subPath}`
+						targetRoute = `/_app/${targetOrg._id}/${subPath}`
 					}
 				}
 

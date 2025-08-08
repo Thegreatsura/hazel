@@ -60,7 +60,7 @@ function PresenceTracker({ organizationId, userId, children }: PresenceTrackerPr
 }
 
 export function PresenceProvider({ children }: PresenceProviderProps) {
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 
 	const organizationId = orgId as Id<"organizations">
 	const userQuery = useQuery(

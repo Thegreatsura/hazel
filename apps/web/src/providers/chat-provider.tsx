@@ -232,7 +232,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 				parentChannelId: channelId,
 				threadMessageId: messageId,
 			})
-			
+
 			// Open the newly created thread
 			setActiveThreadChannelId(threadChannelId)
 			setActiveThreadMessageId(messageId)

@@ -72,14 +72,12 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 				const pollInterval = setInterval(async () => {
 					attempts++
 					try {
-						// Try to navigate to the app, which will check for orgs
-						await navigate({ to: "/app" })
+						await navigate({ to: "/" })
 						clearInterval(pollInterval)
 					} catch (_error) {
 						if (attempts >= maxAttempts) {
 							clearInterval(pollInterval)
-							// Fallback to page reload if polling fails
-							window.location.href = "/app"
+							window.location.href = "/"
 						}
 					}
 				}, 1000)
@@ -194,7 +192,7 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 											/>
 											{!field.state.meta.errors?.length && field.state.value && (
 												<p className="text-tertiary text-xs">
-													Your organization URL will be: /app/{field.state.value}
+													Your organization URL will be: /_app/{field.state.value}
 												</p>
 											)}
 										</div>
