@@ -26,7 +26,7 @@ export const NewChannelModal = () => {
 	const [isOpen, setIsOpen] = useState(false)
 	const { orgId } = useParams({ from: "/app/$orgId" })
 	const organizationId = orgId as Id<"organizations">
-	
+
 	const createChannelMutation = useConvexMutation(api.channels.createChannelForOrganization)
 
 	const form = useAppForm({

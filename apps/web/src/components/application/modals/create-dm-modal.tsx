@@ -41,9 +41,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const organizationId = orgId as Id<"organizations">
 	const { isUserOnline } = usePresence()
 
-	const friendsQuery = useQuery(
-		convexQuery(api.social.getFriendsForOrganization, { organizationId })
-	)
+	const friendsQuery = useQuery(convexQuery(api.social.getFriendsForOrganization, { organizationId }))
 	const createDmChannelMutation = useConvexMutation(api.channels.createDmChannel)
 	const createGroupDmChannelMutation = useConvexMutation(api.channels.createGroupDmChannel)
 
@@ -59,7 +57,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 
 			try {
 				let channelId: Id<"channels">
-				
+
 				if (value.userIds.length === 1) {
 					// Single DM
 					channelId = await createDmChannelMutation({
@@ -123,19 +121,22 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 		setSelectedUsers([])
 		setSearchQuery("")
 	}
-	
+
 	const toggleUserSelection = (user: Doc<"users">) => {
 		const isSelected = selectedUsers.some((u) => u._id === user._id)
 		let newSelection: Doc<"users">[]
-		
+
 		if (isSelected) {
 			newSelection = selectedUsers.filter((u) => u._id !== user._id)
 		} else {
 			newSelection = [...selectedUsers, user]
 		}
-		
+
 		setSelectedUsers(newSelection)
-		form.setFieldValue("userIds", newSelection.map((u) => u._id))
+		form.setFieldValue(
+			"userIds",
+			newSelection.map((u) => u._id),
+		)
 	}
 
 	return (
@@ -189,7 +190,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 											<span className="text-sm text-tertiary">
 												{selectedUsers.length} selected
 											</span>
-											<div className="flex -space-x-2">
+											<div className="-space-x-2 flex">
 												{selectedUsers.slice(0, 3).map((user) => (
 													<Avatar
 														key={user._id}
@@ -200,7 +201,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 													/>
 												))}
 												{selectedUsers.length > 3 && (
-													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium text-primary">
+													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary font-medium text-primary text-xs">
 														+{selectedUsers.length - 3}
 													</div>
 												)}
@@ -275,12 +276,14 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 											color="primary"
 											size="lg"
 											onClick={form.handleSubmit}
-											isDisabled={!canSubmit || isSubmitting || selectedUsers.length === 0}
+											isDisabled={
+												!canSubmit || isSubmitting || selectedUsers.length === 0
+											}
 										>
-											{isSubmitting 
-												? "Creating..." 
-												: selectedUsers.length > 1 
-													? `Start group conversation (${selectedUsers.length})` 
+											{isSubmitting
+												? "Creating..."
+												: selectedUsers.length > 1
+													? `Start group conversation (${selectedUsers.length})`
 													: "Start conversation"}
 										</Button>
 									)}

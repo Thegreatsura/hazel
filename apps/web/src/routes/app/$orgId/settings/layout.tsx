@@ -69,7 +69,10 @@ function RouteComponent() {
 							onChange={(event) => {
 								const tabId = event.target.value
 								navigate({
-									to: tabId === "appearance" ? "/app/$orgId/settings" : `/app/$orgId/settings/${tabId}`,
+									to:
+										tabId === "appearance"
+											? "/app/$orgId/settings"
+											: `/app/$orgId/settings/${tabId}`,
 									params: { orgId },
 								})
 							}}
@@ -84,7 +87,10 @@ function RouteComponent() {
 							onSelectionChange={(value) => {
 								const tabId = value as string
 								navigate({
-									to: tabId === "appearance" ? "/app/$orgId/settings" : `/app/$orgId/settings/${tabId}`,
+									to:
+										tabId === "appearance"
+											? "/app/$orgId/settings"
+											: `/app/$orgId/settings/${tabId}`,
 									params: { orgId },
 								})
 							}}

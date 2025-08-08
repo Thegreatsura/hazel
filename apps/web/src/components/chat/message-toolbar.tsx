@@ -84,7 +84,9 @@ export function MessageToolbar({
 	const isAnyMenuOpen = emojiPickerOpen || deleteModalOpen || dropdownOpen
 
 	return (
-		<div className={`-translate-y-1/2 absolute top-0 right-2 transition-opacity ${isAnyMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+		<div
+			className={`-translate-y-1/2 absolute top-0 right-2 transition-opacity ${isAnyMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+		>
 			<div className="flex items-center gap-px rounded-lg border border-primary bg-primary shadow-sm">
 				{/* Quick Reactions */}
 				{topEmojis.map((emoji) => (

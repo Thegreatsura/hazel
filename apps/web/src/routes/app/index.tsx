@@ -30,12 +30,6 @@ function RouteComponent() {
 		return <Navigate to={(organizationQuery.data as any).to as any} />
 	}
 
-	return (
-		<div className="flex h-full items-center justify-center">
-			<div className="text-center">
-				<h2 className="mb-2 font-semibold text-xl">No Organization Found</h2>
-				<p className="text-secondary">Please contact your administrator.</p>
-			</div>
-		</div>
-	)
+	// Redirect to onboarding if user has no organization
+	return <Navigate to="/app/onboarding" />
 }

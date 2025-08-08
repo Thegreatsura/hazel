@@ -10,7 +10,7 @@ import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } fro
 export const SidebarFavoriteGroup = () => {
 	const { orgId } = useParams({ from: "/app/$orgId" })
 	const organizationId = orgId as Id<"organizations">
-	
+
 	const favoritedChannelsQuery = useQuery(
 		convexQuery(api.channels.getChannelsForOrganization, {
 			organizationId,

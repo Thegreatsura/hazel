@@ -22,9 +22,7 @@ function RouteComponent() {
 	const [searchQuery, setSearchQuery] = useState("")
 
 	// Fetch members from the organization
-	const membersQuery = useQuery(
-		convexQuery(api.social.getMembersForOrganization, { organizationId }),
-	)
+	const membersQuery = useQuery(convexQuery(api.social.getMembersForOrganization, { organizationId }))
 
 	// Get current user data
 	const currentUserQuery = useQuery(convexQuery(api.me.get, {}))

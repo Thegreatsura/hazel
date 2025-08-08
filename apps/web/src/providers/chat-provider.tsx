@@ -56,7 +56,6 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ channelId, organizationId, children }: ChatProviderProps) {
-
 	// Reply state
 	const [replyToMessageId, setReplyToMessageId] = useState<Id<"messages"> | null>(null)
 
@@ -81,9 +80,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		previousChannelIdRef.current = channelId
 	}, [channelId])
 
-	const channelQuery = useQuery(
-		convexQuery(api.channels.getChannel, { channelId, organizationId }),
-	)
+	const channelQuery = useQuery(convexQuery(api.channels.getChannel, { channelId, organizationId }))
 
 	const messagesResult = useNextPrevPaginatedQuery(
 		api.messages.getMessages,
@@ -96,16 +93,11 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 
 	// Fetch pinned messages
 	const pinnedMessagesQuery = useQuery(
-		convexQuery(
-			api.pinnedMessages.getPinnedMessages,
-			{ channelId, organizationId },
-		),
+		convexQuery(api.pinnedMessages.getPinnedMessages, { channelId, organizationId }),
 	)
 
 	// Fetch typing users
-	const typingUsersQuery = useQuery(
-		convexQuery(api.typingIndicator.list, { channelId, organizationId }),
-	)
+	const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
 	const typingUsers: TypingUsers = typingUsersQuery.data || []
 
 	// Debug: Log typing users updates

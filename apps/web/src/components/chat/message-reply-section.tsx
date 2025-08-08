@@ -11,7 +11,12 @@ interface MessageReplySectionProps {
 	onClick?: () => void
 }
 
-export function MessageReplySection({ replyToMessageId, channelId, organizationId, onClick }: MessageReplySectionProps) {
+export function MessageReplySection({
+	replyToMessageId,
+	channelId,
+	organizationId,
+	onClick,
+}: MessageReplySectionProps) {
 	const { data: replyMessage, isLoading } = useQuery(
 		convexQuery(api.messages.getMessage, {
 			id: replyToMessageId,

@@ -330,7 +330,7 @@ export const getOrganizationById = accountQuery({
 	handler: async (ctx, args) => {
 		// Get the organization
 		const organization = await ctx.db.get(args.organizationId)
-		
+
 		if (!organization) {
 			return null
 		}

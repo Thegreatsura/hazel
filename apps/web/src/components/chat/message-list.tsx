@@ -189,7 +189,7 @@ export function MessageList() {
 			<div className="flex h-full flex-col gap-4 p-4">
 				{/* Skeleton loader for messages */}
 				{[...Array(5)].map((_, index) => (
-					<div key={index} className="flex gap-3 animate-pulse">
+					<div key={index} className="flex animate-pulse gap-3">
 						<div className="size-10 rounded-full bg-muted" />
 						<div className="flex-1 space-y-2">
 							<div className="h-4 w-32 rounded bg-muted" />

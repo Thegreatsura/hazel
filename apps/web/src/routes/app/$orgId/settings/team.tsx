@@ -43,7 +43,7 @@ function RouteComponent() {
 	const [removeUserId, setRemoveUserId] = useState<Id<"users"> | null>(null)
 
 	const organizationId = orgId as Id<"organizations">
-	
+
 	const teamMembersQuery = useConvexQuery(api.users.getUsers, {
 		organizationId,
 	})
@@ -57,7 +57,7 @@ function RouteComponent() {
 
 	const isLoading = teamMembersQuery === undefined
 	const currentUser = currentUserQuery
-	const organization = organizationQuery
+	const _organization = organizationQuery
 
 	const teamMembers =
 		teamMembersQuery?.map((user) => ({

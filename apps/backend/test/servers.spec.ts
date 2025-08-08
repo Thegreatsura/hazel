@@ -30,7 +30,9 @@ describe("organizations", () => {
 
 		// Try to get users without auth
 		const unauthenticatedT = convexTest()
-		await expect(unauthenticatedT.query(api.users.getUsers, { organizationId: organization })).rejects.toThrow("Not authenticated")
+		await expect(
+			unauthenticatedT.query(api.users.getUsers, { organizationId: organization }),
+		).rejects.toThrow("Not authenticated")
 	})
 
 	test("can retrieve users with authentication and membership", async () => {

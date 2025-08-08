@@ -1,5 +1,6 @@
 import { useConvexAction } from "@convex-dev/react-query"
 import { api } from "@hazel/backend/api"
+import { useNavigate } from "@tanstack/react-router"
 import { Building02 } from "@untitledui/icons"
 import { type } from "arktype"
 import { useCallback, useEffect } from "react"
@@ -27,6 +28,7 @@ interface CreateOrganizationModalProps {
 
 export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganizationModalProps) => {
 	const createOrganizationAction = useConvexAction(api.organizations.create)
+	const navigate = useNavigate()
 
 	const generateSlug = useCallback((name: string) => {
 		return name
@@ -61,11 +63,26 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 
 				// The organization has been created in WorkOS
 				// The webhook will handle creating the Convex records
-				toast.info("Your new organization is being set up. The page will refresh shortly.")
+				toast.info("Setting up your new organization...")
 
-				setTimeout(() => {
-					window.location.reload()
-				}, 2000)
+				// Poll for the organization to be created in Convex
+				// This gives time for the WorkOS webhook to sync
+				let attempts = 0
+				const maxAttempts = 10
+				const pollInterval = setInterval(async () => {
+					attempts++
+					try {
+						// Try to navigate to the app, which will check for orgs
+						await navigate({ to: "/app" })
+						clearInterval(pollInterval)
+					} catch (_error) {
+						if (attempts >= maxAttempts) {
+							clearInterval(pollInterval)
+							// Fallback to page reload if polling fails
+							window.location.href = "/app"
+						}
+					}
+				}, 1000)
 			} catch (error: any) {
 				console.error("Failed to create organization:", error)
 				if (error.message?.includes("slug already exists")) {
