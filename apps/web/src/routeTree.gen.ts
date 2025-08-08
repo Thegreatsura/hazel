@@ -13,6 +13,7 @@ import { Route as AppLayoutRouteImport } from './routes/app/layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppOrgIdLayoutRouteImport } from './routes/app/$orgId/layout'
 import { Route as AppOrgIdIndexRouteImport } from './routes/app/$orgId/index'
 import { Route as AppOrgIdNotificationsRouteImport } from './routes/app/$orgId/notifications'
@@ -47,6 +48,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppOnboardingRoute = AppOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AppLayoutRoute,
 } as any)
 const AppOrgIdLayoutRoute = AppOrgIdLayoutRouteImport.update({
   id: '/$orgId',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppLayoutRouteWithChildren
   '/app/$orgId': typeof AppOrgIdLayoutRouteWithChildren
+  '/app/onboarding': typeof AppOnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/app/': typeof AppIndexRoute
   '/app/$orgId/settings': typeof AppOrgIdSettingsLayoutRouteWithChildren
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/onboarding': typeof AppOnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/app': typeof AppIndexRoute
   '/app/$orgId/notifications': typeof AppOrgIdNotificationsRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppLayoutRouteWithChildren
   '/app/$orgId': typeof AppOrgIdLayoutRouteWithChildren
+  '/app/onboarding': typeof AppOnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/app/': typeof AppIndexRoute
   '/app/$orgId/settings': typeof AppOrgIdSettingsLayoutRouteWithChildren
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/$orgId'
+    | '/app/onboarding'
     | '/auth/login'
     | '/app/'
     | '/app/$orgId/settings'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app/onboarding'
     | '/auth/login'
     | '/app'
     | '/app/$orgId/notifications'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/app/$orgId'
+    | '/app/onboarding'
     | '/auth/login'
     | '/app/'
     | '/app/$orgId/settings'
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/onboarding': {
+      id: '/app/onboarding'
+      path: '/onboarding'
+      fullPath: '/app/onboarding'
+      preLoaderRoute: typeof AppOnboardingRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
     '/app/$orgId': {
       id: '/app/$orgId'
@@ -427,11 +446,13 @@ const AppOrgIdLayoutRouteWithChildren = AppOrgIdLayoutRoute._addFileChildren(
 
 interface AppLayoutRouteChildren {
   AppOrgIdLayoutRoute: typeof AppOrgIdLayoutRouteWithChildren
+  AppOnboardingRoute: typeof AppOnboardingRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppLayoutRouteChildren: AppLayoutRouteChildren = {
   AppOrgIdLayoutRoute: AppOrgIdLayoutRouteWithChildren,
+  AppOnboardingRoute: AppOnboardingRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
