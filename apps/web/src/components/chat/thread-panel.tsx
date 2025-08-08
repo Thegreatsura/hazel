@@ -44,7 +44,7 @@ function ThreadContent({ threadChannelId, originalMessageId, organizationId, onC
 				<div className="flex items-center gap-2">
 					<h2 className="font-semibold">Thread</h2>
 					{threadChannel && (
-						<span className="text-tertiary text-sm">
+						<span className="text-sm text-tertiary">
 							{threadChannel.members?.length || 0} participants
 						</span>
 					)}

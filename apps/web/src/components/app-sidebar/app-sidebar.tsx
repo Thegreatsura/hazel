@@ -30,7 +30,7 @@ import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export const AppSidebar = () => {
-	const params = useParams({ from: "/app/$orgId" })
+	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as Id<"organizations">
 
 	const channelsQuery = useQuery(
@@ -66,8 +66,8 @@ export const AppSidebar = () => {
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={organizationId ? "/app/$orgId" : "/app"}
-										params={organizationId ? { orgId: organizationId } : {}}
+										to={"/$orgId"}
+										params={{ orgId: organizationId }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -80,8 +80,8 @@ export const AppSidebar = () => {
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={organizationId ? "/app/$orgId/chat" : "/app"}
-										params={organizationId ? { orgId: organizationId } : {}}
+										to={"/$orgId/chat"}
+										params={{ orgId: organizationId }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -155,7 +155,7 @@ export const AppSidebar = () => {
 
 const ActiveServer = () => {
 	const { orgId } = useParams({
-		from: "/app/$orgId",
+		from: "/_app/$orgId",
 	})
 	const { data } = useQuery(
 		convexQuery(api.organizations.getOrganizationById, {

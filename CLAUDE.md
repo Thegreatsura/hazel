@@ -161,7 +161,7 @@ export const myFunction = userMutation({
 ### File Organization
 - **Backend**: All Convex functions in `apps/backend/convex/`
 - **Web UI**: React components in `apps/web/src/`
-- **Mobile**: React Native components in `apps/mobile/app/`
+- **Mobile**: React Native components in `apps/mobile/_app/`
 - **Shared Types**: Exported from backend via package exports
 
 ### Error Handling

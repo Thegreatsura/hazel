@@ -15,7 +15,7 @@ export const NavUser = () => {
 	const { user, signOut } = useAuth()
 	const navigate = useNavigate()
 
-	const params = useParams({ from: "/app/$orgId" })
+	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as Id<"organizations">
 
 	return (
@@ -55,7 +55,7 @@ export const NavUser = () => {
 							onAction={() => {
 								if (organizationId) {
 									navigate({
-										to: "/app/$orgId/settings",
+										to: "/$orgId/settings",
 										params: { orgId: organizationId },
 									})
 								}

@@ -38,7 +38,7 @@ export function MessageItem({
 	isFirstNewMessage = false,
 	isPinned = false,
 }: MessageItemProps) {
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const {
 		editMessage,
 		deleteMessage,
@@ -321,7 +321,8 @@ export function MessageItem({
 					)}
 
 					{/* Thread Button */}
-					{(message.threadChannelId || (message.threadMessages && message.threadMessages.length > 0)) && (
+					{(message.threadChannelId ||
+						(message.threadMessages && message.threadMessages.length > 0)) && (
 						<button
 							type="button"
 							onClick={() => {

@@ -8,7 +8,7 @@ import { ChannelItem, DmChannelLink } from "./app-sidebar/channel-item"
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "./ui/sidebar"
 
 export const SidebarFavoriteGroup = () => {
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const organizationId = orgId as Id<"organizations">
 
 	const favoritedChannelsQuery = useQuery(

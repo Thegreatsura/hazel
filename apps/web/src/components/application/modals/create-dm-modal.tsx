@@ -37,7 +37,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const [selectedUsers, setSelectedUsers] = useState<Doc<"users">[]>([])
 
 	const navigate = useNavigate()
-	const { orgId } = useParams({ from: "/app/$orgId" })
+	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const organizationId = orgId as Id<"organizations">
 	const { isUserOnline } = usePresence()
 
@@ -84,7 +84,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 
 				// Navigate to the chat
 				navigate({
-					to: "/app/$orgId/chat/$id",
+					to: "/$orgId/chat/$id",
 					params: { orgId: organizationId, id: channelId },
 				})
 			} catch (error) {

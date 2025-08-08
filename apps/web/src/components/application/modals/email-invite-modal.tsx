@@ -31,7 +31,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 	const [invites, setInvites] = useState<InviteEntry[]>([{ id: "1", email: "", role: "member" }])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
-	const params = useParams({ from: "/app/$orgId" })
+	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as Id<"organizations">
 
 	const inviteMemberMutation = useConvexMutation(api.organizations.inviteMember)
