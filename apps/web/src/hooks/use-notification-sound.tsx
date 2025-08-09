@@ -35,13 +35,18 @@ export function useNotificationSound() {
 	const lastPlayedRef = useRef<number>(0)
 	const isPlayingRef = useRef<boolean>(false)
 
-	// Initialize audio element
+	// Initialize or update audio element when sound file changes
 	useEffect(() => {
 		if (typeof window === "undefined") return
 
-		const audio = new Audio(`/sounds/${settings.soundFile}.mp3`)
-		audio.volume = settings.volume
-		audioRef.current = audio
+		// Only create new audio element if file changed or doesn't exist
+		if (!audioRef.current || audioRef.current.src !== `${window.location.origin}/sounds/${settings.soundFile}.mp3`) {
+			if (audioRef.current) {
+				audioRef.current.pause()
+			}
+			const audio = new Audio(`/sounds/${settings.soundFile}.mp3`)
+			audioRef.current = audio
+		}
 
 		// Cleanup
 		return () => {
@@ -50,7 +55,14 @@ export function useNotificationSound() {
 				audioRef.current = null
 			}
 		}
-	}, [settings.soundFile, settings.volume])
+	}, [settings.soundFile])
+
+	// Update volume separately to avoid recreating audio element
+	useEffect(() => {
+		if (audioRef.current) {
+			audioRef.current.volume = settings.volume
+		}
+	}, [settings.volume])
 
 	// Save settings to localStorage
 	useEffect(() => {

@@ -114,10 +114,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
 	const typingUsers: TypingUsers = typingUsersQuery.data || []
 
-	// Debug: Log typing users updates
-	if (typingUsers.length > 0) {
-		console.log("[DEBUG] Typing users in channel:", typingUsers.map((u) => u.user.firstName).join(", "))
-	}
 
 	// Mutations
 	const sendMessageMutation = useConvexMutation(api.messages.createMessage)
@@ -202,7 +198,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	}
 
 	const startTyping = () => {
-		console.log("[DEBUG] Current user started typing in channel:", channelId)
 		updateTypingMutation({
 			organizationId,
 			channelId,
@@ -210,7 +205,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	}
 
 	const stopTyping = () => {
-		console.log("[DEBUG] Current user stopped typing in channel:", channelId)
 		stopTypingMutation({
 			organizationId,
 			channelId,
@@ -267,7 +261,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	// Use previous messages during loading states to prevent flashing
 	const messages = currentMessages.length > 0 ? currentMessages : previousMessagesRef.current
 
-	// Play sound when new messages arrive from other users
+	// Play sound when new messages arrive from other users (only when window is not focused)
 	useEffect(() => {
 		// Skip on first render or when switching channels
 		if (prevMessageCountRef.current === 0 || previousChannelIdRef.current !== channelId) {
@@ -286,13 +280,14 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 				(msg) => msg.author?.email && msg.author.email !== user?.email,
 			)
 
-			if (hasOtherUserMessages) {
+			// Only play sound if window is not focused to avoid duplicate with NotificationManager
+			if (hasOtherUserMessages && document.hidden) {
 				playSound()
 			}
 		}
 
 		prevMessageCountRef.current = messages.length
-	}, [messages.length, channelId, user?.email, playSound, messages.slice])
+	}, [messages.length, channelId, user?.email, playSound])
 
 	// Update pagination function refs when available
 	if (messagesResult._tag === "Loaded") {
