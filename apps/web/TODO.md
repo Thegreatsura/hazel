@@ -14,4 +14,3 @@
 
 # Fixes 
 - Message Edit not showing up in chat 
-- App getting unresponsive after 60sec of inactivity

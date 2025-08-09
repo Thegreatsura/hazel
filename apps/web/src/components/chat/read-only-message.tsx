@@ -113,6 +113,13 @@ const TextEditorRoot = ({
 		},
 	})
 
+	// Update editor content when the content prop changes
+	useEffect(() => {
+		if (editor && editorOptions.content) {
+			editor.commands.setContent(editorOptions.content)
+		}
+	}, [editor, editorOptions.content])
+
 	useEffect(() => {
 		const setLink = () => {
 			if (!editor) return

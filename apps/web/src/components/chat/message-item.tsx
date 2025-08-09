@@ -62,6 +62,7 @@ export function MessageItem({
 		}),
 	)
 	const isOwnMessage = currentUser?._id === message.authorId
+	const isEdited = message.updatedAt && message.updatedAt > message._creationTime
 
 	const showAvatar = isGroupStart || !!message.replyToMessageId
 	const isRepliedTo = !!message.replyToMessageId
@@ -187,6 +188,7 @@ export function MessageItem({
 				) : (
 					<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-secondary leading-tight opacity-0 group-hover:opacity-100">
 						{format(message._creationTime, "HH:mm")}
+						{isEdited && <span className="ml-0.5">(edited)</span>}
 					</div>
 				)}
 
@@ -202,6 +204,7 @@ export function MessageItem({
 							</span>
 							<span className="text-secondary text-xs">
 								{format(message._creationTime, "HH:mm")}
+								{isEdited && " (edited)"}
 							</span>
 						</div>
 					)}
