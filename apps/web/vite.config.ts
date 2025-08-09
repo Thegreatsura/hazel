@@ -6,7 +6,7 @@ import { defineConfig } from "vite"
 
 export default defineConfig({
 	plugins: [
-		tanstackRouter({ target: "react", autoCodeSplitting: true, routeToken: "layout" }),
+		tanstackRouter({ target: "react", autoCodeSplitting: false, routeToken: "layout" }),
 
 		viteReact({
 			babel: {
