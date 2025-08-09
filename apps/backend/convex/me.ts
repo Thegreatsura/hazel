@@ -122,7 +122,7 @@ export const updateProfile = accountMutation({
 			lastName,
 		})
 
-		// Then update in Convex
+		// Then update in Convex (only update firstName and lastName, preserve avatarUrl)
 		await ctx.db.patch(ctx.account.id, {
 			firstName,
 			lastName,

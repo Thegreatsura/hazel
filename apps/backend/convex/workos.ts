@@ -33,13 +33,20 @@ export const processWorkosEvents = internalMutation({
 						.first()
 
 					if (account) {
-						await ctx.db.patch(account._id, {
-							avatarUrl:
-								typedEvent.data.profilePictureUrl ||
-								`https://avatar.vercel.sh/${typedEvent.data.id}.svg`,
+						const updateData: any = {
 							firstName: typedEvent.data.firstName || "",
 							lastName: typedEvent.data.lastName || "",
-						})
+						}
+
+						// Only update avatarUrl if WorkOS provides a new one
+						// This prevents overwriting existing avatarUrl when it's not included in the update
+						if (typedEvent.data.profilePictureUrl !== undefined) {
+							updateData.avatarUrl =
+								typedEvent.data.profilePictureUrl ||
+								`https://avatar.vercel.sh/${typedEvent.data.id}.svg`
+						}
+
+						await ctx.db.patch(account._id, updateData)
 					}
 
 					break
@@ -282,13 +289,20 @@ export const syncUsers = internalMutation({
 
 					if (existingUser) {
 						// Update existing user
-						await ctx.db.patch(existingUser._id, {
+						const updateData: any = {
 							firstName: workosUser.firstName || "",
 							lastName: workosUser.lastName || "",
-							avatarUrl:
+						}
+
+						// Only update avatarUrl if WorkOS provides one
+						// This prevents overwriting existing avatarUrl when syncing
+						if (workosUser.profilePictureUrl !== undefined) {
+							updateData.avatarUrl =
 								workosUser.profilePictureUrl ||
-								`https://avatar.vercel.sh/${workosUser.id}.svg`,
-						})
+								`https://avatar.vercel.sh/${workosUser.id}.svg`
+						}
+
+						await ctx.db.patch(existingUser._id, updateData)
 						results.updated++
 					} else {
 						// Create new user
