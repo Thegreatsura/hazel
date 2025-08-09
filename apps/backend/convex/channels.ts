@@ -33,7 +33,7 @@ export const getChannelForOrganization = organizationServerQuery({
 				const parentMember = await ctx.db
 					.query("channelMembers")
 					.withIndex("by_channelIdAndUserId", (q) =>
-						q.eq("channelId", channel.parentChannelId!).eq("userId", user._id)
+						q.eq("channelId", channel.parentChannelId!).eq("userId", user._id),
 					)
 					.first()
 				if (!parentMember) {
@@ -616,73 +616,6 @@ export const createGroupDmChannel = organizationServerMutation({
 				notificationCount: 0,
 			})
 		})
-
-		return channelId
-	},
-})
-
-export const creatDmChannel = userMutation({
-	args: {
-		userId: v.id("users"),
-	},
-	handler: async (ctx, args) => {
-		const participantHash = createParticipantHash([args.userId, ctx.user.id])
-
-		const existingChannel = await ctx.db
-			.query("channels")
-			.withIndex("by_organizationId_and_participantHash", (q) =>
-				q.eq("organizationId", args.organizationId).eq("participantHash", participantHash),
-			)
-			.first()
-
-		if (existingChannel) {
-			// Check if the current user has the channel hidden
-			const currentUserMember = await ctx.db
-				.query("channelMembers")
-				.withIndex("by_channelIdAndUserId", (q) =>
-					q.eq("channelId", existingChannel._id).eq("userId", ctx.user.id),
-				)
-				.first()
-
-			// If the channel is hidden for the user, unhide it
-			if (currentUserMember?.isHidden) {
-				await ctx.db.patch(currentUserMember._id, {
-					isHidden: false,
-				})
-			}
-
-			return existingChannel._id
-		}
-
-		const channelId = await ctx.db.insert("channels", {
-			organizationId: args.organizationId,
-			name: "Direct Message",
-			type: "single",
-			participantHash,
-			updatedAt: Date.now(),
-			pinnedMessages: [],
-		})
-
-		await Promise.all([
-			ctx.db.insert("channelMembers", {
-				channelId,
-				userId: ctx.user.id,
-				joinedAt: Date.now(),
-				isHidden: false,
-				isMuted: false,
-				isFavorite: false,
-				notificationCount: 0,
-			}),
-			ctx.db.insert("channelMembers", {
-				channelId,
-				userId: args.userId,
-				joinedAt: Date.now(),
-				isHidden: false,
-				isMuted: false,
-				isFavorite: false,
-				notificationCount: 0,
-			}),
-		])
 
 		return channelId
 	},

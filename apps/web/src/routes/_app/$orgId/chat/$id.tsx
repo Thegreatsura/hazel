@@ -89,7 +89,7 @@ function ChatContent() {
 				<div className="flex-1 overflow-hidden">
 					<MessageList />
 				</div>
-				<div className="px-4 pt-2 pb-4">
+				<div className="px-4 pt-2">
 					<MessageComposer ref={messageComposerRef} />
 					<TypingIndicator />
 				</div>

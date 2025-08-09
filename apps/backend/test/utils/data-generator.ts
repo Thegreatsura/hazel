@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import type { Id } from "@hazel/backend"
 import { convexTest as _convexTest, type TestConvex, type TestConvexForDataModel } from "convex-test"
 import { api } from "../../convex/_generated/api"

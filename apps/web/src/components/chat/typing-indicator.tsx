@@ -6,7 +6,11 @@ export function TypingIndicator() {
 	console.log("[DEBUG] Typing users:", typingUsers.map((u) => u.user.firstName).join(", "))
 
 	if (typingUsers.length === 0) {
-		return null
+		return (
+			<div className="px-4 py-2">
+				<div className="flex h-3 items-center gap-2 text-quaternary text-xs"></div>
+			</div>
+		)
 	}
 
 	const typingText = () => {
@@ -21,11 +25,11 @@ export function TypingIndicator() {
 
 	return (
 		<div className="px-4 py-2">
-			<div className="flex items-center gap-2 text-muted-foreground text-sm">
+			<div className="flex h-3 items-center gap-2 text-quaternary text-xs">
 				<div className="flex gap-1">
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.3s]" />
+					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.15s]" />
+					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary" />
 				</div>
 				<span>{typingText()}</span>
 			</div>
