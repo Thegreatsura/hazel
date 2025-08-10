@@ -1,7 +1,7 @@
-import { convexMutation } from "@convex-dev/react-query"
+import { useUploadFile as useR2UploadFile } from "@convex-dev/r2/react"
+import { useConvexMutation } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { useMutation } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
 import { IconNotification } from "~/components/application/notifications/notifications"
@@ -31,13 +31,9 @@ export function useFileUpload({
 }: UseFileUploadOptions) {
 	const [uploads, setUploads] = useState<Map<string, FileUploadProgress>>(new Map())
 
-	const generateUploadUrlMutation = useMutation(
-		convexMutation(api.uploads.generateUploadUrl),
-	)
-
-	const completeUploadMutation = useMutation(
-		convexMutation(api.uploads.completeUpload),
-	)
+	// Use the R2 component's upload hook
+	const r2UploadFile = useR2UploadFile(api.uploads as any)
+	const createAttachment = useConvexMutation(api.uploads.createAttachment)
 
 	const uploadFile = useCallback(
 		async (file: File): Promise<Id<"attachments"> | null> => {
@@ -78,70 +74,19 @@ export function useFileUpload({
 					const upload = next.get(fileId)
 					if (upload) {
 						upload.status = "uploading"
-						upload.progress = 10
+						upload.progress = 50 // Approximate progress
 					}
 					return next
 				})
 
-				// Generate upload URL
-				const { attachmentId, uploadUrl } = await generateUploadUrlMutation.mutateAsync({
-					organizationId,
+				// Upload file using R2 component hook
+				// This returns the R2 key of the uploaded file
+				const r2Key = await r2UploadFile(file)
+
+				// Create attachment record in database
+				const attachmentId = await createAttachment({
+					r2Key,
 					fileName: file.name,
-					fileSize: file.size,
-					mimeType: file.type || "application/octet-stream",
-				})
-
-				// Update progress
-				setUploads((prev) => {
-					const next = new Map(prev)
-					const upload = next.get(fileId)
-					if (upload) {
-						upload.progress = 30
-						upload.attachmentId = attachmentId
-					}
-					return next
-				})
-
-				// Upload file to R2
-				const xhr = new XMLHttpRequest()
-
-				// Track upload progress
-				xhr.upload.addEventListener("progress", (event) => {
-					if (event.lengthComputable) {
-						const percentComplete = Math.round((event.loaded / event.total) * 70) + 30
-						setUploads((prev) => {
-							const next = new Map(prev)
-							const upload = next.get(fileId)
-							if (upload) {
-								upload.progress = percentComplete
-							}
-							return next
-						})
-					}
-				})
-
-				// Wrap XHR in a Promise
-				const uploadPromise = new Promise<void>((resolve, reject) => {
-					xhr.onload = () => {
-						if (xhr.status >= 200 && xhr.status < 300) {
-							resolve()
-						} else {
-							reject(new Error(`Upload failed with status ${xhr.status}`))
-						}
-					}
-					xhr.onerror = () => reject(new Error("Network error during upload"))
-					xhr.onabort = () => reject(new Error("Upload aborted"))
-				})
-
-				xhr.open("PUT", uploadUrl)
-				xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-				xhr.send(file)
-
-				await uploadPromise
-
-				// Mark upload as complete in backend
-				await completeUploadMutation.mutateAsync({
-					attachmentId,
 					organizationId,
 				})
 
@@ -152,6 +97,7 @@ export function useFileUpload({
 					if (upload) {
 						upload.status = "complete"
 						upload.progress = 100
+						upload.attachmentId = attachmentId
 					}
 					return next
 				})
@@ -185,7 +131,7 @@ export function useFileUpload({
 				return null
 			}
 		},
-		[organizationId, maxFileSize, generateUploadUrlMutation, completeUploadMutation, onUploadComplete, onUploadError],
+		[maxFileSize, r2UploadFile, createAttachment, organizationId, onUploadComplete, onUploadError],
 	)
 
 	const uploadFiles = useCallback(

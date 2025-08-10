@@ -146,10 +146,9 @@ export const confectSchema = defineSchema({
 	attachments: defineTable(
 		Schema.Struct({
 			organizationId: Id.Id("organizations"),
+			channelId: Schema.optional(Id.Id("channels")),
 			messageId: Schema.optional(Id.Id("messages")),
 			fileName: Schema.String,
-			fileSize: Schema.Number,
-			mimeType: Schema.String,
 			r2Key: Schema.String,
 			uploadedBy: Id.Id("users"),
 			uploadedAt: Schema.Number,
@@ -162,6 +161,7 @@ export const confectSchema = defineSchema({
 		}),
 	)
 		.index("by_messageId", ["messageId"])
+		.index("by_channelId", ["channelId"])
 		.index("by_organizationId", ["organizationId"])
 		.index("by_uploadedBy", ["uploadedBy"])
 		.index("by_status", ["status"]),

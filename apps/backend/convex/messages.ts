@@ -97,14 +97,14 @@ export const getMessagesForOrganization = organizationServerQuery({
 			const author = await ctx.db.get(message.authorId)
 			if (!author) throw new Error("Message author not found")
 
-			// Fetch attachments for the message
+			// Fetch attachments for the message with metadata from R2
 			const attachments = await Promise.all(
 				message.attachedFiles.map(async (attachmentId) => {
 					const attachment = await ctx.db.get(attachmentId)
-					if (!attachment || attachment.deletedAt) {
+					if (!attachment) {
 						return null
 					}
-					return attachment
+					return enrichAttachmentWithMetadata(ctx, attachment)
 				}),
 			)
 
@@ -173,14 +173,14 @@ export const getMessages = userQuery({
 			// TODO: This should not happen when user is deleted we should give all messages to a default user
 			if (!messageAuthor) throw new Error("Message author not found")
 
-			// Fetch attachments for the message
+			// Fetch attachments for the message with metadata from R2
 			const attachments = await Promise.all(
 				message.attachedFiles.map(async (attachmentId) => {
 					const attachment = await ctx.db.get(attachmentId)
-					if (!attachment || attachment.deletedAt) {
+					if (!attachment) {
 						return null
 					}
-					return attachment
+					return enrichAttachmentWithMetadata(ctx, attachment)
 				}),
 			)
 
@@ -215,14 +215,11 @@ export const createMessage = userMutation({
 
 		await ctx.user.validateIsMemberOfChannel({ ctx, channelId: args.channelId })
 
-		// Validate all attachments exist and are complete
+		// Validate all attachments exist and belong to the user
 		for (const attachmentId of args.attachedFiles) {
 			const attachment = await ctx.db.get(attachmentId)
 			if (!attachment) {
 				throw new Error(`Attachment ${attachmentId} not found`)
-			}
-			if (attachment.status !== "complete") {
-				throw new Error(`Attachment ${attachmentId} is not fully uploaded`)
 			}
 			if (attachment.uploadedBy !== ctx.user.id) {
 				throw new Error(`You don't have permission to use attachment ${attachmentId}`)
@@ -240,9 +237,12 @@ export const createMessage = userMutation({
 			reactions: [],
 		})
 
-		// Update attachments with messageId
+		// Update attachments with messageId and channelId
 		for (const attachmentId of args.attachedFiles) {
-			await ctx.db.patch(attachmentId, { messageId })
+			await ctx.db.patch(attachmentId, {
+				messageId,
+				channelId: args.channelId,
+			})
 		}
 
 		// TODO: This should be a database trigger

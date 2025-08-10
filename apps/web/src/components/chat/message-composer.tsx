@@ -90,11 +90,11 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 		}
 	}, [isTyping, stopTyping])
 
-	const handleSubmit = async (editor: Editor, attachmentIds: Id<"attachments">[] = []) => {
-		sendMessage({ 
-			jsonContent: editor.getJSON(), 
+	const handleSubmit = async (editor: Editor) => {
+		sendMessage({
+			jsonContent: editor.getJSON(),
 			content: editor.getText(),
-			attachments: attachmentIds
+			attachments: attachmentIds,
 		})
 
 		if (isTyping) {
@@ -107,7 +107,7 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 
 		// Clear attachments after sending
 		setAttachmentIds([])
-		
+
 		textareaRef.current?.focus()
 		editor.commands.clearContent()
 	}
@@ -173,7 +173,7 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 
 								<div className="relative flex flex-col gap-2">
 									<TextEditor.Content className="rounded-none" ref={textareaRef} />
-									<MessageComposerActions 
+									<MessageComposerActions
 										attachmentIds={attachmentIds}
 										setAttachmentIds={setAttachmentIds}
 										onSubmit={() => handleSubmit(editor)}

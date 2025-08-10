@@ -1,32 +1,31 @@
-import type { Editor } from "@tiptap/react"
 import type { Id } from "@hazel/backend"
-import { Attachment01, FaceSmile, XClose } from "@untitledui/icons"
 import { useParams } from "@tanstack/react-router"
+import { Attachment01, FaceSmile, XClose } from "@untitledui/icons"
 import { useRef, useState } from "react"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { cx } from "~/utils/cx"
-import { FileUpload } from "../application/file-upload/file-upload-base"
 import { Button } from "../base/buttons/button"
 import { ButtonUtility } from "../base/buttons/button-utility"
-import { useEditorContext } from "../base/text-editor/text-editor"
 
 interface MessageComposerActionsProps {
-	onSubmit?: (editor: Editor, attachmentIds: Id<"attachments">[]) => Promise<void>
-	onAttachmentsChange?: (attachmentIds: Id<"attachments">[]) => void
+	attachmentIds: Id<"attachments">[]
+	setAttachmentIds: (ids: Id<"attachments">[]) => void
+	onSubmit?: () => Promise<void>
 }
 
-export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: MessageComposerActionsProps) => {
-	const editor = useEditorContext()
+export const MessageComposerActions = ({
+	attachmentIds,
+	setAttachmentIds,
+	onSubmit,
+}: MessageComposerActionsProps) => {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const fileInputRef = useRef<HTMLInputElement>(null)
-	const [attachmentIds, setAttachmentIds] = useState<Id<"attachments">[]>([])
 	const [showUploadProgress, setShowUploadProgress] = useState(false)
 
-	const { uploadFiles, uploads, removeUpload, clearUploads, isUploading } = useFileUpload({
+	const { uploadFiles, uploads, clearUploads, isUploading } = useFileUpload({
 		organizationId: orgId as Id<"organizations">,
 		onUploadComplete: (attachmentId) => {
-			setAttachmentIds((prev) => [...prev, attachmentId])
-			onAttachmentsChange?.([...attachmentIds, attachmentId])
+			setAttachmentIds([...attachmentIds, attachmentId])
 		},
 	})
 
@@ -43,15 +42,13 @@ export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: Messag
 	}
 
 	const handleRemoveAttachment = (attachmentId: Id<"attachments">) => {
-		setAttachmentIds((prev) => prev.filter((id) => id !== attachmentId))
-		onAttachmentsChange?.(attachmentIds.filter((id) => id !== attachmentId))
+		setAttachmentIds(attachmentIds.filter((id) => id !== attachmentId))
 	}
 
 	const handleSubmit = async () => {
 		if (onSubmit) {
-			await onSubmit(editor.editor, attachmentIds)
-			// Clear attachments after successful send
-			setAttachmentIds([])
+			await onSubmit()
+			// Clear uploads UI after successful send
 			clearUploads()
 			setShowUploadProgress(false)
 		}
@@ -61,10 +58,10 @@ export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: Messag
 		<>
 			{/* Upload Progress */}
 			{showUploadProgress && uploads.length > 0 && (
-				<div className="absolute left-0 right-0 bottom-full mb-2 mx-3">
+				<div className="absolute right-0 bottom-full left-0 mx-3 mb-2">
 					<div className="rounded-lg bg-primary p-2 ring-1 ring-secondary ring-inset">
-						<div className="flex items-center justify-between mb-1">
-							<span className="text-xs text-secondary font-medium">Uploading files...</span>
+						<div className="mb-1 flex items-center justify-between">
+							<span className="font-medium text-secondary text-xs">Uploading files...</span>
 							<ButtonUtility
 								icon={XClose}
 								size="xs"
@@ -77,12 +74,14 @@ export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: Messag
 								<div key={upload.fileId} className="flex items-center gap-2">
 									<div className="flex-1">
 										<div className="flex items-center justify-between">
-											<span className="text-xs text-tertiary truncate max-w-[200px]">
+											<span className="max-w-[200px] truncate text-tertiary text-xs">
 												{upload.fileName}
 											</span>
-											<span className="text-xs text-quaternary">{upload.progress}%</span>
+											<span className="text-quaternary text-xs">
+												{upload.progress}%
+											</span>
 										</div>
-										<div className="mt-0.5 h-1 bg-secondary rounded-full overflow-hidden">
+										<div className="mt-0.5 h-1 overflow-hidden rounded-full bg-secondary">
 											<div
 												className={cx(
 													"h-full transition-all duration-300",
@@ -102,23 +101,27 @@ export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: Messag
 
 			{/* Attached Files Preview */}
 			{attachmentIds.length > 0 && (
-				<div className="absolute left-0 right-0 bottom-full mb-2 mx-3">
+				<div className="absolute right-0 bottom-full left-0 mx-3 mb-2">
 					<div className="flex flex-wrap gap-2">
-						{attachmentIds.map((id) => (
-							<div
-								key={id}
-								className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md"
-							>
-								<Attachment01 className="size-3 text-fg-quaternary" />
-								<span className="text-xs text-secondary">File attached</span>
-								<ButtonUtility
-									icon={XClose}
-									size="xs"
-									color="tertiary"
-									onClick={() => handleRemoveAttachment(id)}
-								/>
-							</div>
-						))}
+						{attachmentIds.map((attachmentId) => {
+							const upload = uploads.find((u) => u.attachmentId === attachmentId)
+							const fileName = upload?.fileName || "File"
+							return (
+								<div
+									key={attachmentId}
+									className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1"
+								>
+									<Attachment01 className="size-3 text-fg-quaternary" />
+									<span className="text-secondary text-xs">{fileName}</span>
+									<ButtonUtility
+										icon={XClose}
+										size="xs"
+										color="tertiary"
+										onClick={() => handleRemoveAttachment(attachmentId)}
+									/>
+								</div>
+							)
+						})}
 					</div>
 				</div>
 			)}
@@ -144,12 +147,7 @@ export const MessageComposerActions = ({ onSubmit, onAttachmentsChange }: Messag
 					<ButtonUtility icon={FaceSmile} size="xs" color="tertiary" />
 				</div>
 
-				<Button
-					size="sm"
-					color="link-color"
-					onClick={handleSubmit}
-					disabled={isUploading}
-				>
+				<Button size="sm" color="link-color" onClick={handleSubmit} disabled={isUploading}>
 					Send
 				</Button>
 			</div>

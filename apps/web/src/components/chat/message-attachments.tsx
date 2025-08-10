@@ -27,214 +27,158 @@ const formatFileSize = (bytes: number): string => {
 	const k = 1024
 	const sizes = ["B", "KB", "MB", "GB"]
 	const i = Math.floor(Math.log(bytes) / Math.log(k))
-	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+	return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`
 }
 
-const getFileType = (mimeType: string): string => {
+const getFileTypeFromName = (fileName: string): string => {
+	const extension = fileName.split(".").pop()?.toLowerCase() || ""
+
 	const typeMap: Record<string, string> = {
-		"application/pdf": "pdf",
-		"image/jpeg": "jpg",
-		"image/jpg": "jpg",
-		"image/png": "png",
-		"image/gif": "gif",
-		"image/webp": "webp",
-		"image/svg+xml": "svg",
-		"video/mp4": "mp4",
-		"video/webm": "webm",
-		"audio/mpeg": "mp3",
-		"audio/wav": "wav",
-		"text/plain": "txt",
-		"text/csv": "csv",
-		"application/msword": "doc",
-		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-		"application/vnd.ms-excel": "xls",
-		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+		jpg: "jpg",
+		jpeg: "jpg",
+		png: "png",
+		gif: "gif",
+		webp: "webp",
+		svg: "svg",
+		pdf: "pdf",
+		doc: "doc",
+		docx: "docx",
+		xls: "xls",
+		xlsx: "xlsx",
+		txt: "txt",
+		csv: "csv",
+		mp4: "mp4",
+		webm: "webm",
+		mp3: "mp3",
+		wav: "wav",
 	}
-	return typeMap[mimeType] || "file"
+
+	return typeMap[extension] || "file"
 }
 
 interface AttachmentItemProps {
-	attachment: Attachment
-	organizationId: Id<"organizations">
+	attachment: EnrichedAttachment
 }
 
-function AttachmentItem({ attachment, organizationId }: AttachmentItemProps) {
+function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const [imageError, setImageError] = useState(false)
-	const isImage = attachment.mimeType.startsWith("image/")
-	const isVideo = attachment.mimeType.startsWith("video/")
-	const fileType = getFileType(attachment.mimeType)
+	const fileType = getFileTypeFromName(attachment.fileName)
 
-	// Get file URL
-	const { data: fileData, isLoading } = useQuery(
-		convexQuery(api.uploads.getFileUrl, {
-			attachmentId: attachment._id,
-			organizationId,
-		}),
-	)
-
-	const handleDownload = async () => {
-		if (!fileData?.url) return
-
-		try {
-			const response = await fetch(fileData.url)
-			const blob = await response.blob()
-			const url = window.URL.createObjectURL(blob)
-			const a = document.createElement("a")
-			a.href = url
-			a.download = attachment.fileName
-			document.body.appendChild(a)
-			a.click()
-			window.URL.revokeObjectURL(url)
-			document.body.removeChild(a)
-		} catch (error) {
-			console.error("Download failed:", error)
-		}
+	const handleDownload = () => {
+		// Create a temporary anchor element to trigger download
+		const link = document.createElement("a")
+		link.href = attachment.publicUrl
+		link.download = attachment.fileName
+		link.target = "_blank"
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
 	}
 
-	if (isLoading) {
-		return (
-			<div className="flex items-center gap-3 p-3 bg-secondary rounded-lg animate-pulse">
-				<div className="size-10 bg-tertiary rounded" />
-				<div className="flex-1">
-					<div className="h-4 bg-tertiary rounded w-32 mb-1" />
-					<div className="h-3 bg-quaternary rounded w-20" />
-				</div>
-			</div>
-		)
-	}
+	// Check if it's an image or video based on extension
+	const isImage = ["jpg", "png", "gif", "webp", "svg"].includes(fileType)
+	const isVideo = ["mp4", "webm"].includes(fileType)
 
-	// Image attachments
-	if (isImage && fileData?.url && !imageError) {
+	if (isImage && !imageError) {
+		// Display image with preview
 		return (
-			<div className="relative group">
-				<img
-					src={fileData.url}
-					alt={attachment.fileName}
-					className="rounded-lg max-w-sm max-h-64 object-cover cursor-pointer hover:opacity-95 transition-opacity"
-					onError={() => setImageError(true)}
-					onClick={() => window.open(fileData.url, "_blank")}
-				/>
-				<div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-					<ButtonUtility
-						icon={Download01}
-						size="sm"
-						color="secondary"
-						onClick={handleDownload}
-						tooltip="Download"
+			<div className="group relative inline-block">
+				<div className="relative overflow-hidden rounded-lg bg-secondary">
+					<img
+						src={attachment.publicUrl}
+						alt={attachment.fileName}
+						className="h-48 w-64 object-cover"
+						onError={() => setImageError(true)}
 					/>
+					<div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+						<ButtonUtility
+							icon={Download01}
+							size="sm"
+							color="secondary"
+							className="bg-primary"
+							aria-label="Download file"
+							onClick={handleDownload}
+						/>
+					</div>
 				</div>
+				<div className="mt-1 text-secondary text-xs">{attachment.fileName}</div>
 			</div>
 		)
 	}
 
-	// Video attachments
-	if (isVideo && fileData?.url) {
+	if (isVideo) {
+		// Display video player
 		return (
-			<div className="relative group">
-				<video
-					src={fileData.url}
-					controls
-					className="rounded-lg max-w-sm max-h-64"
-					preload="metadata"
-				>
-					Your browser does not support the video tag.
-				</video>
-				<div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-					<ButtonUtility
-						icon={Download01}
-						size="sm"
-						color="secondary"
-						onClick={handleDownload}
-						tooltip="Download"
-					/>
+			<div className="group relative inline-block">
+				<div className="relative overflow-hidden rounded-lg bg-secondary">
+					<video
+						src={attachment.publicUrl}
+						className="h-48 w-64 object-cover"
+						controls
+						preload="metadata"
+					>
+						Your browser does not support the video tag.
+					</video>
+					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+						<ButtonUtility
+							icon={Download01}
+							size="sm"
+							color="secondary"
+							className="pointer-events-auto bg-primary"
+							aria-label="Download file"
+							onClick={handleDownload}
+						/>
+					</div>
 				</div>
+				<div className="mt-1 text-secondary text-xs">{attachment.fileName}</div>
 			</div>
 		)
 	}
 
-	// Other file types
+	// For other files, show a compact file card
 	return (
-		<div className="flex items-center gap-3 p-3 bg-secondary rounded-lg hover:bg-tertiary transition-colors group">
-			<FileIcon
-				type={fileType as any}
-				theme="light"
-				variant="default"
-				className="size-10 shrink-0"
-			/>
-			<div className="flex-1 min-w-0">
-				<p className="text-sm font-medium text-secondary truncate">{attachment.fileName}</p>
-				<p className="text-xs text-tertiary">{formatFileSize(attachment.fileSize)}</p>
+		<div className="group flex items-center gap-3 rounded-lg bg-secondary p-3 transition-colors hover:bg-tertiary">
+			<FileIcon type={fileType} className="size-10 text-fg-quaternary" />
+			<div className="min-w-0 flex-1">
+				<div className="truncate font-medium text-secondary text-sm">{attachment.fileName}</div>
+				<div className="text-quaternary text-xs">{formatFileSize(attachment.fileSize)}</div>
 			</div>
 			<ButtonUtility
 				icon={Download01}
 				size="sm"
 				color="tertiary"
+				className="opacity-0 transition-opacity group-hover:opacity-100"
+				aria-label="Download file"
 				onClick={handleDownload}
-				tooltip="Download"
-				className="opacity-0 group-hover:opacity-100 transition-opacity"
 			/>
 		</div>
 	)
 }
 
 export function MessageAttachments({ attachments, organizationId }: MessageAttachmentsProps) {
-	if (!attachments || attachments.length === 0) {
+	// Filter out null attachments
+	const validAttachments = attachments.filter((a): a is EnrichedAttachment => a !== null)
+
+	if (validAttachments.length === 0) {
 		return null
 	}
 
-	const images = attachments.filter((a) => a.mimeType.startsWith("image/"))
-	const videos = attachments.filter((a) => a.mimeType.startsWith("video/"))
-	const files = attachments.filter(
-		(a) => !a.mimeType.startsWith("image/") && !a.mimeType.startsWith("video/"),
-	)
+	// Check if all attachments are images/videos for grid layout
+	const allMedia = validAttachments.every((attachment) => {
+		const fileType = getFileTypeFromName(attachment.fileName)
+		return ["jpg", "png", "gif", "webp", "svg", "mp4", "webm"].includes(fileType)
+	})
 
 	return (
-		<div className="mt-2 space-y-2">
-			{/* Images in a grid */}
-			{images.length > 0 && (
-				<div
-					className={cx(
-						"grid gap-2",
-						images.length === 1 && "grid-cols-1",
-						images.length === 2 && "grid-cols-2",
-						images.length >= 3 && "grid-cols-3 max-w-lg",
-					)}
-				>
-					{images.map((attachment) => (
-						<AttachmentItem
-							key={attachment._id}
-							attachment={attachment}
-							organizationId={organizationId}
-						/>
-					))}
-				</div>
+		<div
+			className={cx(
+				"mt-2",
+				allMedia ? "grid max-w-2xl grid-cols-2 gap-2" : "flex max-w-md flex-col gap-2",
 			)}
-
-			{/* Videos */}
-			{videos.length > 0 && (
-				<div className="space-y-2">
-					{videos.map((attachment) => (
-						<AttachmentItem
-							key={attachment._id}
-							attachment={attachment}
-							organizationId={organizationId}
-						/>
-					))}
-				</div>
-			)}
-
-			{/* Other files */}
-			{files.length > 0 && (
-				<div className="space-y-2 max-w-sm">
-					{files.map((attachment) => (
-						<AttachmentItem
-							key={attachment._id}
-							attachment={attachment}
-							organizationId={organizationId}
-						/>
-					))}
-				</div>
-			)}
+		>
+			{validAttachments.map((attachment) => (
+				<AttachmentItem key={attachment._id} attachment={attachment} />
+			))}
 		</div>
 	)
 }
