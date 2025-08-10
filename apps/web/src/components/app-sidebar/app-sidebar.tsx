@@ -23,6 +23,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "../ui/sidebar"
+import { ChannelActionsDropdown } from "./channel-actions-dropdown"
 import { ChannelItem, DmChannelLink } from "./channel-item"
 import { NavUser } from "./nav-user"
 import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
