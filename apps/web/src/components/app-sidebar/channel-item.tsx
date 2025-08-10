@@ -237,7 +237,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 									}
 								/>
 
-								<p className={cn("truncate", channel.isMuted && "opacity-60")}>
+								<p className={cn("max-w-20 truncate", channel.isMuted && "opacity-60")}>
 									{`${filteredMembers[0].user.firstName} ${filteredMembers[0].user.lastName}`}
 								</p>
 							</div>
@@ -266,7 +266,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 										/>
 									)}
 								</div>
-								<p className={cn("truncate", channel.isMuted && "opacity-60")}>
+								<p className={cn("max-w-20 truncate", channel.isMuted && "opacity-60")}>
 									{filteredMembers
 										.map((member) => `${member.user.firstName} ${member.user.lastName}`)
 										.join(", ")}

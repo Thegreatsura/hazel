@@ -114,7 +114,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
 	const typingUsers: TypingUsers = typingUsersQuery.data || []
 
-
 	// Mutations
 	const sendMessageMutation = useConvexMutation(api.messages.createMessage)
 	const editMessageMutation = useConvexMutation(api.messages.updateMessage)
@@ -287,7 +286,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		}
 
 		prevMessageCountRef.current = messages.length
-	}, [messages.length, channelId, user?.email, playSound])
+	}, [messages.length, channelId, user?.email, playSound, messages.slice])
 
 	// Update pagination function refs when available
 	if (messagesResult._tag === "Loaded") {

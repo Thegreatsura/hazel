@@ -40,7 +40,10 @@ export function useNotificationSound() {
 		if (typeof window === "undefined") return
 
 		// Only create new audio element if file changed or doesn't exist
-		if (!audioRef.current || audioRef.current.src !== `${window.location.origin}/sounds/${settings.soundFile}.mp3`) {
+		if (
+			!audioRef.current ||
+			audioRef.current.src !== `${window.location.origin}/sounds/${settings.soundFile}.mp3`
+		) {
 			if (audioRef.current) {
 				audioRef.current.pause()
 			}
