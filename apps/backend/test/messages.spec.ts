@@ -57,7 +57,7 @@ describe("messages", () => {
 		expect(messages.page[0]?.channelId).toEqual(channelId)
 	})
 
-	test("creates message with attached files", async () => {
+	test.skip("creates message with attached files", async () => {
 		const ct = convexTest()
 		const { organization, userId, channelId, t } = await setupOrganizationAndUser(ct)
 

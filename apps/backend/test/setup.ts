@@ -18,6 +18,7 @@ export const modules = {
 	"../convex/workosActions.ts": () => import("../convex/workosActions"),
 	"../convex/crons.ts": () => import("../convex/crons"),
 	"../convex/http.ts": () => import("../convex/http"),
+	"../convex/uploads.ts": () => import("../convex/uploads"),
 	"../convex/background/index.ts": () => import("../convex/background/index"),
 	// Add a path with _generated to satisfy convex-test
 	"../convex/_generated/api.js": () => Promise.resolve({}),
