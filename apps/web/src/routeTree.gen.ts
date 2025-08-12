@@ -16,6 +16,7 @@ import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppOrgIdLayoutRouteImport } from './routes/_app/$orgId/layout'
 import { Route as AppOrgIdIndexRouteImport } from './routes/_app/$orgId/index'
 import { Route as AppOrgIdNotificationsRouteImport } from './routes/_app/$orgId/notifications'
+import { Route as AppOrgIdCallRouteImport } from './routes/_app/$orgId/call'
 import { Route as AppOrgIdSettingsLayoutRouteImport } from './routes/_app/$orgId/settings/layout'
 import { Route as AppOrgIdSettingsIndexRouteImport } from './routes/_app/$orgId/settings/index'
 import { Route as AppOrgIdChatIndexRouteImport } from './routes/_app/$orgId/chat/index'
@@ -60,6 +61,11 @@ const AppOrgIdIndexRoute = AppOrgIdIndexRouteImport.update({
 const AppOrgIdNotificationsRoute = AppOrgIdNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppOrgIdLayoutRoute,
+} as any)
+const AppOrgIdCallRoute = AppOrgIdCallRouteImport.update({
+  id: '/call',
+  path: '/call',
   getParentRoute: () => AppOrgIdLayoutRoute,
 } as any)
 const AppOrgIdSettingsLayoutRoute = AppOrgIdSettingsLayoutRouteImport.update({
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
   '/$orgId/settings': typeof AppOrgIdSettingsLayoutRouteWithChildren
+  '/$orgId/call': typeof AppOrgIdCallRoute
   '/$orgId/notifications': typeof AppOrgIdNotificationsRoute
   '/$orgId/': typeof AppOrgIdIndexRoute
   '/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AppOnboardingRoute
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
+  '/$orgId/call': typeof AppOrgIdCallRoute
   '/$orgId/notifications': typeof AppOrgIdNotificationsRoute
   '/$orgId': typeof AppOrgIdIndexRoute
   '/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgId/settings': typeof AppOrgIdSettingsLayoutRouteWithChildren
+  '/_app/$orgId/call': typeof AppOrgIdCallRoute
   '/_app/$orgId/notifications': typeof AppOrgIdNotificationsRoute
   '/_app/$orgId/': typeof AppOrgIdIndexRoute
   '/_app/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/'
     | '/$orgId/settings'
+    | '/$orgId/call'
     | '/$orgId/notifications'
     | '/$orgId/'
     | '/$orgId/chat/$id'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/auth/login'
     | '/'
+    | '/$orgId/call'
     | '/$orgId/notifications'
     | '/$orgId'
     | '/$orgId/chat/$id'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/_app/'
     | '/_app/$orgId/settings'
+    | '/_app/$orgId/call'
     | '/_app/$orgId/notifications'
     | '/_app/$orgId/'
     | '/_app/$orgId/chat/$id'
@@ -291,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/$orgId/notifications'
       preLoaderRoute: typeof AppOrgIdNotificationsRouteImport
+      parentRoute: typeof AppOrgIdLayoutRoute
+    }
+    '/_app/$orgId/call': {
+      id: '/_app/$orgId/call'
+      path: '/call'
+      fullPath: '/$orgId/call'
+      preLoaderRoute: typeof AppOrgIdCallRouteImport
       parentRoute: typeof AppOrgIdLayoutRoute
     }
     '/_app/$orgId/settings': {
@@ -403,6 +422,7 @@ const AppOrgIdSettingsLayoutRouteWithChildren =
 
 interface AppOrgIdLayoutRouteChildren {
   AppOrgIdSettingsLayoutRoute: typeof AppOrgIdSettingsLayoutRouteWithChildren
+  AppOrgIdCallRoute: typeof AppOrgIdCallRoute
   AppOrgIdNotificationsRoute: typeof AppOrgIdNotificationsRoute
   AppOrgIdIndexRoute: typeof AppOrgIdIndexRoute
   AppOrgIdChatIdRoute: typeof AppOrgIdChatIdRoute
@@ -411,6 +431,7 @@ interface AppOrgIdLayoutRouteChildren {
 
 const AppOrgIdLayoutRouteChildren: AppOrgIdLayoutRouteChildren = {
   AppOrgIdSettingsLayoutRoute: AppOrgIdSettingsLayoutRouteWithChildren,
+  AppOrgIdCallRoute: AppOrgIdCallRoute,
   AppOrgIdNotificationsRoute: AppOrgIdNotificationsRoute,
   AppOrgIdIndexRoute: AppOrgIdIndexRoute,
   AppOrgIdChatIdRoute: AppOrgIdChatIdRoute,
