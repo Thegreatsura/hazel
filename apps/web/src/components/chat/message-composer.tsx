@@ -155,7 +155,12 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 				)}
 
 				{attachmentIds.length > 0 && (
-					<div className={cx("px-3 py-2", replyToMessageId && "border-primary border-x border-t")}>
+					<div
+						className={cx(
+							"px-3 py-2 border-primary border rounded-t-md",
+							replyToMessageId && "border-primary border-x border-t rounded-none",
+						)}
+					>
 						<div className="flex flex-wrap gap-2">
 							{attachmentIds.map((attachmentId) => {
 								// First try to get the file name from uploads (for files being uploaded)
