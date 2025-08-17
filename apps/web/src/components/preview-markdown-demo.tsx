@@ -72,10 +72,10 @@ function PreviewLeaf({
 			className={cn(
 				bold && "font-bold",
 				italic && "italic",
-				title && "mx-0 mt-5 mb-2.5 inline-block text-[20px] font-bold",
+				title && "mx-0 mt-5 mb-2.5 inline-block font-bold text-[20px]",
 				list && "pl-2.5 text-[20px] leading-[10px]",
-				hr && "block border-b-2 border-[#ddd] text-center",
-				blockquote && "inline-block border-l-2 border-[#ddd] pl-2.5 text-[#aaa] italic",
+				hr && "block border-[#ddd] border-b-2 text-center",
+				blockquote && "inline-block border-[#ddd] border-l-2 pl-2.5 text-[#aaa] italic",
 				code && "bg-[#eee] p-[3px] font-mono",
 			)}
 		>
@@ -101,7 +101,12 @@ export function PreviewMdDemo() {
 	return (
 		<Plate editor={editor}>
 			<EditorContainer>
-				<Editor renderLeaf={PreviewLeaf} />
+				<Editor
+					variant="chat"
+					className="border border-primary bg-primary"
+					renderLeaf={PreviewLeaf}
+					placeholder="Write something..."
+				/>
 			</EditorContainer>
 		</Plate>
 	)

@@ -1,19 +1,17 @@
-'use client';
+"use client"
 
-import * as React from 'react';
-
-import type { PlateLeafProps } from 'platejs/react';
-
-import { PlateLeaf } from 'platejs/react';
+import type { PlateLeafProps } from "platejs/react"
+import { PlateLeaf } from "platejs/react"
+import * as React from "react"
 
 export function CodeLeaf(props: PlateLeafProps) {
-  return (
-    <PlateLeaf
-      {...props}
-      as="code"
-      className="rounded-md bg-tertiary px-[0.3em] py-[0.2em] font-mono text-sm whitespace-pre-wrap"
-    >
-      {props.children}
-    </PlateLeaf>
-  );
+	return (
+		<PlateLeaf
+			{...props}
+			as="code"
+			className="whitespace-pre-wrap rounded-md bg-tertiary px-[0.3em] py-[0.2em] font-mono text-sm"
+		>
+			{props.children}
+		</PlateLeaf>
+	)
 }

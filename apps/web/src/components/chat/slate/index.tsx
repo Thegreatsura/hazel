@@ -9,7 +9,7 @@ import type { CustomEditor } from "./custom-types.d"
 // Register markdown language
 lowlight.registerLanguage("markdown", markdown)
 
-const MarkdownPreviewExample = () => {
+const _MarkdownPreviewExample = () => {
 	const renderLeaf = useCallback((props: RenderLeafProps) => <Leaf {...props} />, [])
 
 	const editor = useMemo(() => withHistory(withReact(createEditor())) as CustomEditor, [])
@@ -57,7 +57,7 @@ const MarkdownPreviewExample = () => {
 				decorate={decorate}
 				renderLeaf={renderLeaf}
 				placeholder="Write some markdown..."
-				className="p-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+				className="rounded-md border p-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
 			/>
 		</Slate>
 	)

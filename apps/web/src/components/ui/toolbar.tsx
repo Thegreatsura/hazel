@@ -18,7 +18,7 @@ import { cn } from "~/lib/utils"
 export function Toolbar({ className, ...props }: React.ComponentProps<typeof ToolbarPrimitive.Root>) {
 	return (
 		<ToolbarPrimitive.Root
-			className={cn("relative flex items-center select-none", className)}
+			className={cn("relative flex select-none items-center", className)}
 			{...props}
 		/>
 	)
@@ -242,7 +242,7 @@ export function ToolbarGroup({ children, className }: React.ComponentProps<"div"
 		<div className={cn("group/toolbar-group", "relative hidden has-[button]:flex", className)}>
 			<div className="flex items-center">{children}</div>
 
-			<div className="mx-1.5 py-0.5 group-last/toolbar-group:hidden!">
+			<div className="group-last/toolbar-group:hidden! mx-1.5 py-0.5">
 				<Separator orientation="vertical" />
 			</div>
 		</div>
@@ -299,7 +299,7 @@ function TooltipContent({
 		<TooltipPrimitive.Portal>
 			<TooltipPrimitive.Content
 				className={cn(
-					"z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md bg-brand-solid px-3 py-1.5 text-xs text-balance text-white",
+					"z-50 w-fit origin-(--radix-tooltip-content-transform-origin) text-balance rounded-md bg-brand-solid px-3 py-1.5 text-white text-xs",
 					className,
 				)}
 				data-slot="tooltip-content"
@@ -338,7 +338,7 @@ export function ToolbarMenuGroup({
 				)}
 			>
 				{label && (
-					<DropdownMenuLabel className="select-none text-xs font-semibold text-tertiary">
+					<DropdownMenuLabel className="select-none font-semibold text-tertiary text-xs">
 						{label}
 					</DropdownMenuLabel>
 				)}

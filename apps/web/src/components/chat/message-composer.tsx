@@ -199,6 +199,7 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 						</div>
 					</div>
 				)}
+				<PreviewMdDemo></PreviewMdDemo>
 				<TextEditor.Root
 					className="relative w-full gap-2"
 					inputClassName={cx(
