@@ -12,6 +12,7 @@ import { cn } from "~/lib/utils"
 import { MessageComposerActions } from "./chat/message-composer-actions"
 
 import "prismjs/components/prism-markdown.js"
+import { cx } from "~/utils/cx"
 
 /** Decorate texts with markdown preview. */
 const decoratePreview: Decorate = ({ entry: [node, path] }) => {
@@ -121,11 +122,11 @@ function PreviewLeaf({
 			className={cn(
 				bold && "font-bold",
 				italic && "italic",
-				title && "mx-0 mt-5 mb-2.5 inline-block font-bold text-[20px]",
-				list && "pl-2.5 text-[20px] leading-[10px]",
+				title && "inline-block font-bold text-xl",
+				list && "pl-2.5 text-xl leading-2.5",
 				hr && "block border-secondary border-b-2 text-center",
-				blockquote && "inline-block border-brand border-l-2 pl-2.5 text-brand-primary italic",
-				codeSnippet && "bg-[#eee] p-[3px] font-mono text-red-500",
+				blockquote && "inline-block border-secondary border-l-3 pl-2.5 text-brand-primary italic",
+				codeSnippet && "rounded-md border border-primary bg-secondary p-0.5 font-mono text-xs",
 				codeBlock && "font-mono text-secondary",
 				codePunctuation && "text-tertiary",
 				codeLanguage && "font-mono text-tertiary",
@@ -243,10 +244,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
 		return (
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>
-				<EditorContainer className={cn("relative", className)}>
+				<EditorContainer className={cx("relative")}>
 					<Editor
 						variant="chat"
-						className="border border-primary bg-primary pr-[120px]"
+						className={cx("border border-primary bg-primary", className)}
 						renderLeaf={PreviewLeaf}
 						placeholder={placeholder}
 						onKeyDown={handleKeyDown}

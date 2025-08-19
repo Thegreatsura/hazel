@@ -53,7 +53,7 @@ export function MessageItem({
 	const [hasBeenHovered, setHasBeenHovered] = useState(false)
 	const [isMenuOpen, setIsMenuOpen] = useState(false)
 	const hoverTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
-	const editorRef = useRef<any>(null)
+	const _editorRef = useRef<any>(null)
 
 	const { data: currentUser } = useQuery(
 		convexQuery(api.me.getCurrentUser, {
@@ -78,7 +78,7 @@ export function MessageItem({
 		}
 	}
 
-	const handleEdit = async (editor: any) => {
+	const _handleEdit = async (editor: any) => {
 		// For Plate editor, we need to extract text differently
 		const content = editor.children
 			.map((node: any) => node.children?.map((child: any) => child.text || "").join("") || "")

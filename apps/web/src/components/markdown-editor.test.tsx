@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import Prism from "prismjs"
+import { describe, expect, it } from "vitest"
 import "prismjs/components/prism-markdown.js"
 
 describe("Markdown Editor Token Processing", () => {
@@ -92,9 +92,7 @@ describe("Markdown Editor Token Processing", () => {
 
 			const codeRanges = ranges.filter((r) => r.type === "code-snippet")
 			expect(codeRanges).toHaveLength(2)
-			expect(text.substring(codeRanges[0].anchor.offset, codeRanges[0].focus.offset)).toBe(
-				"`useState`",
-			)
+			expect(text.substring(codeRanges[0].anchor.offset, codeRanges[0].focus.offset)).toBe("`useState`")
 			expect(text.substring(codeRanges[1].anchor.offset, codeRanges[1].focus.offset)).toBe(
 				"`useEffect`",
 			)
@@ -122,9 +120,9 @@ describe("Markdown Editor Token Processing", () => {
 			expect(codeBlockRange).toBeDefined()
 
 			// Check opening backticks
-			expect(text.substring(punctuationRanges[0].anchor.offset, punctuationRanges[0].focus.offset)).toBe(
-				"```",
-			)
+			expect(
+				text.substring(punctuationRanges[0].anchor.offset, punctuationRanges[0].focus.offset),
+			).toBe("```")
 
 			// Check code content
 			expect(text.substring(codeBlockRange.anchor.offset, codeBlockRange.focus.offset)).toBe(
@@ -132,9 +130,9 @@ describe("Markdown Editor Token Processing", () => {
 			)
 
 			// Check closing backticks
-			expect(text.substring(punctuationRanges[1].anchor.offset, punctuationRanges[1].focus.offset)).toBe(
-				"```",
-			)
+			expect(
+				text.substring(punctuationRanges[1].anchor.offset, punctuationRanges[1].focus.offset),
+			).toBe("```")
 		})
 
 		it("should handle code blocks with language specification", () => {
@@ -150,9 +148,7 @@ describe("Markdown Editor Token Processing", () => {
 			expect(languageRange).toBeDefined()
 
 			// Check language identifier
-			expect(text.substring(languageRange.anchor.offset, languageRange.focus.offset)).toBe(
-				"javascript",
-			)
+			expect(text.substring(languageRange.anchor.offset, languageRange.focus.offset)).toBe("javascript")
 
 			// Check code content
 			expect(text.substring(codeBlockRange.anchor.offset, codeBlockRange.focus.offset)).toBe(
@@ -276,7 +272,9 @@ describe("Markdown Editor Token Processing", () => {
 			expect(text.substring(codeBlockRanges[0].anchor.offset, codeBlockRanges[0].focus.offset)).toBe(
 				"start",
 			)
-			expect(text.substring(codeBlockRanges[1].anchor.offset, codeBlockRanges[1].focus.offset)).toBe("end")
+			expect(text.substring(codeBlockRanges[1].anchor.offset, codeBlockRanges[1].focus.offset)).toBe(
+				"end",
+			)
 		})
 
 		it("should handle incomplete code blocks", () => {
