@@ -1,11 +1,13 @@
 import type { Id } from "@hazel/backend"
 import { useParams } from "@tanstack/react-router"
-import { Attachment01, FaceSmile, XClose } from "@untitledui/icons"
+import { Attachment01, ChevronDown, FaceSmile, ItalicSquare, Microphone02, XClose } from "@untitledui/icons"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
+import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { cx } from "~/utils/cx"
+import { Avatar } from "../base/avatar/avatar"
 import { Button } from "../base/buttons/button"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import {
@@ -34,7 +36,7 @@ interface MessageComposerActionsProps {
 }
 
 export const MessageComposerActions = forwardRef<MessageComposerActionsRef, MessageComposerActionsProps>(
-	({ attachmentIds, setAttachmentIds, uploads, onSubmit, onEmojiSelect }, ref) => {
+	({ attachmentIds, setAttachmentIds, uploads, onEmojiSelect }, ref) => {
 		const { orgId } = useParams({ from: "/_app/$orgId" })
 		const fileInputRef = useRef<HTMLInputElement>(null)
 		const [showUploadProgress, setShowUploadProgress] = useState(false)
@@ -60,13 +62,6 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 			}
 		}
 
-		const handleSubmit = async () => {
-			if (onSubmit) {
-				await onSubmit()
-			}
-		}
-
-		// Expose cleanup method to parent component
 		useImperativeHandle(
 			ref,
 			() => ({
@@ -134,15 +129,34 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 					accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
 				/>
 
-				<div className="absolute right-3.5 bottom-2 flex items-center gap-2">
-					<div className="flex items-center gap-0.5">
-						<ButtonUtility
-							icon={Attachment01}
-							size="xs"
-							color="tertiary"
+				{/* Bottom action bar */}
+				<div className="flex w-full items-center justify-between gap-3 px-3 py-2">
+					<div className="flex items-center gap-3"></div>
+
+					<div className="flex items-center gap-3">
+						{/* Shortcuts button */}
+						<Button
+							size="sm"
+							color="link-gray"
+							iconLeading={<ItalicSquare data-icon className="size-4!" />}
+							className="font-semibold text-xs"
+						>
+							Shortcuts
+						</Button>
+
+						{/* Attach button */}
+						<Button
+							size="sm"
+							color="link-gray"
+							iconLeading={<Attachment01 data-icon className="size-4!" />}
+							className="font-semibold text-xs"
 							onClick={() => fileInputRef.current?.click()}
 							disabled={isUploading}
-						/>
+						>
+							Attach
+						</Button>
+
+						{/* Emoji picker */}
 						<DialogTrigger isOpen={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
 							<ButtonUtility icon={FaceSmile} size="xs" color="tertiary" />
 							<Popover>
@@ -165,10 +179,6 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 							</Popover>
 						</DialogTrigger>
 					</div>
-
-					<Button size="sm" color="link-color" onClick={handleSubmit} disabled={isUploading}>
-						Send
-					</Button>
 				</div>
 			</>
 		)
