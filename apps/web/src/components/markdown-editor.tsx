@@ -1,18 +1,13 @@
 "use client"
 
 import type { Id } from "@hazel/backend"
-import { createSlatePlugin, type Decorate, type RenderLeafProps, TextApi, type TText } from "platejs"
 import { Plate, usePlateEditor } from "platejs/react"
-import Prism from "prismjs"
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react"
 import { Node } from "slate"
 import { BasicNodesKit } from "~/components/editor/plugins/basic-nodes-kit"
 import { Editor, EditorContainer } from "~/components/editor-ui/editor"
-import { cn } from "~/lib/utils"
-import { MessageComposerActions } from "./chat/message-composer-actions"
-
-import "prismjs/components/prism-markdown.js"
 import { cx } from "~/utils/cx"
+import { MessageComposerActions } from "./chat/message-composer-actions"
 import { AutoformatKit } from "./editor/plugins/autoformat-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
 import { MentionKit } from "./editor/plugins/mention-kit"
@@ -59,6 +54,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 					...BasicNodesKit,
 					...MarkdownKit,
 					...AutoformatKit,
+					// ...CodeBlockKit,
 					// ...MentionKit,
 				],
 			},
@@ -67,6 +63,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
 		const focusEditor = useCallback(() => {
 			const editorElement = document.querySelector('[data-slate-editor="true"]') as HTMLElement
+
 			editorElement?.focus()
 		}, [])
 
@@ -77,6 +74,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 					anchor: { path: [0, 0], offset: 0 },
 					focus: { path: [0, 0], offset: 0 },
 				})
+
+				editor.tf.focus()
 				focusEditor()
 			}, 0)
 		}, [editor, focusEditor])
@@ -86,6 +85,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			() => ({
 				focusAndInsertText: (text: string) => {
 					editor.transforms.insertText(text)
+
 					focusEditor()
 				},
 				clearContent: resetAndFocus,
@@ -120,10 +120,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
 		return (
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>
-				<EditorContainer className={cx("relative")}>
+				<EditorContainer
+					className={cx(
+						"relative flex h-max flex-col rounded-xl bg-secondary ring-1 ring-secondary ring-inset",
+						className,
+					)}
+				>
 					<Editor
 						variant="chat"
-						className={cx("border border-primary bg-primary", className)}
+						className="rounded-xl bg-transparent"
 						placeholder={placeholder}
 						onKeyDown={handleKeyDown}
 					/>

@@ -122,10 +122,7 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 			clearTimeout(typingTimeoutRef.current)
 		}
 
-		// Clear attachments after sending
 		setAttachmentIds([])
-
-		// Note: Editor content is cleared and refocused automatically by MarkdownEditor's handleSubmit
 	}
 
 	return (

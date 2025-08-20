@@ -87,6 +87,7 @@ export const Editor = React.forwardRef<HTMLDivElement, EditorProps>(
 		return (
 			<PlateContent
 				ref={ref}
+				autoFocusOnEditable
 				className={cn(
 					editorVariants({
 						disabled,
@@ -96,6 +97,7 @@ export const Editor = React.forwardRef<HTMLDivElement, EditorProps>(
 					className,
 				)}
 				disabled={disabled}
+				autoFocus
 				disableDefaultStyles
 				{...props}
 			/>
