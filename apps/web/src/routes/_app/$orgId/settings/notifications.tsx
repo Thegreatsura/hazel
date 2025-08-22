@@ -1,36 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useAuth } from "@workos-inc/authkit-react"
-import {
-	OrganizationSwitcher,
-	UserProfile,
-	UserSecurity,
-	UserSessions,
-	UsersManagement,
-	WorkOsWidgets,
-} from "@workos-inc/widgets"
+import { Bell, BellOff, Monitor, Moon, Volume2, VolumeX } from "@untitledui/icons"
+import { useState } from "react"
+import { RadioGroup } from "react-aria-components"
+import { toast } from "sonner"
+import { SectionFooter } from "~/components/application/section-footers/section-footer"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
+import { SectionLabel } from "~/components/application/section-headers/section-label"
 import { Button } from "~/components/base/buttons/button"
 import { Form } from "~/components/base/form/form"
+import { Slider } from "~/components/base/slider/slider"
 import { Toggle } from "~/components/base/toggle/toggle"
+import IconNotificationBellOn from "~/components/icons/IconNotificationBellOn"
 import IconVolumeMute1 from "~/components/icons/IconVolumeMute1"
 import IconVolumeOne1 from "~/components/icons/IconVolumeOne1"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
+import { cx } from "~/utils/cx"
 
 export const Route = createFileRoute("/_app/$orgId/settings/notifications")({
 	component: NotificationsSettings,
 })
 
 function NotificationsSettings() {
-	const { getAccessToken, switchToOrganization } = useAuth()
 	const { settings, updateSettings, testSound } = useNotificationSound()
+	const [isSubmitting, setIsSubmitting] = useState(false)
+	const [desktopNotifications, setDesktopNotifications] = useState(true)
+	const [messagePreference, setMessagePreference] = useState<"all" | "mentions" | "none">("all")
+	const [doNotDisturb, setDoNotDisturb] = useState(false)
+	const [quietHoursStart, setQuietHoursStart] = useState("22:00")
+	const [quietHoursEnd, setQuietHoursEnd] = useState("08:00")
+
+	const handleSave = async () => {
+		setIsSubmitting(true)
+		try {
+			// Save settings (in real app, this would be an API call)
+			await new Promise((resolve) => setTimeout(resolve, 500))
+			toast.success("Notification settings saved")
+		} catch (error) {
+			toast.error("Failed to save settings")
+		} finally {
+			setIsSubmitting(false)
+		}
+	}
 
 	return (
 		<Form
 			className="flex flex-col gap-6 px-4 lg:px-8"
 			onSubmit={(e) => {
 				e.preventDefault()
-				const data = Object.fromEntries(new FormData(e.currentTarget))
-				console.log("Form data:", data)
+				handleSave()
 			}}
 		>
 			<SectionHeader.Root>
@@ -38,7 +55,7 @@ function NotificationsSettings() {
 					<div className="flex flex-1 flex-col justify-center gap-0.5 self-stretch">
 						<SectionHeader.Heading>Notifications</SectionHeader.Heading>
 						<SectionHeader.Subheading>
-							Configure how and when you receive notifications.
+							Manage how you receive notifications for messages and mentions.
 						</SectionHeader.Subheading>
 					</div>
 				</SectionHeader.Group>
