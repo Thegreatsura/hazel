@@ -14,8 +14,8 @@
 		"@convex-dev/r2": "^0.7.1",
 		"@edge-runtime/vm": "^5.0.0",
 		"@rjdellecese/confect": "^0.0.28",
-		"@workos-inc/node": "^7.67.0",
-		"convex": "^1.25.4",
+		"@workos-inc/node": "^7.68.0",
+		"convex": "^1.26.1",
 		"convex-helpers": "^0.1.104",
 		"effect": "^3.17.7"
 	},

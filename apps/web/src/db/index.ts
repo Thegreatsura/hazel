@@ -3,7 +3,9 @@ import { QueryClient } from "@tanstack/react-query"
 import { ConvexReactClient } from "convex/react"
 import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex/server"
 
-export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
+export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL, {
+	expectAuth: true,
+})
 
 export const convexQueryClient = new ConvexQueryClient(convex)
 
