@@ -31,7 +31,6 @@ interface MarkdownEditorProps {
 		status: string
 		attachmentId?: Id<"attachments">
 	}>
-	enableGlobalKeyCapture?: boolean
 }
 
 export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
@@ -44,7 +43,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			attachmentIds = [],
 			setAttachmentIds,
 			uploads = [],
-			enableGlobalKeyCapture = false,
 		},
 		ref,
 	) => {
@@ -108,41 +106,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			[focusAndInsertTextInternal, resetAndFocus],
 		)
 
-		// Global keydown listener for capturing keys when editor is not focused
-		useEffect(() => {
-			if (!enableGlobalKeyCapture) return
-
-			const handleGlobalKeyDown = (event: KeyboardEvent) => {
-				// Skip if target is an input, textarea, or contenteditable element
-				const target = event.target as HTMLElement
-				if (
-					target.tagName === "INPUT" ||
-					target.tagName === "TEXTAREA" ||
-					target.contentEditable === "true"
-				) {
-					return
-				}
-
-				// Skip if user is pressing modifier keys
-				if (event.ctrlKey || event.altKey || event.metaKey) {
-					return
-				}
-
-				// Check if it's a printable character or space
-				const isPrintableChar = event.key.length === 1
-
-				if (isPrintableChar) {
-					event.preventDefault()
-					focusAndInsertTextInternal(event.key)
-				}
-			}
-
-			document.addEventListener("keydown", handleGlobalKeyDown)
-
-			return () => {
-				document.removeEventListener("keydown", handleGlobalKeyDown)
-			}
-		}, [enableGlobalKeyCapture, focusAndInsertTextInternal])
 
 		const handleSubmit = async () => {
 			if (!onSubmit) return
@@ -177,6 +140,39 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			editor.transforms.insertText(emoji)
 			focusEditor()
 		}
+
+		useEffect(() => {
+			const handleGlobalKeyDown = (event: KeyboardEvent) => {
+				// Skip if target is an input, textarea, or contenteditable element
+				const target = event.target as HTMLElement
+				if (
+					target.tagName === "INPUT" ||
+					target.tagName === "TEXTAREA" ||
+					target.contentEditable === "true"
+				) {
+					return
+				}
+
+				// Skip if user is pressing modifier keys
+				if (event.ctrlKey || event.altKey || event.metaKey) {
+					return
+				}
+
+				// Check if it's a printable character or space
+				const isPrintableChar = event.key.length === 1
+
+				if (isPrintableChar) {
+					event.preventDefault()
+					focusAndInsertTextInternal(event.key)
+				}
+			}
+
+			document.addEventListener("keydown", handleGlobalKeyDown)
+
+			return () => {
+				document.removeEventListener("keydown", handleGlobalKeyDown)
+			}
+		}, [focusAndInsertTextInternal])
 
 		return (
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>

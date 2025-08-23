@@ -171,7 +171,6 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 					attachmentIds={attachmentIds}
 					setAttachmentIds={setAttachmentIds}
 					uploads={uploads}
-					enableGlobalKeyCapture
 				/>
 			</div>
 		</div>
