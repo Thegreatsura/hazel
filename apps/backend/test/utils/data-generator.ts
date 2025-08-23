@@ -21,9 +21,7 @@ export function randomIdentity(convexTestInstance: ReturnType<typeof convexTest>
 	return t
 }
 
-export async function createAccount(
-	t: any,
-) {
+export async function createAccount(t: any) {
 	// Get the stored identity
 	const identity = (t as any)._testIdentity
 
@@ -55,10 +53,7 @@ export async function createAccount(
 	})
 }
 
-export async function createServerAndAccount(
-	t: any,
-	props?: { name?: string; slug?: string },
-) {
+export async function createServerAndAccount(t: any, props?: { name?: string; slug?: string }) {
 	const userId = await createAccount(t)
 	const organizationId = await createOrganization(t, props)
 
@@ -132,10 +127,7 @@ export async function createUser(
 	})
 }
 
-export async function createOrganization(
-	t: any,
-	props?: { name?: string; slug?: string },
-) {
+export async function createOrganization(t: any, props?: { name?: string; slug?: string }) {
 	const name = props?.name || "Test Organization"
 	const slug = props?.slug || "test-org"
 
@@ -149,16 +141,11 @@ export async function createOrganization(
 }
 
 // Servers are replaced by organizations - keeping for compatibility
-export async function createServer(
-	t: any,
-	props?: { name?: string },
-) {
+export async function createServer(t: any, props?: { name?: string }) {
 	return await createOrganization(t, { name: props?.name })
 }
 
-export async function createOrganizationAndUser(
-	t: any,
-) {
+export async function createOrganizationAndUser(t: any) {
 	const organization = await createOrganization(t)
 	const user = await createUser(t, { organizationId: organization })
 	return { user, organization }

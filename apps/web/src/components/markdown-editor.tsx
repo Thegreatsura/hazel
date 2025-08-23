@@ -2,13 +2,14 @@
 
 import type { Id } from "@hazel/backend"
 import { Plate, usePlateEditor } from "platejs/react"
-import { forwardRef, useCallback, useImperativeHandle, useRef } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react"
 import { Node } from "slate"
 import { BasicNodesKit } from "~/components/editor/plugins/basic-nodes-kit"
 import { Editor, EditorContainer } from "~/components/editor-ui/editor"
 import { cx } from "~/utils/cx"
 import { MessageComposerActions } from "./chat/message-composer-actions"
 import { AutoformatKit } from "./editor/plugins/autoformat-kit"
+import { ExitBreakKit } from "./editor/plugins/exit-break-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
 import { MentionKit } from "./editor/plugins/mention-kit"
 
@@ -53,6 +54,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 				plugins: [
 					...BasicNodesKit,
 					...MarkdownKit,
+					...ExitBreakKit,
 					...AutoformatKit,
 					// ...CodeBlockKit,
 					...MentionKit,
@@ -62,10 +64,28 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 		)
 
 		const focusEditor = useCallback(() => {
-			editor.tf.focus({
-				edge: "end",
+			requestAnimationFrame(() => {
+				editor.tf.focus({
+					edge: "end",
+				})
 			})
 		}, [editor])
+
+		const focusAndInsertTextInternal = useCallback(
+			(text: string) => {
+				// Use requestAnimationFrame to ensure DOM is ready
+				requestAnimationFrame(() => {
+					// First focus the editor
+					editor.tf.focus()
+
+					// Then insert the text at the current cursor position
+					requestAnimationFrame(() => {
+						editor.transforms.insertText(text)
+					})
+				})
+			},
+			[editor],
+		)
 
 		const resetAndFocus = useCallback(() => {
 			editor.tf.reset()
@@ -82,14 +102,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 		useImperativeHandle(
 			ref,
 			() => ({
-				focusAndInsertText: (text: string) => {
-					editor.transforms.insertText(text)
-
-					focusEditor()
-				},
+				focusAndInsertText: focusAndInsertTextInternal,
 				clearContent: resetAndFocus,
 			}),
-			[editor, focusEditor, resetAndFocus],
+			[focusAndInsertTextInternal, resetAndFocus],
 		)
 
 		const handleSubmit = async () => {
@@ -125,6 +141,39 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			editor.transforms.insertText(emoji)
 			focusEditor()
 		}
+
+		useEffect(() => {
+			const handleGlobalKeyDown = (event: KeyboardEvent) => {
+				// Skip if target is an input, textarea, or contenteditable element
+				const target = event.target as HTMLElement
+				if (
+					target.tagName === "INPUT" ||
+					target.tagName === "TEXTAREA" ||
+					target.contentEditable === "true"
+				) {
+					return
+				}
+
+				// Skip if user is pressing modifier keys
+				if (event.ctrlKey || event.altKey || event.metaKey) {
+					return
+				}
+
+				// Check if it's a printable character or space
+				const isPrintableChar = event.key.length === 1
+
+				if (isPrintableChar) {
+					event.preventDefault()
+					focusAndInsertTextInternal(event.key)
+				}
+			}
+
+			document.addEventListener("keydown", handleGlobalKeyDown)
+
+			return () => {
+				document.removeEventListener("keydown", handleGlobalKeyDown)
+			}
+		}, [focusAndInsertTextInternal])
 
 		return (
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>

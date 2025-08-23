@@ -289,7 +289,7 @@ export function MessageItem({
 									>,
 								),
 							).map(([emoji, data]) => (
-								<Button onPress={() => handleReaction(emoji)}>
+								<Button onPress={() => handleReaction(emoji)} key={emoji}>
 									<Badge
 										type="pill-color"
 										color={data.hasReacted ? "brand" : "gray"}
