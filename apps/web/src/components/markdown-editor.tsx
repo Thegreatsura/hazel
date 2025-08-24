@@ -12,6 +12,7 @@ import { AutoformatKit } from "./editor/plugins/autoformat-kit"
 import { ExitBreakKit } from "./editor/plugins/exit-break-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
 import { MentionKit } from "./editor/plugins/mention-kit"
+import { SlashKit } from "./editor/plugins/slash-kit"
 
 export interface MarkdownEditorRef {
 	focusAndInsertText: (text: string) => void
@@ -56,6 +57,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 					...MarkdownKit,
 					...ExitBreakKit,
 					...AutoformatKit,
+					...SlashKit,
 					// ...CodeBlockKit,
 					...MentionKit,
 				],
