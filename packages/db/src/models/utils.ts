@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { Model } from "../services"
+import * as Model from "../services/model"
 
 export const baseFields = {
 	createdAt: Model.Generated(Schema.DateFromString),

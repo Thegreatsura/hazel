@@ -1,12 +1,11 @@
 import { Database } from "@hazel/db"
-import type { DatabaseError, TransactionClient } from "@hazel/db/src/services/database"
 import { Effect, Schema } from "effect"
-
-export const TransactionId = Schema.Number.pipe(Schema.brand("@Hazel/transactionId"))
-export const TransactionIdFromString = Schema.NumberFromString.pipe(Schema.brand("@Hazel/transactionId"))
+import { TransactionIdFromString } from "./schema"
 
 export const generateTransactionId = Effect.fn("generateTransactionId")(function* (
-	tx?: <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, DatabaseError, never>,
+	tx?: <T>(
+		fn: (client: Database.TransactionClient) => Promise<T>,
+	) => Effect.Effect<T, Database.DatabaseError, never>,
 ) {
 	const db = yield* Database.Database
 	const executor = tx ?? db.execute

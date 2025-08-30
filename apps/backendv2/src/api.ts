@@ -1,9 +1,10 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
-import { Channel, Message } from "@hazel/db"
+import { Channel, Message } from "@hazel/db/models"
 import { Schema } from "effect"
+
 import { Authorization } from "./lib/auth"
-import { TransactionId } from "./lib/create-transactionId"
 import { InternalServerError, UnauthorizedError } from "./lib/errors"
+import { TransactionId } from "./lib/schema"
 
 export class RootGroup extends HttpApiGroup.make("root").add(
 	HttpApiEndpoint.get("root")`/`.addSuccess(Schema.String),

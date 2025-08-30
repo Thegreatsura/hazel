@@ -1,7 +1,7 @@
+import { UserId } from "@hazel/db/schema"
 import { randomUUIDv7 } from "bun"
 import { Effect, Layer, Redacted } from "effect"
 import { Authorization, User } from "../lib/auth"
-import { UserId } from "../lib/schema"
 
 export const AuthorizationLive = Layer.effect(
 	Authorization,

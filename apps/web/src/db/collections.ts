@@ -3,6 +3,8 @@ import { api } from "@hazel/backend/api"
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { queryCollectionOptions } from "@tanstack/query-db-collection"
 import { createCollection } from "@tanstack/react-db"
+import { Effect } from "effect"
+import { backendClient } from "~/lib/client"
 import { convexQueryOptions } from "."
 
 export const channelCollection = (organizationId: Id<"organizations">) =>
@@ -23,5 +25,19 @@ export const messageCollection = createCollection(
 			},
 		},
 		getKey: (item) => item.id,
+		onInsert: async ({ transaction }) => {
+			const { modified: newMessage } = transaction.mutations[0]
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* backendClient
+
+					return yield* client.messages.create({
+						payload: newMessage,
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
 	}),
 )

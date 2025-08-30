@@ -3,8 +3,13 @@
 	"module": "src/index.ts",
 	"type": "module",
 	"private": true,
+	"exports": {
+		".": "./src/index.ts",
+		"./api": "./src/api.ts"
+	},
 	"scripts": {
-		"dev": "bun run --hot src/index.ts"
+		"dev": "bun run --hot src/index.ts",
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",

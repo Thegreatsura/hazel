@@ -1,4 +1,6 @@
 // Export all tables
+
+export * from "../lib/schema"
 export * from "./attachments"
 export * from "./channels"
 export * from "./invitations"

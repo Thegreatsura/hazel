@@ -1,12 +1,15 @@
-import { MessageId, UserId } from "../lib/schema"
-import * as schema from "../schema"
-import { DrizzleEffect, Model as M } from "../services"
+import { Schema } from "effect"
+import { ChannelId, MessageId, UserId } from "../lib/schema"
+import * as M from "../services/model"
 import { baseFields } from "./utils"
 
 export class Model extends M.Class<Model>("Message")({
-	...DrizzleEffect.createSelectSchema(schema.messagesTable).fields,
 	id: M.Generated(MessageId),
+	channelId: ChannelId,
 	authorId: M.GeneratedByApp(UserId),
+	content: Schema.String,
+	replyToMessageId: Schema.NullOr(MessageId),
+	threadChannelId: Schema.NullOr(ChannelId),
 	...baseFields,
 }) {}
 
