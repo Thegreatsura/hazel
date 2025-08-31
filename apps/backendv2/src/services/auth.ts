@@ -6,7 +6,7 @@ import { Authorization, User } from "../lib/auth"
 export const AuthorizationLive = Layer.effect(
 	Authorization,
 	Effect.gen(function* () {
-		yield* Effect.log("creating Authorization middleware")
+		yield* Effect.log("Initializing Authorization middleware...")
 
 		return {
 			bearer: (bearerToken) =>

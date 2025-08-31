@@ -29,3 +29,43 @@ export const OrganizationId = Schema.UUID.pipe(Schema.brand("@HazelChat/Organiza
 	title: "Organization ID",
 })
 export type OrganizationId = Schema.Schema.Type<typeof OrganizationId>
+
+export const InvitationId = Schema.UUID.pipe(Schema.brand("@HazelChat/InvitationId")).annotations({
+	description: "The ID of the invitation",
+	title: "Invitation ID",
+})
+export type InvitationId = Schema.Schema.Type<typeof InvitationId>
+
+export const PinnedMessageId = Schema.UUID.pipe(Schema.brand("@HazelChat/PinnedMessageId")).annotations({
+	description: "The ID of the pinned message",
+	title: "Pinned Message ID",
+})
+export type PinnedMessageId = Schema.Schema.Type<typeof PinnedMessageId>
+
+export const NotificationId = Schema.UUID.pipe(Schema.brand("@HazelChat/NotificationId")).annotations({
+	description: "The ID of the notification",
+	title: "Notification ID",
+})
+export type NotificationId = Schema.Schema.Type<typeof NotificationId>
+
+export const ChannelMemberId = Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelMemberId")).annotations({
+	description: "The ID of the channel member",
+	title: "Channel Member ID",
+})
+export type ChannelMemberId = Schema.Schema.Type<typeof ChannelMemberId>
+
+export const OrganizationMemberId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/OrganizationMemberId"),
+).annotations({
+	description: "The ID of the organization member",
+	title: "Organization Member ID",
+})
+export type OrganizationMemberId = Schema.Schema.Type<typeof OrganizationMemberId>
+
+export const DirectMessageParticipantId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/DirectMessageParticipantId"),
+).annotations({
+	description: "The ID of the direct message participant",
+	title: "Direct Message Participant ID",
+})
+export type DirectMessageParticipantId = Schema.Schema.Type<typeof DirectMessageParticipantId>
