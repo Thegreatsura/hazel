@@ -1,14 +1,13 @@
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
+import { useConvexMutation } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import type { Channel, Message, PinnedMessage } from "@hazel/db/models"
+import type { Channel, Message } from "@hazel/db/models"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@workos-inc/authkit-react"
 import type { FunctionReturnType } from "convex/server"
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { channelCollection, messageCollection, pinnedMessageCollection } from "~/db/collections"
+import { channelCollection, messageCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 
 type TypingUser = FunctionReturnType<typeof api.typingIndicator.list>[0]
@@ -19,7 +18,6 @@ interface ChatContextValue {
 	organizationId: OrganizationId
 	channel: typeof Channel.Model.Type | undefined
 	messages: (typeof Message.Model.Type)[]
-	pinnedMessages: (typeof PinnedMessage.Model.Type)[] | undefined
 	loadNext: (() => void) | undefined
 	loadPrev: (() => void) | undefined
 	isLoadingMessages: boolean
@@ -113,16 +111,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 				.where(({ message }) => eq(message.channelId, channelId))
 				.orderBy(({ message }) => message.createdAt, "desc")
 				.limit(50), // TODO: Implement proper pagination
-		[channelId],
-	)
-
-	// Fetch pinned messages from TanStack DB
-	const { data: pinnedMessages } = useLiveQuery(
-		(q) =>
-			q
-				.from({ pinned: pinnedMessageCollection })
-				.where(({ pinned }) => eq(pinned.channelId, channelId))
-				.orderBy(({ pinned }) => pinned.pinnedAt, "desc"),
 		[channelId],
 	)
 
@@ -317,7 +305,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			organizationId,
 			channel,
 			messages,
-			pinnedMessages,
 			loadNext,
 			loadPrev,
 			isLoadingMessages,
@@ -345,7 +332,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			channelId,
 			channel,
 			messages,
-			pinnedMessages,
 			loadNext,
 			loadPrev,
 			isLoadingMessages,

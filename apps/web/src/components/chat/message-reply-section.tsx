@@ -52,7 +52,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 							{data.author.firstName} {data.author.lastName}
 						</span>
 						<span className="max-w-xs truncate text-ellipsis text-foreground text-xs">
-							{data.message.content.split("\n")[0]}
+							{data.content.split("\n")[0]}
 						</span>
 					</>
 				) : (

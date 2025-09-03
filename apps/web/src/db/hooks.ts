@@ -2,18 +2,25 @@ import type { Channel, ChannelMember, User } from "@hazel/db/models"
 import type { ChannelId, MessageId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useUser } from "~/lib/auth"
-import { channelCollection, messageCollection, userCollection } from "./collections"
+import { attachmentCollection, channelCollection, messageCollection, userCollection } from "./collections"
 import { channelMemberWithUserCollection } from "./materialized-collections"
 
 export const useMessage = (messageId: MessageId) => {
-	const { data, ...rest } = useLiveQuery((q) =>
-		q
-			.from({ message: messageCollection })
-			.innerJoin({ author: userCollection }, ({ message, author }) => eq(message.authorId, author.id))
-			.where((q) => eq(q.message.id, messageId))
-			.limit(1)
-			.orderBy((q) => q.message.createdAt, "desc"),
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.innerJoin({ author: userCollection }, ({ message, author }) =>
+					eq(message.authorId, author.id),
+				)
+				.where((q) => eq(q.message.id, messageId))
+				.limit(1)
+				.select(({ message, author }) => ({ ...message, author: author }))
+				.orderBy((q) => q.message.createdAt, "desc"),
+		[messageId],
 	)
+
+	console.log(data, "XD")
 
 	const replyMessage = data?.[0]
 
@@ -96,5 +103,20 @@ export const useChannelWithCurrentUser = (channelId: ChannelId) => {
 		channel: { ...channelWithMember, currentUser: currentUserMember },
 
 		...rest,
+	}
+}
+
+export const useAttachments = (messageId: MessageId) => {
+	const { data: attachments, ...rest } = useLiveQuery((q) =>
+		q
+			.from({
+				attachments: attachmentCollection,
+			})
+			.where(({ attachments }) => eq(attachments.messageId, messageId)),
+	)
+
+	return {
+		attachments: attachments,
+		rest,
 	}
 }

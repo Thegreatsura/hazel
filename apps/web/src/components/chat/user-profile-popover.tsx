@@ -1,3 +1,5 @@
+import type { UserId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { DotsHorizontal } from "@untitledui/icons"
 import { Button, DialogTrigger, Dialog as PrimitiveDialog } from "react-aria-components"
 import { toast } from "sonner"
@@ -9,18 +11,13 @@ import { Popover } from "~/components/base/select/popover"
 import { TextArea } from "~/components/base/textarea/textarea"
 import { Tooltip } from "~/components/base/tooltip/tooltip"
 import IconPencilEdit from "~/components/icons/IconPencilEdit"
+import { userCollection } from "~/db/collections"
 import { IconNotification } from "../application/notifications/notifications"
 import IconPhone2 from "../icons/IconPhone2"
 import IconStar from "../icons/IconStar"
 
 interface UserProfilePopoverProps {
-	user: {
-		_id?: string
-		firstName: string
-		lastName: string
-		email?: string
-		avatarUrl?: string
-	}
+	userId: UserId
 	isOwnProfile: boolean
 	isFavorite?: boolean
 	isMuted?: boolean
@@ -33,7 +30,7 @@ interface UserProfilePopoverProps {
 }
 
 export function UserProfilePopover({
-	user,
+	userId,
 	isOwnProfile,
 	isFavorite = false,
 	isMuted = false,
@@ -44,6 +41,10 @@ export function UserProfilePopover({
 	onToggleFavorite,
 	onCopyUserId,
 }: UserProfilePopoverProps) {
+	const { data } = useLiveQuery((q) => q.from({ user: userCollection }).where((q) => eq(q.user.id, userId)))
+	const user = data[0]
+	if (!user) return null
+
 	const fullName = `${user.firstName} ${user.lastName}`
 
 	return (
@@ -153,18 +154,16 @@ export function UserProfilePopover({
 													<Dropdown.Separator />
 													<Dropdown.Item
 														onAction={() => {
-															if (user._id) {
-																navigator.clipboard.writeText(user._id)
-																toast.custom((t) => (
-																	<IconNotification
-																		title="User ID copied!"
-																		description="User ID has been copied to your clipboard."
-																		color="success"
-																		onClose={() => toast.dismiss(t)}
-																	/>
-																))
-																onCopyUserId?.()
-															}
+															navigator.clipboard.writeText(user.id)
+															toast.custom((t) => (
+																<IconNotification
+																	title="User ID copied!"
+																	description="User ID has been copied to your clipboard."
+																	color="success"
+																	onClose={() => toast.dismiss(t)}
+																/>
+															))
+															onCopyUserId?.()
 														}}
 													>
 														Copy user ID

@@ -1,7 +1,7 @@
 import type { Id } from "@hazel/backend"
 import type { Message } from "@hazel/db/models"
-import type { OrganizationId } from "@hazel/db/schema"
-import { eq, useLiveQuery } from "@tanstack/react-db"
+import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/db/schema"
+import { count, eq, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { format } from "date-fns"
 import { useRef, useState } from "react"
@@ -14,7 +14,14 @@ import { Checkbox } from "~/components/base/checkbox/checkbox"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconUserPlusStroke from "~/components/icons/IconUserPlusStroke"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
-import { messageReactionCollection } from "~/db/collections"
+import {
+	attachmentCollection,
+	channelCollection,
+	messageCollection,
+	messageReactionCollection,
+	userCollection,
+} from "~/db/collections"
+import { useMessage } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
 import { useUser } from "~/lib/auth"
 import { cx } from "~/utils/cx"
@@ -51,8 +58,6 @@ export function MessageItem({
 }: MessageItemProps) {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const {
-		editMessage,
-		deleteMessage,
 		addReaction,
 		removeReaction,
 		setReplyToMessageId,
@@ -72,18 +77,20 @@ export function MessageItem({
 	const hoverTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
 	const { user: currentUser } = useUser()
-	const isOwnMessage = currentUser?.id === message.authorId
-	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
+	const isOwnMessage = currentUser?.id === message?.authorId
+	const isEdited = message?.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
-	const showAvatar = isGroupStart || !!message.replyToMessageId
-	const isRepliedTo = !!message.replyToMessageId
-	const isMessagePinned = pinnedMessages?.some((p) => p.messageId === message.id) || false
+	const showAvatar = isGroupStart || !!message?.replyToMessageId
+	const isRepliedTo = !!message?.replyToMessageId
+	const isMessagePinned = pinnedMessages?.some((p) => p.messageId === message?.id) || false
 
 	const { data: reactions } = useLiveQuery((q) =>
-		q.from({ reactions: messageReactionCollection }).where((q) => eq(q.reactions.messageId, message.id)),
+		q.from({ reactions: messageReactionCollection }).where((q) => eq(q.reactions.messageId, message?.id)),
 	)
 
 	const handleReaction = (emoji: string) => {
+		if (!message) return
+
 		const existingReaction = reactions.find((r) => r.emoji === emoji && r.userId === currentUser?.id)
 		if (existingReaction) {
 			removeReaction(message.id, emoji)
@@ -93,10 +100,13 @@ export function MessageItem({
 	}
 
 	const handleDelete = () => {
-		deleteMessage(message.id)
+		if (!message) return
+		messageCollection.delete(message.id)
 	}
 
 	const handleCopy = () => {
+		if (!message) return
+
 		navigator.clipboard.writeText(message.content)
 		toast.custom((t) => (
 			<IconNotification
@@ -125,6 +135,8 @@ export function MessageItem({
 			clearTimeout(hoverTimeoutRef.current)
 		}
 	}
+
+	if (!message) return null
 
 	return (
 		<>
@@ -237,7 +249,7 @@ export function MessageItem({
 				<div className="flex gap-4">
 					{showAvatar ? (
 						<UserProfilePopover
-							user={{ ...message.author, id: message.authorId }}
+							userId={message.authorId}
 							isOwnProfile={isOwnMessage}
 							isFavorite={false} // TODO: Get favorite status from state
 							isMuted={false} // TODO: Get muted status from state
@@ -272,19 +284,7 @@ export function MessageItem({
 					{/* Content Section */}
 					<div className="min-w-0 flex-1">
 						{/* Author header (only when showing avatar) */}
-						{showAvatar && (
-							<div className="flex items-baseline gap-2">
-								<span className="font-semibold">
-									{message.author
-										? `${(message).author.firstName} ${(message).author.lastName}`
-										: "Unknown"}
-								</span>
-								<span className="text-secondary text-xs">
-									{format(message.createdAt, "HH:mm")}
-									{isEdited && " (edited)"}
-								</span>
-							</div>
-						)}
+						{showAvatar && <MessageAuthorHeader message={message} />}
 
 						{/* Message Content */}
 						{isEditing ? (
@@ -366,12 +366,7 @@ export function MessageItem({
 						)}
 
 						{/* Attachments */}
-						{message.attachments && message.attachments.length > 0 && (
-							<MessageAttachments
-								attachments={message.attachments}
-								organizationId={organizationId}
-							/>
-						)}
+						<MessageAttachments messageId={message.id} />
 
 						{/* Reactions */}
 						{reactions && reactions.length > 0 && (
@@ -386,10 +381,10 @@ export function MessageItem({
 													hasReacted: false,
 												}
 											}
-											acc[reaction.emoji].count++
-											acc[reaction.emoji].users.push(reaction.userId)
+											acc[reaction.emoji]!.count++
+											acc[reaction.emoji]!.users.push(reaction.userId)
 											if (reaction.userId === currentUser?.id) {
-												acc[reaction.emoji].hasReacted = true
+												acc[reaction.emoji]!.hasReacted = true
 											}
 											return acc
 										},
@@ -413,23 +408,11 @@ export function MessageItem({
 						)}
 
 						{/* Thread Button */}
-						{(message.threadChannelId ||
-							(message.threadMessages && message.threadMessages.length > 0)) && (
-							<button
-								type="button"
-								onClick={() => {
-									if (message.threadChannelId) {
-										openThread(message.threadChannelId, message.id)
-									}
-								}}
-								className="mt-2 flex items-center gap-2 text-secondary text-sm transition-colors hover:text-primary"
-							>
-								<IconThread className="size-4" />
-								<span>
-									{message.threadMessages?.length || 0}{" "}
-									{message.threadMessages?.length === 1 ? "reply" : "replies"}
-								</span>
-							</button>
+						{message.threadChannelId && (
+							<ThreadMessageIndicator
+								threadChannelId={message.threadChannelId}
+								messageId={message.id}
+							/>
 						)}
 					</div>
 				</div>
@@ -477,5 +460,74 @@ export function MessageItem({
 				)}
 			</div>
 		</>
+	)
+}
+
+const ThreadMessageIndicator = ({
+	threadChannelId,
+	messageId,
+}: {
+	threadChannelId: ChannelId
+	messageId: MessageId
+}) => {
+	const { openThread } = useChat()
+
+	const { data } = useLiveQuery((q) =>
+		q
+			.from({ message: messageCollection })
+			.where(({ message }) => eq(message.channelId, threadChannelId))
+			.groupBy(({ message }) => message.channelId)
+			.select(({ message }) => ({
+				count: count(message.id),
+			}))
+			.orderBy(({ message }) => message.createdAt, "desc"),
+	)
+
+	const threadMessageState = data?.[0]
+	if (!threadMessageState) return null
+
+	return (
+		<button
+			type="button"
+			onClick={() => {
+				if (threadChannelId) {
+					openThread(threadChannelId, messageId)
+				}
+			}}
+			className="mt-2 flex items-center gap-2 text-secondary text-sm transition-colors hover:text-primary"
+		>
+			<IconThread className="size-4" />
+			<span>
+				{threadMessageState.count} {threadMessageState.count === 1 ? "reply" : "replies"}
+			</span>
+		</button>
+	)
+}
+
+const MessageAuthorHeader = ({ message }: { message: typeof Message.Model.Type }) => {
+	const { data } = useLiveQuery(
+		(q) =>
+			q
+				.from({ user: userCollection })
+				.where(({ user }) => eq(user.id, message.authorId))
+				.orderBy(({ user }) => user.createdAt, "desc")
+				.limit(1),
+		[message.authorId],
+	)
+
+	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
+
+	const user = data?.[0]
+
+	if (!user) return null
+
+	return (
+		<div className="flex items-baseline gap-2">
+			<span className="font-semibold">{user ? `${user.firstName} ${user.lastName}` : "Unknown"}</span>
+			<span className="text-secondary text-xs">
+				{format(message.createdAt, "HH:mm")}
+				{isEdited && " (edited)"}
+			</span>
+		</div>
 	)
 }
