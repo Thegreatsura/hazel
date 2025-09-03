@@ -60,59 +60,12 @@ export function UserProfilePopover({
 				placement="right top"
 			>
 				<PrimitiveDialog className="outline-hidden">
-					{({ close }) => (
+					{() => (
 						<>
 							{/* user background image */}
 							<div className="relative h-32">
 								{!isOwnProfile && (
 									<div className="absolute top-2 right-2 flex items-center gap-2 p-1">
-										<Tooltip
-											arrow
-											title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-											placement="bottom"
-										>
-											<ButtonUtility
-												onClick={() => {
-													onToggleFavorite?.()
-													toast.custom((t) => (
-														<IconNotification
-															title={
-																isFavorite
-																	? "Removed from favorites"
-																	: "Added to favorites"
-															}
-															description={
-																isFavorite
-																	? `${fullName} has been removed from your favorites.`
-																	: `${fullName} has been added to your favorites.`
-															}
-															color="success"
-															onClose={() => toast.dismiss(t)}
-														/>
-													))
-												}}
-												color={isFavorite ? "secondary" : "tertiary"}
-												size="xs"
-												icon={IconStar}
-												aria-label={
-													isFavorite ? "Remove from favorites" : "Add to favorites"
-												}
-											/>
-										</Tooltip>
-
-										<Tooltip arrow title="Call user" placement="bottom">
-											<ButtonUtility
-												onClick={() => {
-													close()
-													onInviteToChannel()
-												}}
-												color="tertiary"
-												size="xs"
-												icon={IconPhone2}
-												aria-label="Call user"
-											/>
-										</Tooltip>
-
 										<Dropdown.Root>
 											<ButtonUtility
 												className="group"
@@ -195,7 +148,10 @@ export function UserProfilePopover({
 												size="sm"
 												className="w-full"
 												iconLeading={IconPencilEdit}
-												onClick={onEditProfile}
+												onClick={() => {
+													// TODO: Implement edit profile functionality
+													console.log("Edit profile clicked")
+												}}
 											>
 												Edit profile
 											</StyledButton>
