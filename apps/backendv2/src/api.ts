@@ -1,7 +1,7 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
 import { Channel, Message } from "@hazel/db/models"
+import { MessageId } from "@hazel/db/schema"
 import { Schema } from "effect"
-
 import { Authorization } from "./lib/auth"
 import { InternalServerError, UnauthorizedError } from "./lib/errors"
 import { TransactionId } from "./lib/schema"
@@ -10,7 +10,7 @@ export class RootGroup extends HttpApiGroup.make("root").add(
 	HttpApiEndpoint.get("root")`/`.addSuccess(Schema.String),
 ) {}
 
-export class CreateMessageResponse extends Schema.Class<CreateMessageResponse>("CreateMessageResponse")({
+export class MessageResponse extends Schema.Class<MessageResponse>("MessageResponse")({
 	data: Message.Model.json,
 	transactionId: TransactionId,
 }) {}
@@ -42,7 +42,7 @@ export class CreateChannelResponse extends Schema.Class<CreateChannelResponse>("
 
 export class ChannelGroup extends HttpApiGroup.make("channels")
 	.add(
-		HttpApiEndpoint.post("create")`/`
+		HttpApiEndpoint.post("create", `/`)
 			.setPayload(Channel.Model.jsonCreate)
 			.addSuccess(CreateChannelResponse)
 			.addError(UnauthorizedError)
@@ -60,9 +60,9 @@ export class ChannelGroup extends HttpApiGroup.make("channels")
 
 export class MessageGroup extends HttpApiGroup.make("messages")
 	.add(
-		HttpApiEndpoint.post("create")`/`
+		HttpApiEndpoint.post("create", "/")
 			.setPayload(Message.Model.jsonCreate)
-			.addSuccess(CreateMessageResponse)
+			.addSuccess(MessageResponse)
 			.addError(ChannelNotFoundError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
@@ -71,6 +71,37 @@ export class MessageGroup extends HttpApiGroup.make("messages")
 					title: "Create Message",
 					description: "Create a new message in a channel",
 					summary: "Create a new message",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.put("update", `/:id`)
+			.setPath(Schema.Struct({ id: MessageId }))
+			.setPayload(Message.Model.jsonUpdate)
+			.addSuccess(MessageResponse)
+			.addError(ChannelNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Update Message",
+					description: "Update an existing message in a channel",
+					summary: "Update a message",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.del("delete", "/:id")
+			.setPath(Schema.Struct({ id: MessageId }))
+			.addSuccess(Schema.Struct({ transactionId: TransactionId }))
+			.addError(ChannelNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Delete Message",
+					description: "Delete an existing message in a channel",
+					summary: "Delete a message",
 				}),
 			),
 	)

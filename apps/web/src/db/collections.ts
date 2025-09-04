@@ -72,12 +72,48 @@ export const messageCollection = createCollection(
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
 			const { modified: newMessage } = transaction.mutations[0]
+			console.log("newMessage", newMessage)
 			const results = await Effect.runPromise(
 				Effect.gen(function* () {
 					const client = yield* backendClient
 
 					return yield* client.messages.create({
 						payload: newMessage,
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
+		onUpdate: async ({ transaction }) => {
+			const { modified: newMessage } = transaction.mutations[0]
+
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* backendClient
+
+					return yield* client.messages.update({
+						payload: newMessage,
+						path: {
+							id: newMessage.id,
+						},
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
+		onDelete: async ({ transaction }) => {
+			const { original: deletedMessage } = transaction.mutations[0]
+
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* backendClient
+
+					return yield* client.messages.delete({
+						path: {
+							id: deletedMessage.id,
+						},
 					})
 				}),
 			)

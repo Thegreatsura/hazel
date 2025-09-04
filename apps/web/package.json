@@ -20,9 +20,9 @@
 		"@convex-dev/workos": "^0.0.1",
 		"@effect/platform": "^0.90.6",
 		"@fontsource/inter": "^5.2.6",
-		"@hazel/db": "workspace:*",
 		"@hazel/backend": "workspace:*",
 		"@hazel/backendv2": "workspace:*",
+		"@hazel/db": "workspace:*",
 		"@platejs/ai": "^49.2.15",
 		"@platejs/autoformat": "^49.0.0",
 		"@platejs/basic-nodes": "^49.0.0",
@@ -79,7 +79,8 @@
 		"tailwind-merge": "^3.3.1",
 		"tailwindcss": "^4.1.12",
 		"tailwindcss-animate": "^1.0.7",
-		"tailwindcss-react-aria-components": "^2.0.1"
+		"tailwindcss-react-aria-components": "^2.0.1",
+		"uuid": "^11.1.0"
 	},
 	"devDependencies": {
 		"@react-types/overlays": "^3.9.0",

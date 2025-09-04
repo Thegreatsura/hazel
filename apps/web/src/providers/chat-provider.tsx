@@ -1,6 +1,4 @@
-import { useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import type { api } from "@hazel/backend/api"
 import type { Channel, Message } from "@hazel/db/models"
 import {
 	ChannelId,
@@ -14,6 +12,7 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useAuth } from "@workos-inc/authkit-react"
 import type { FunctionReturnType } from "convex/server"
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { v4 as uuid } from "uuid"
 import {
 	channelCollection,
 	messageCollection,
@@ -21,6 +20,7 @@ import {
 	pinnedMessageCollection,
 } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
+import { useUser } from "~/lib/auth"
 
 type TypingUser = FunctionReturnType<typeof api.typingIndicator.list>[0]
 type TypingUsers = TypingUser[]
@@ -71,7 +71,7 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ channelId, organizationId, children }: ChatProviderProps) {
-	const { user } = useAuth()
+	const { user } = useUser()
 	const { playSound } = useNotificationSound()
 
 	// Reply state
@@ -131,10 +131,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	// const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
 	const typingUsers: TypingUsers = []
 
-	// Keep typing mutations for now as they don't have collection equivalents
-	const updateTypingMutation = useConvexMutation(api.typingIndicator.update)
-	const stopTypingMutation = useConvexMutation(api.typingIndicator.stop)
-
 	// Message operations
 	const sendMessage = ({
 		content,
@@ -143,14 +139,16 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		content: string
 		attachments?: string[]
 	}) => {
+		if (!user?.id) return
 		messageCollection.insert({
-			id: MessageId.make(crypto.randomUUID()),
+			id: MessageId.make(uuid()),
 			channelId,
-			authorId: UserId.make(user?.id || "unknown"),
+			authorId: user.id,
 			content,
 			replyToMessageId,
 			threadChannelId: null,
-			createdAt: new Date(),
+			// @ts-expect-error
+			createdAt: new Date().toISOString(),
 			updatedAt: null,
 			deletedAt: null,
 		})
@@ -173,7 +171,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		if (!user?.id) return
 
 		messageReactionCollection.insert({
-			id: MessageReactionId.make(crypto.randomUUID()),
+			id: MessageReactionId.make(uuid()),
 			messageId,
 			userId: UserId.make(user.id),
 			emoji,
@@ -195,7 +193,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		if (!user?.id) return
 
 		pinnedMessageCollection.insert({
-			id: PinnedMessageId.make(crypto.randomUUID()),
+			id: PinnedMessageId.make(uuid()),
 			channelId,
 			messageId,
 			pinnedBy: UserId.make(user.id),
@@ -234,7 +232,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			setActiveThreadMessageId(messageId)
 		} else {
 			// Create new thread channel
-			const threadChannelId = ChannelId.make(crypto.randomUUID())
+			const threadChannelId = ChannelId.make(uuid())
 			channelCollection.insert({
 				id: threadChannelId,
 				organizationId,

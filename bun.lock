@@ -175,6 +175,7 @@
         "tailwindcss": "^4.1.12",
         "tailwindcss-animate": "^1.0.7",
         "tailwindcss-react-aria-components": "^2.0.1",
+        "uuid": "^11.1.0",
       },
       "devDependencies": {
         "@react-types/overlays": "^3.9.0",
