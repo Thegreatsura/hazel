@@ -5,6 +5,7 @@ import { UnauthorizedError } from "./errors"
 
 export class User extends Schema.Class<User>("User")({
 	id: UserId,
+	role: Schema.Literal("admin", "member"),
 }) {}
 
 export class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}

@@ -6,8 +6,6 @@ import { Authorization, User } from "../lib/auth"
 import { UnauthorizedError } from "../lib/errors"
 import { UserRepo } from "../repositories/user-repo"
 
-
-
 export const AuthorizationLive = Layer.effect(
 	Authorization,
 	Effect.gen(function* () {
@@ -20,13 +18,14 @@ export const AuthorizationLive = Layer.effect(
 					yield* Effect.log("checking bearer token", Redacted.value(bearerToken))
 					const rawToken = Redacted.value(bearerToken)
 					const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
-					
+
 					const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
-					
+
 					const { payload } = yield* Effect.tryPromise({
-						try: () => jwtVerify(rawToken, jwks, {
-							issuer: "https://api.workos.com",
-						}),
+						try: () =>
+							jwtVerify(rawToken, jwks, {
+								issuer: "https://api.workos.com",
+							}),
 						catch: (error) => {
 							console.error("JWT verification failed", error)
 							return new UnauthorizedError({
@@ -39,20 +38,24 @@ export const AuthorizationLive = Layer.effect(
 
 					const workOsUserId = payload.sub
 					if (!workOsUserId) {
-						return yield* Effect.fail(new UnauthorizedError({
-							message: "Token missing user ID",
-						}))
+						return yield* Effect.fail(
+							new UnauthorizedError({
+								message: "Token missing user ID",
+							}),
+						)
 					}
 
 					const user = yield* userRepo.findByExternalId(workOsUserId).pipe(Effect.orDie)
 
-					if(Option.isNone(user)){
-						return yield* Effect.fail(new UnauthorizedError({
-							message: "User not found",
-						}))
+					if (Option.isNone(user)) {
+						return yield* Effect.fail(
+							new UnauthorizedError({
+								message: "User not found",
+							}),
+						)
 					}
 
-					return new User({ id: user.value.id })
+					return new User({ id: user.value.id, role: payload.role as "admin" | "member" })
 				}),
 		}
 	}),

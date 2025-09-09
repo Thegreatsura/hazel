@@ -19,6 +19,7 @@
 		"@fontsource/inter": "^5.2.6",
 		"@hazel/backendv2": "workspace:*",
 		"@hazel/db": "workspace:*",
+		"@paper-design/shaders-react": "^0.0.51",
 		"@platejs/ai": "^49.2.15",
 		"@platejs/autoformat": "^49.0.0",
 		"@platejs/basic-nodes": "^49.0.0",

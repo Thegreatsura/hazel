@@ -15,8 +15,3 @@
 
 - Policies in backend
 
-
-NEXT UPPP
-# Implement Auth
-- FROM AUTH TOKEN GET USER_ID
-- PUT ALL USER_ID STUFF to Model.GeneratedByApp

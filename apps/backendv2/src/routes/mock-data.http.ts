@@ -16,7 +16,7 @@ export const HttpMockDataLive = HttpApiBuilder.group(HazelApi, "mockData", (hand
 		return handlers.handle(
 			"generate",
 			Effect.fn(function* ({ payload }) {
-				yield* CurrentUser // Verify authenticated
+				yield* CurrentUser
 
 				const { result, txid } = yield* db
 					.transaction(
