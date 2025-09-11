@@ -197,7 +197,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	// Message operations
 	const sendMessage = ({
 		content,
-		attachments: _attachments,
+		attachments,
 	}: {
 		content: string
 		attachments?: string[]
@@ -213,6 +213,8 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			createdAt: new Date(),
 			updatedAt: null,
 			deletedAt: null,
+			// Pass attachmentIds to the backend
+			attachmentIds: attachments,
 		})
 		// Clear reply state after sending
 		setReplyToMessageId(null)

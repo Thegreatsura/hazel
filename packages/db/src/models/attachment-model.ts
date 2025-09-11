@@ -15,6 +15,7 @@ export class Model extends M.Class<Model>("Attachment")({
 	fileSize: Schema.Number,
 	uploadedBy: M.GeneratedByApp(UserId),
 	status: AttachmentStatus,
+	displayOrder: Schema.Number,
 	uploadedAt: JsonDate,
 }) {}
 

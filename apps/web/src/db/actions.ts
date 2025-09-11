@@ -35,9 +35,11 @@ export const uploadAttachment = createOptimisticAction<{
 		const accessToken = await workOsClient.getAccessToken()
 
 		const formData = new FormData()
+		// Ensure file name is included when appending file
 		formData.append("file", props.file, props.file.name)
 		formData.append("organizationId", props.organizationId)
 		formData.append("channelId", props.channelId)
+		formData.append("fileName", props.file.name) // Also send file name separately
 
 		const { transactionId } = await Effect.runPromise(
 			Effect.gen(function* () {
