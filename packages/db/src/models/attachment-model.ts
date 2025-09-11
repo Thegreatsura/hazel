@@ -13,7 +13,6 @@ export class Model extends M.Class<Model>("Attachment")({
 	messageId: Schema.NullOr(MessageId),
 	fileName: Schema.String,
 	fileSize: Schema.Number,
-	r2Key: Schema.String,
 	uploadedBy: M.GeneratedByApp(UserId),
 	status: AttachmentStatus,
 	uploadedAt: JsonDate,

@@ -1,4 +1,4 @@
-import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
+import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
 import { inArray, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { Attachment01, Loading03, XClose } from "@untitledui/icons"
@@ -18,7 +18,8 @@ interface MessageComposerProps {
 export const MessageComposer = ({ placeholder = "Type a message..." }: MessageComposerProps) => {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
 
-	const { sendMessage, startTyping, stopTyping, replyToMessageId, setReplyToMessageId } = useChat()
+	const { sendMessage, startTyping, stopTyping, replyToMessageId, setReplyToMessageId, channelId } =
+		useChat()
 	const editorRef = useRef<MarkdownEditorRef | null>(null)
 
 	const [isTyping, setIsTyping] = useState(false)
@@ -27,6 +28,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 
 	const { uploads, uploadFiles } = useFileUpload({
 		organizationId: orgId as OrganizationId,
+		channelId: channelId,
 		onUploadComplete: (attachmentId) => {
 			setAttachmentIds((prev) => [...prev, attachmentId])
 		},

@@ -742,6 +742,8 @@ export class AttachmentGroup extends HttpApiGroup.make("attachments")
 				HttpApiSchema.Multipart(
 					Schema.Struct({
 						file: Multipart.SingleFileSchema,
+						organizationId: OrganizationId,
+						channelId: ChannelId,
 					}),
 				),
 			)

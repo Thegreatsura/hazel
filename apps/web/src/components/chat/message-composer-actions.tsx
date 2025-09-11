@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router"
 import { Attachment01, FaceSmile, ItalicSquare, XClose } from "@untitledui/icons"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
+import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { cx } from "~/utils/cx"
@@ -41,8 +42,11 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 		const { trackEmojiUsage } = useEmojiStats()
 
+		const { channelId } = useChat()
+
 		const { uploadFiles, clearUploads, isUploading } = useFileUpload({
 			organizationId: orgId as OrganizationId,
+			channelId,
 			onUploadComplete: (attachmentId) => {
 				setAttachmentIds([...attachmentIds, attachmentId])
 			},

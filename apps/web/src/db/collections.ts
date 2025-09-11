@@ -761,26 +761,6 @@ export const attachmentCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Attachment.Model.json),
 		getKey: (item) => item.id,
-		onUpdate: async ({ transaction }) => {
-			const { modified: newAttachment } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
-
-			const results = await Effect.runPromise(
-				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
-
-					return yield* client.attachments.update({
-						payload: newAttachment,
-						path: {
-							id: newAttachment.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedAttachment } = transaction.mutations[0]
 			const workOsClient = await authClient

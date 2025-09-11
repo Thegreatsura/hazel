@@ -3,7 +3,7 @@ import { MultipartUpload } from "@effect-aws/s3"
 import { Database } from "@hazel/db"
 import { AttachmentId } from "@hazel/db/schema"
 import { randomUUIDv7 } from "bun"
-import { Effect } from "effect"
+import { Config, Effect } from "effect"
 import { HazelApi } from "../api"
 import { CurrentUser } from "../lib/auth"
 import { generateTransactionId } from "../lib/create-transactionId"
@@ -26,23 +26,35 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 
 					const attachmentId = AttachmentId.make(randomUUIDv7())
 
-					const _test = yield* mu
+					const bucketName = yield* Config.string("R2_BUCKET_NAME").pipe(Effect.orDie)
+
+					yield* mu
 						.uploadObject(
 							{
-								Bucket: "hazel-uploads",
+								Bucket: bucketName,
 								Key: attachmentId,
 								Body: fs.stream(payload.file.path),
 							},
 							{ queueSize: 3 },
 						)
+						// TODO: Map errors
 						.pipe(Effect.orDie)
+
+					const stats = yield* fs.stat(payload.file.path).pipe(Effect.orDie)
 
 					const { createdAttachment, txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
 								const createdAttachment = yield* AttachmentRepo.insert({
-									...payload,
+									id: attachmentId,
 									uploadedBy: user.id,
+									organizationId: payload.organizationId,
+									status: "complete",
+									channelId: payload.channelId,
+									messageId: null,
+									fileName: "",
+									fileSize: Number(stats.size),
+									uploadedAt: new Date(),
 								}).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)

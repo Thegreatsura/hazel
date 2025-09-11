@@ -19,7 +19,7 @@ export interface FileUploadProgress {
 
 interface UseFileUploadOptions {
 	organizationId: OrganizationId
-	channelId?: ChannelId
+	channelId: ChannelId
 	onUploadComplete?: (attachmentId: AttachmentId) => void
 	onUploadError?: (error: Error) => void
 	maxFileSize?: number // in bytes
@@ -92,7 +92,7 @@ export function useFileUpload({
 				await uploadAttachment({
 					organizationId,
 					file,
-					channelId: channelId || null,
+					channelId: channelId,
 					userId: UserId.make(user.id),
 					attachmentId,
 				})

@@ -9,7 +9,7 @@ import { attachmentCollection } from "./collections"
 export const uploadAttachment = createOptimisticAction<{
 	organizationId: OrganizationId
 	file: File
-	channelId: ChannelId | null
+	channelId: ChannelId
 	userId: UserId
 	attachmentId?: AttachmentId
 }>({
@@ -23,7 +23,6 @@ export const uploadAttachment = createOptimisticAction<{
 			messageId: null,
 			fileName: props.file.name,
 			fileSize: props.file.size,
-			r2Key: "pending",
 			uploadedBy: props.userId,
 			status: "complete" as const,
 			uploadedAt: new Date(),
@@ -33,14 +32,16 @@ export const uploadAttachment = createOptimisticAction<{
 	},
 	mutationFn: async (props, _params) => {
 		const workOsClient = await authClient
-		const _accessToken = await workOsClient.getAccessToken()
+		const accessToken = await workOsClient.getAccessToken()
 
 		const formData = new FormData()
 		formData.append("file", props.file, props.file.name)
+		formData.append("organizationId", props.organizationId)
+		formData.append("channelId", props.channelId)
 
 		const { transactionId } = await Effect.runPromise(
 			Effect.gen(function* () {
-				const client = yield* getBackendClient(_accessToken)
+				const client = yield* getBackendClient(accessToken)
 
 				return yield* client.attachments.upload({
 					payload: formData,

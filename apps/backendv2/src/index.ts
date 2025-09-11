@@ -9,6 +9,7 @@ import {
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { S3 } from "@effect-aws/client-s3"
 import { MultipartUpload } from "@effect-aws/s3"
+import { S3Client } from "bun"
 import { Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
@@ -78,7 +79,18 @@ const MainLive = Layer.mergeAll(
 	NotificationRepo.Default,
 	DatabaseLive,
 	MultipartUpload.layerWithoutS3Service,
-).pipe(Layer.provide(S3.layer({})))
+).pipe(
+	Layer.provide(
+		S3.layer({
+			region: "auto",
+			endpoint: process.env.R2_ENDPOINT!,
+			credentials: {
+				accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+				secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+			},
+		}),
+	),
+)
 
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
