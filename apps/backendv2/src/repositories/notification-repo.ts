@@ -6,9 +6,13 @@ import { DatabaseLive } from "../services/database"
 export class NotificationRepo extends Effect.Service<NotificationRepo>()("NotificationRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.notificationsTable, Notification.Model, {
-			idColumn: "id",
-		})
+		const baseRepo = yield* ModelRepository.makeRepository(
+			schema.notificationsTable,
+			Notification.Model,
+			{
+				idColumn: "id",
+			},
+		)
 
 		return baseRepo
 	}),

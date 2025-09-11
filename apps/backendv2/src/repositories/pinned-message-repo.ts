@@ -6,9 +6,13 @@ import { DatabaseLive } from "../services/database"
 export class PinnedMessageRepo extends Effect.Service<PinnedMessageRepo>()("PinnedMessageRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.pinnedMessagesTable, PinnedMessage.Model, {
-			idColumn: "id",
-		})
+		const baseRepo = yield* ModelRepository.makeRepository(
+			schema.pinnedMessagesTable,
+			PinnedMessage.Model,
+			{
+				idColumn: "id",
+			},
+		)
 
 		return baseRepo
 	}),

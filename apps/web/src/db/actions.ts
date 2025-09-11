@@ -1,16 +1,20 @@
 import { AttachmentId, type ChannelId, type OrganizationId, type UserId } from "@hazel/db/schema"
 import { createOptimisticAction } from "@tanstack/react-db"
+import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
+import { getBackendClient } from "~/lib/client"
+import { authClient } from "~/providers/workos-provider"
 import { attachmentCollection } from "./collections"
 
 export const uploadAttachment = createOptimisticAction<{
 	organizationId: OrganizationId
 	file: File
-	channelId: ChannelId
+	channelId: ChannelId | null
 	userId: UserId
+	attachmentId?: AttachmentId
 }>({
 	onMutate: (props) => {
-		const attachmentId = AttachmentId.make(uuid())
+		const attachmentId = props.attachmentId || AttachmentId.make(uuid())
 
 		attachmentCollection.insert({
 			id: attachmentId,
@@ -24,8 +28,26 @@ export const uploadAttachment = createOptimisticAction<{
 			status: "complete" as const,
 			uploadedAt: new Date(),
 		})
+
+		return { attachmentId }
 	},
-	mutationFn: async (_text, _params) => {
-		throw new Error("Function not implemented.")
+	mutationFn: async (props, _params) => {
+		const workOsClient = await authClient
+		const _accessToken = await workOsClient.getAccessToken()
+
+		const formData = new FormData()
+		formData.append("file", props.file, props.file.name)
+
+		const { transactionId } = await Effect.runPromise(
+			Effect.gen(function* () {
+				const client = yield* getBackendClient(_accessToken)
+
+				return yield* client.attachments.upload({
+					payload: formData,
+				})
+			}),
+		)
+
+		return { transactionId }
 	},
 })

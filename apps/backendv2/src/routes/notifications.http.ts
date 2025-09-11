@@ -21,7 +21,7 @@ export const HttpNotificationLive = HttpApiBuilder.group(HazelApi, "notification
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
 								const createdNotification = yield* NotificationRepo.insert({
-									...payload
+									...payload,
 								}).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)

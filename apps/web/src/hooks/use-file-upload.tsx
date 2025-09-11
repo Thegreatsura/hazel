@@ -1,10 +1,10 @@
-import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
+import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
 import { AttachmentId as AttachmentIdSchema, UserId } from "@hazel/db/schema"
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
 import { v4 as uuid } from "uuid"
 import { IconNotification } from "~/components/application/notifications/notifications"
-import { attachmentCollection } from "~/db/collections"
+import { uploadAttachment } from "~/db/actions"
 import { useUser } from "~/lib/auth"
 
 export interface FileUploadProgress {
@@ -19,6 +19,7 @@ export interface FileUploadProgress {
 
 interface UseFileUploadOptions {
 	organizationId: OrganizationId
+	channelId?: ChannelId
 	onUploadComplete?: (attachmentId: AttachmentId) => void
 	onUploadError?: (error: Error) => void
 	maxFileSize?: number // in bytes
@@ -83,13 +84,19 @@ export function useFileUpload({
 					return next
 				})
 
-				// Upload file to R2
-				const uploadResult = await r2Client.uploadFile({
-					file,
+				// Generate attachment ID
+				const attachmentId = AttachmentIdSchema.make(uuid())
+
+				// Use the uploadAttachment action
+				await uploadAttachment({
 					organizationId,
+					file,
+					channelId: channelId || null,
+					userId: UserId.make(user.id),
+					attachmentId,
 				})
 
-				// Update progress after R2 upload
+				// Update progress after upload
 				setUploads((prev) => {
 					const next = new Map(prev)
 					const upload = next.get(fileId)
@@ -98,23 +105,6 @@ export function useFileUpload({
 					}
 					return next
 				})
-
-				// Create attachment record in database
-				const attachmentId = AttachmentIdSchema.make(uuid())
-				const attachment = {
-					id: attachmentId,
-					organizationId,
-					channelId: null, // Will be set when attached to a message
-					messageId: null,
-					fileName: file.name,
-					fileSize: file.size,
-					r2Key: uploadResult.key,
-					uploadedBy: UserId.make(user.id),
-					status: "complete" as const,
-					uploadedAt: new Date(),
-				}
-
-				attachmentCollection.insert(attachment)
 
 				// Update status to complete
 				setUploads((prev) => {
@@ -157,7 +147,7 @@ export function useFileUpload({
 				return null
 			}
 		},
-		[maxFileSize, onUploadComplete, onUploadError, organizationId, user?.id],
+		[maxFileSize, onUploadComplete, onUploadError, organizationId, channelId, user?.id],
 	)
 
 	const uploadFiles = useCallback(

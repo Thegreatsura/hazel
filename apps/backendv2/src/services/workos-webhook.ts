@@ -135,7 +135,9 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 					)
 				}
 
-				if (!crypto.timingSafeEqual(new Uint8Array(signatureBuffer), new Uint8Array(expectedBuffer))) {
+				if (
+					!crypto.timingSafeEqual(new Uint8Array(signatureBuffer), new Uint8Array(expectedBuffer))
+				) {
 					return yield* Effect.fail(
 						new WebhookVerificationError({
 							message: "Invalid webhook signature",
