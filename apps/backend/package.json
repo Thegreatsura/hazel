@@ -1,5 +1,5 @@
 {
-	"name": "@hazel/backendv2",
+	"name": "@hazel/backend",
 	"module": "src/index.ts",
 	"type": "module",
 	"private": true,
