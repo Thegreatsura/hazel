@@ -1,5 +1,15 @@
 {
 	"$schema": "https://turborepo.com/schema.json",
+	"globalEnv": [
+		"DATABASE_URL",
+		"WORKOS_API_KEY",
+		"WORKOS_WEBHOOK_SECRET",
+		"WORKOS_CLIENT_ID",
+		"R2_BUCKET_NAME",
+		"R2_ENDPOINT",
+		"R2_ACCESS_KEY_ID",
+		"R2_SECRET_ACCESS_KEY"
+	],
 	"tasks": {
 		"build": {
 			"outputs": [
