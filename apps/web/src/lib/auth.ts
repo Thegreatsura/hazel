@@ -3,7 +3,7 @@ import { useAuth } from "@workos-inc/authkit-react"
 import { userCollection } from "~/db/collections"
 
 export const useUser = () => {
-	const { user: workosUser } = useAuth()
+	const { user: workosUser, organizationId, isLoading } = useAuth()
 
 	const { data } = useLiveQuery(
 		(q) =>
@@ -11,5 +11,5 @@ export const useUser = () => {
 		[workosUser?.id],
 	)
 
-	return { user: data[0] }
+	return { user: data[0], session: workosUser, workosOrganizationId: organizationId, isLoading }
 }

@@ -1,6 +1,7 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
-import { organizationCollection, organizationMemberCollection } from "~/db/collections"
+import { Loader } from "~/components/loader"
+import { organizationCollection } from "~/db/collections"
 import { useUser } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/")({
@@ -8,32 +9,27 @@ export const Route = createFileRoute("/_app/")({
 })
 
 function RouteComponent() {
-	const { user } = useUser()
+	const { user, workosOrganizationId, isLoading: isAuthLoading } = useUser()
 
-	// Get the user's first organization through organization members
-	const { data: orgMembers, isLoading } = useLiveQuery(
-		(q) =>
-			q
-				.from({ member: organizationMemberCollection })
-				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
-					eq(member.organizationId, org.id),
-				)
-				.where(({ member }) => eq(member.userId, user?.id || ""))
-				.orderBy(({ member }) => member.createdAt, "asc")
-				.limit(1),
-		[user?.id],
+	const { data: organizations, isLoading } = useLiveQuery(
+		(q) => {
+			return q
+				.from({
+					organizatios: organizationCollection,
+				})
+				.where(({ organizatios }) => eq(organizatios.workosId, workosOrganizationId))
+				.orderBy(({ organizatios }) => organizatios.createdAt, "asc")
+				.limit(1)
+		},
+		[user?.id, workosOrganizationId],
 	)
 
-	if (isLoading) {
-		return (
-			<div className="flex h-full items-center justify-center">
-				<div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2"></div>
-			</div>
-		)
+	if (isLoading || isAuthLoading) {
+		return <Loader />
 	}
 
-	if (orgMembers && orgMembers.length > 0) {
-		const orgId = orgMembers[0]!.org.id
+	if (organizations && organizations.length > 0) {
+		const orgId = organizations[0]?.id!
 		return <Navigate to="/$orgId" params={{ orgId }} />
 	}
 
