@@ -16,14 +16,10 @@
 	],
 	"tasks": {
 		"build": {
-			"outputs": [
-				"dist/**"
-			]
+			"outputs": ["dist/**"]
 		},
 		"typecheck": {
-			"dependsOn": [
-				"^typecheck"
-			]
+			"dependsOn": ["^typecheck"]
 		},
 		"dev": {
 			"persistent": true,

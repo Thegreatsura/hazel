@@ -1,10 +1,5 @@
 import { index, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
-import type {
-	ChannelId,
-	MessageId,
-	MessageReactionId,
-	UserId,
-} from "../lib/schema"
+import type { ChannelId, MessageId, MessageReactionId, UserId } from "../lib/schema"
 
 // Messages table
 export const messagesTable = pgTable(

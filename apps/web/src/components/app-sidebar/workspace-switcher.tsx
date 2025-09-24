@@ -1,7 +1,6 @@
 import type { OrganizationId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { useAuth } from "@workos-inc/authkit-react"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
@@ -19,32 +18,34 @@ export const WorkspaceSwitcher = () => {
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
 
 	const params = useParams({ strict: false })
-	const { user } = useUser()
-
-	const { switchToOrganization } = useAuth()
+	const { user, switchToOrganization } = useUser()
 	const navigate = useNavigate()
 
 	const organizationId = params.orgId as OrganizationId
 
 	const { data: currentOrgData } = useLiveQuery(
 		(q) =>
-			q
-				.from({ org: organizationCollection })
-				.where(({ org }) => eq(org.id, organizationId))
-				.orderBy(({ org }) => org.createdAt, "desc")
-				.limit(1),
+			organizationId
+				? q
+						.from({ org: organizationCollection })
+						.where(({ org }) => eq(org.id, organizationId))
+						.orderBy(({ org }) => org.createdAt, "desc")
+						.limit(1)
+				: null,
 		[organizationId],
 	)
 
 	const { data: userOrganizations } = useLiveQuery(
 		(q) =>
-			q
-				.from({ member: organizationMemberCollection })
-				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
-					eq(member.organizationId, org.id),
-				)
-				.where(({ member }) => eq(member.userId, user?.id || ""))
-				.orderBy(({ member }) => member.createdAt, "asc"),
+			user?.id
+				? q
+						.from({ member: organizationMemberCollection })
+						.innerJoin({ org: organizationCollection }, ({ member, org }) =>
+							eq(member.organizationId, org.id),
+						)
+						.where(({ member }) => eq(member.userId, user.id))
+						.orderBy(({ member }) => member.createdAt, "asc")
+				: null,
 		[user?.id],
 	)
 

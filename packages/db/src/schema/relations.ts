@@ -146,7 +146,6 @@ export const messageReactionsRelations = relations(messageReactionsTable, ({ one
 	}),
 }))
 
-
 // Attachments relations
 export const attachmentsRelations = relations(attachmentsTable, ({ one }) => ({
 	organization: one(organizationsTable, {

@@ -6,10 +6,12 @@ import { Authorization } from "../../../lib/auth"
 import { InternalServerError, UnauthorizedError } from "../../../lib/errors"
 import { TransactionId } from "../../../lib/schema"
 
-export class TypingIndicatorResponse extends Schema.Class<TypingIndicatorResponse>("TypingIndicatorResponse")({
-	data: TypingIndicator.Model.json,
-	transactionId: TransactionId,
-}) {}
+export class TypingIndicatorResponse extends Schema.Class<TypingIndicatorResponse>("TypingIndicatorResponse")(
+	{
+		data: TypingIndicator.Model.json,
+		transactionId: TransactionId,
+	},
+) {}
 
 export class TypingIndicatorNotFoundError extends Schema.TaggedError<TypingIndicatorNotFoundError>(
 	"TypingIndicatorNotFoundError",

@@ -27,7 +27,7 @@ export const HttpMessageLive = HttpApiBuilder.group(HazelApi, "messages", (handl
 							Effect.fnUntraced(function* (tx) {
 								// Extract attachmentIds from payload (it's not a database field)
 								const { attachmentIds, ...messageData } = payload
-								
+
 								const createdMessage = yield* MessageRepo.insert({
 									...messageData,
 									authorId: user.id,
