@@ -1,4 +1,4 @@
-import type { Channel, ChannelMember, Message, TypingIndicator, User } from "@hazel/db/models"
+import type { Channel, ChannelMember, Message, User } from "@hazel/db/models"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -6,7 +6,6 @@ import {
 	MessageReactionId,
 	type OrganizationId,
 	PinnedMessageId,
-	TypingIndicatorId,
 	UserId,
 } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
@@ -48,8 +47,6 @@ interface ChatContextValue {
 	removeReaction: (reactionId: MessageReactionId) => void
 	pinMessage: (messageId: MessageId) => void
 	unpinMessage: (messageId: MessageId) => void
-	startTyping: () => void
-	stopTyping: () => void
 	typingUsers: TypingUsers
 	createThread: (messageId: MessageId) => Promise<void>
 	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
@@ -262,65 +259,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		console.log("unpinMessage not fully implemented - need pinned message ID lookup")
 	}
 
-	// Track typing state
-	const typingIndicatorIdRef = useRef<TypingIndicatorId | null>(null)
-	const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-	const startTyping = () => {
-		if (!currentChannelMember) return
-
-		// Clear any existing timeout
-		if (typingTimeoutRef.current) {
-			clearTimeout(typingTimeoutRef.current)
-		}
-
-		// Check if we already have a typing indicator for this member
-		const existingIndicator = typingIndicatorsData?.find(
-			(ind) => ind.memberId === currentChannelMember.id,
-		)
-
-		if (existingIndicator) {
-			// Update existing indicator
-			typingIndicatorCollection.update(existingIndicator.id, (indicator) => {
-				indicator.lastTyped = Date.now()
-			})
-			typingIndicatorIdRef.current = existingIndicator.id
-		} else {
-			// Create new indicator
-			const newId = TypingIndicatorId.make(uuid())
-			typingIndicatorCollection.insert({
-				id: newId,
-				channelId,
-				memberId: currentChannelMember.id,
-				lastTyped: Date.now(),
-			})
-			typingIndicatorIdRef.current = newId
-		}
-
-		// Auto-stop typing after 3 seconds of inactivity
-		typingTimeoutRef.current = setTimeout(() => {
-			stopTyping()
-		}, 3000)
-	}
-
-	const stopTyping = () => {
-		if (typingTimeoutRef.current) {
-			clearTimeout(typingTimeoutRef.current)
-			typingTimeoutRef.current = null
-		}
-
-		if (typingIndicatorIdRef.current) {
-			typingIndicatorCollection.delete(typingIndicatorIdRef.current)
-			typingIndicatorIdRef.current = null
-		}
-	}
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-	useEffect(() => {
-		return () => {
-			stopTyping()
-		}
-	}, [])
 
 	const createThread = async (messageId: MessageId) => {
 		// Find the message to create thread for
@@ -427,8 +365,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			removeReaction,
 			pinMessage,
 			unpinMessage,
-			startTyping,
-			stopTyping,
 			typingUsers,
 			createThread,
 			openThread,

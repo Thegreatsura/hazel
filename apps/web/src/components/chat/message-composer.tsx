@@ -2,9 +2,11 @@ import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
 import { inArray, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { Attachment01, Loading03, XClose } from "@untitledui/icons"
-import { useEffect, useRef, useState } from "react"
-import { attachmentCollection } from "~/db/collections"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { attachmentCollection, channelMemberCollection } from "~/db/collections"
 import { useFileUpload } from "~/hooks/use-file-upload"
+import { useTyping } from "~/hooks/use-typing"
+import { useUser } from "~/lib/auth"
 import { useChat } from "~/providers/chat-provider"
 import { cx } from "~/utils/cx"
 import { ButtonUtility } from "../base/buttons/button-utility"
@@ -17,14 +19,32 @@ interface MessageComposerProps {
 
 export const MessageComposer = ({ placeholder = "Type a message..." }: MessageComposerProps) => {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-
-	const { sendMessage, startTyping, stopTyping, replyToMessageId, setReplyToMessageId, channelId } =
-		useChat()
+	const { user } = useUser()
+	const { sendMessage, replyToMessageId, setReplyToMessageId, channelId } = useChat()
 	const editorRef = useRef<MarkdownEditorRef | null>(null)
 
-	const [isTyping, setIsTyping] = useState(false)
 	const [attachmentIds, setAttachmentIds] = useState<AttachmentId[]>([])
-	const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
+	// Get current user's channel member
+	const { data: channelMembersData } = useLiveQuery(
+		(q) =>
+			q
+				.from({ member: channelMemberCollection })
+				.where(({ member }) => member.channelId === channelId && member.userId === user?.id)
+				.orderBy(({ member }) => member.createdAt, "desc")
+				.limit(1),
+		[channelId, user?.id],
+	)
+
+	const currentChannelMember = useMemo(() => {
+		return channelMembersData?.[0] || null
+	}, [channelMembersData])
+
+	// Use the new typing hook
+	const { handleContentChange, stopTyping } = useTyping({
+		channelId,
+		memberId: currentChannelMember?.id || null,
+	})
 
 	const { uploads, uploadFiles } = useFileUpload({
 		organizationId: orgId as OrganizationId,
@@ -53,45 +73,8 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 	}
 
 	const handleEditorUpdate = (content: string) => {
-		if (content && !isTyping) {
-			setIsTyping(true)
-			startTyping()
-		}
-
-		if (content && isTyping) {
-			// Reset the typing timeout
-			if (typingTimeoutRef.current) {
-				clearTimeout(typingTimeoutRef.current)
-			}
-
-			// Set a new timeout to stop typing after 3 seconds of inactivity
-			typingTimeoutRef.current = setTimeout(() => {
-				setIsTyping(false)
-				stopTyping()
-			}, 3000)
-		}
-
-		// If content is empty and user was typing, stop typing
-		if (!content && isTyping) {
-			setIsTyping(false)
-			stopTyping()
-			if (typingTimeoutRef.current) {
-				clearTimeout(typingTimeoutRef.current)
-			}
-		}
+		handleContentChange(content)
 	}
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (typingTimeoutRef.current) {
-				clearTimeout(typingTimeoutRef.current)
-			}
-			if (isTyping) {
-				stopTyping()
-			}
-		}
-	}, [isTyping, stopTyping])
 
 	const handleSubmit = async (content: string) => {
 		sendMessage({
@@ -99,14 +82,8 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 			attachments: attachmentIds,
 		})
 
-		if (isTyping) {
-			setIsTyping(false)
-			stopTyping()
-		}
-		if (typingTimeoutRef.current) {
-			clearTimeout(typingTimeoutRef.current)
-		}
-
+		// Stop typing when message is sent
+		stopTyping()
 		setAttachmentIds([])
 	}
 
