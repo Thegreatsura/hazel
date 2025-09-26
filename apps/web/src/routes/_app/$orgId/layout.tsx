@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
+import { ErrorBoundary } from "react-error-boundary"
 import { AppSidebar } from "~/components/app-sidebar/app-sidebar"
 import { SidebarMobile } from "~/components/app-sidebar/sidebar-mobile"
 import { CommandPalette } from "~/components/command-palette"
@@ -38,7 +39,10 @@ function RouteComponent() {
 			<NotificationManager />
 			<AppSidebar setOpenCmd={setOpenCmd} />
 			<SidebarInset>
+				<ErrorBoundary fallback={<></>}>
 				<SidebarMobile />
+
+				</ErrorBoundary>
 				<Outlet />
 				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />
 			</SidebarInset>

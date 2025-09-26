@@ -13,11 +13,11 @@ export function SidebarMobile() {
 
 	const { data: organizations } = useLiveQuery(
 		(q) =>
-			q
-				.from({ org: organizationCollection })
-				.where(({ org }) => eq(org.id, organizationId))
-				.orderBy(({ org }) => org.createdAt, "desc")
-				.limit(1),
+			organizationId
+				? q
+						.from({ org: organizationCollection })
+						.where(({ org }) => eq(org.id, organizationId))
+				: null,
 		[organizationId],
 	)
 
