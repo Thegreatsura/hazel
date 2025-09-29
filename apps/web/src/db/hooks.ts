@@ -39,7 +39,7 @@ export const useChannel = (channelId: ChannelId) => {
 		(q) =>
 			q
 				.from({ channel: channelCollection })
-				// .where((t) => eq(t.channel.id, channelId))
+				.where((t) => eq(t.channel.id, channelId))
 				.innerJoin({ member: channelMemberWithUserCollection }, ({ channel, member }) =>
 					eq(channel.id, member.channelId),
 				),
