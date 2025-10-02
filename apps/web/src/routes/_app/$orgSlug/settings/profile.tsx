@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { Mail01 } from "@untitledui/icons"
 import { type } from "arktype"
 import { useEffect } from "react"
@@ -13,7 +13,7 @@ import { userCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/settings/profile")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/profile")({
 	component: ProfileSettings,
 })
 

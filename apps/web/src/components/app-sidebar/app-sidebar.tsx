@@ -1,10 +1,11 @@
 import type { OrganizationId } from "@hazel/db/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
-import { Link, useParams } from "@tanstack/react-router"
-import { useMemo } from "react"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { useEffect, useMemo } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 import IconChat1 from "~/components/icons/IconChat1"
 import { channelCollection, channelMemberCollection, organizationCollection } from "~/db/collections"
+import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/providers/auth-provider"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
 import IconChatChatting1 from "../icons/IconChatChatting1"
@@ -32,9 +33,9 @@ import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
+	const _navigate = useNavigate()
 	const { isMobile } = useSidebar()
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const { organizationId, slug: orgSlug } = useOrganization()
 
 	return (
 		<Sidebar collapsible="icon" className="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
@@ -53,8 +54,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={"/$orgId"}
-										params={{ orgId: organizationId }}
+										to={"/$orgSlug"}
+										params={{ orgSlug: orgSlug! }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -67,8 +68,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={"/$orgId/chat"}
-										params={{ orgId: organizationId }}
+										to={"/$orgSlug/chat"}
+										params={{ orgSlug: orgSlug! }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -101,8 +102,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 								</SidebarMenuItem>
 							</SidebarGroup>
 							<SidebarFavoriteGroup />
-							<ChannelGroup organizationId={organizationId} />
-							<DmChannelGroup organizationId={organizationId} />
+							<ChannelGroup organizationId={organizationId!} />
+							<DmChannelGroup organizationId={organizationId!} />
 						</SidebarGroupContent>
 					)}
 				</SidebarContent>
@@ -140,8 +141,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 						</SidebarGroupContent>
 					</SidebarGroup>
 					<SidebarFavoriteGroup />
-					<ChannelGroup organizationId={organizationId} />
-					<DmChannelGroup organizationId={organizationId} />
+					<ChannelGroup organizationId={organizationId!} />
+					<DmChannelGroup organizationId={organizationId!} />
 				</SidebarContent>
 			</Sidebar>
 		</Sidebar>
@@ -240,17 +241,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 }
 
 const ActiveServer = () => {
-	const { orgId } = useParams({
-		from: "/_app/$orgId",
-	})
+	const { organization } = useOrganization()
 
-	const { data } = useLiveQuery(
-		(q) =>
-			q
-				.from({ organization: organizationCollection })
-				.where(({ organization }) => eq(organization.id, orgId as OrganizationId)),
-		[orgId],
-	)
-
-	return <div className="font-semibold text-foreground text-lg">{data[0]?.name}</div>
+	return <div className="font-semibold text-foreground text-lg">{organization?.name}</div>
 }

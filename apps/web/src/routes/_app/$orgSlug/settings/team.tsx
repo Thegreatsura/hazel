@@ -18,14 +18,14 @@ import { CloseButton } from "~/components/base/buttons/close-button"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { organizationMemberCollection, userCollection } from "~/db/collections"
+import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/settings/team")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { orgId } = Route.useParams()
 	const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
 		column: "status",
 		direction: "ascending",
@@ -39,7 +39,7 @@ function RouteComponent() {
 	} | null>(null)
 	const [removeUserId, setRemoveUserId] = useState<UserId | null>(null)
 
-	const organizationId = orgId as OrganizationId
+	const { organizationId } = useOrganization()
 
 	const { data: teamMembers } = useLiveQuery(
 		(q) =>

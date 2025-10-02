@@ -19,16 +19,17 @@ import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
 import IconUserUser03 from "~/components/icons/IconUserUser03"
 import { organizationMemberCollection, userCollection } from "~/db/collections"
+import { useOrganization } from "~/hooks/use-organization"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/")({
+export const Route = createFileRoute("/_app/$orgSlug/")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const { organizationId } = useOrganization()
 	const navigate = useNavigate()
 	const [searchQuery, setSearchQuery] = useState("")
 
@@ -72,11 +73,11 @@ function RouteComponent() {
 					name: "New DM",
 					type: "direct",
 					parentChannelId: null,
-					organizationId: orgId as OrganizationId,
+					organizationId: organizationId!,
 				},
 			})
 			if (result.data.id) {
-				await navigate({ to: "/$orgId/chat/$id", params: { orgId, id: result.data.id } })
+				await navigate({ to: "/$orgSlug/chat/$id", params: { orgSlug, id: result.data.id } })
 			}
 		} catch (error) {
 			console.error("Failed to create DM channel:", error)
