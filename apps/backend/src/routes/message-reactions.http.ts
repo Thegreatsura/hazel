@@ -23,7 +23,7 @@ export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageRe
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									...payload,
 									userId: user.id,
-								}).pipe(
+								}, tx).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(MessageReactionPolicy.canCreate(payload.messageId)),
 								)
@@ -50,7 +50,7 @@ export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageRe
 								const updatedMessageReaction = yield* MessageReactionRepo.update({
 									id: path.id,
 									...payload,
-								}).pipe(policyUse(MessageReactionPolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(MessageReactionPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -71,7 +71,7 @@ export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageRe
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* MessageReactionRepo.deleteById(path.id).pipe(
+								yield* MessageReactionRepo.deleteById(path.id, tx).pipe(
 									policyUse(MessageReactionPolicy.canDelete(path.id)),
 								)
 

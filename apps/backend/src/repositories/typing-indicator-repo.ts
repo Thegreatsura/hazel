@@ -1,9 +1,11 @@
-import { and, Database, eq, lt, ModelRepository, schema, sql } from "@hazel/db"
+import { and, Database, eq, lt, ModelRepository, schema, sql, type TransactionClient } from "@hazel/db"
 import { TypingIndicator } from "@hazel/db/models"
 import { type ChannelId, type ChannelMemberId, policyRequire, type TypingIndicatorId } from "@hazel/db/schema"
 import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
 import { DatabaseLive } from "../services/database"
+
+type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
 	accessors: true,
@@ -19,13 +21,16 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 		)
 
 		// Add custom method to delete by channel and member
-		const deleteByChannelAndMember = ({
-			channelId,
-			memberId,
-		}: {
-			channelId: ChannelId
-			memberId: ChannelMemberId
-		}) =>
+		const deleteByChannelAndMember = (
+			{
+				channelId,
+				memberId,
+			}: {
+				channelId: ChannelId
+				memberId: ChannelMemberId
+			},
+			tx?: TxFn,
+		) =>
 			db.makeQuery(
 				(execute, _data) =>
 					execute((client) =>
@@ -39,14 +44,17 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 							),
 					),
 				policyRequire("TypingIndicator", "delete"),
-			)({ channelId, memberId })
+			)({ channelId, memberId }, tx)
 
 		// Upsert method to create or update typing indicator
-		const upsertByChannelAndMember = (params: {
-			channelId: ChannelId
-			memberId: ChannelMemberId
-			lastTyped: number
-		}) =>
+		const upsertByChannelAndMember = (
+			params: {
+				channelId: ChannelId
+				memberId: ChannelMemberId
+				lastTyped: number
+			},
+			tx?: TxFn,
+		) =>
 			db.makeQuery(
 				(execute, _data) =>
 					execute((client) => {
@@ -69,10 +77,10 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 							.returning()
 					}),
 				policyRequire("TypingIndicator", "create"),
-			)(params)
+			)(params, tx)
 
 		// Cleanup method to remove stale indicators
-		const deleteStale = (thresholdMs: number = 10000) => {
+		const deleteStale = (thresholdMs: number = 10000, tx?: TxFn) => {
 			const threshold = Date.now() - thresholdMs
 			return db.makeQuery(
 				(execute, _data) =>
@@ -83,7 +91,7 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 							.returning(),
 					),
 				policyRequire("TypingIndicator", "delete"),
-			)({})
+			)({}, tx)
 		}
 
 		return {

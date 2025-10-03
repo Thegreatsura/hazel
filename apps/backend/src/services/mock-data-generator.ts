@@ -1,4 +1,5 @@
 import type { ChannelId, OrganizationId, UserId } from "@hazel/db/schema"
+import type { Database } from "@hazel/db"
 import { Effect } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
@@ -15,7 +16,7 @@ interface MockDataConfig {
 
 export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("MockDataGenerator", {
 	effect: Effect.gen(function* () {
-		const generateForOrganization = (organizationId: OrganizationId, config: MockDataConfig) =>
+		const generateForOrganization = (organizationId: OrganizationId, config: MockDataConfig, tx: Database.Transaction) =>
 			Effect.gen(function* () {
 				const userRepo = yield* UserRepo
 				const channelRepo = yield* ChannelRepo
@@ -36,7 +37,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 					deletedAt: null,
 				}))
 
-				const users = yield* Effect.forEach(userDataArray, (userData) => userRepo.insert(userData), {
+				const users = yield* Effect.forEach(userDataArray, (userData) => userRepo.insert(userData, tx), {
 					concurrency: 5,
 				})
 
@@ -54,7 +55,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 						invitedBy: null,
 						deletedAt: null,
 					})),
-					(memberData) => orgMemberRepo.insert(memberData),
+					(memberData) => orgMemberRepo.insert(memberData, tx),
 					{ concurrency: 5 },
 				)
 
@@ -85,7 +86,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 
 				const channels = yield* Effect.forEach(
 					channelDataArray,
-					(channelData) => channelRepo.insert(channelData),
+					(channelData) => channelRepo.insert(channelData, tx),
 					{ concurrency: 3 },
 				)
 
@@ -121,7 +122,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 
 				const channelMembers = yield* Effect.forEach(
 					channelMembersData,
-					(memberData) => channelMemberRepo.insert(memberData),
+					(memberData) => channelMemberRepo.insert(memberData, tx),
 					{ concurrency: 10 },
 				)
 
@@ -160,7 +161,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 
 				const messages = yield* Effect.forEach(
 					messageDataArray,
-					(messageData) => messageRepo.insert(messageData),
+					(messageData) => messageRepo.insert(messageData, tx),
 					{ concurrency: 10 },
 				)
 

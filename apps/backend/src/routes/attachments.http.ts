@@ -59,7 +59,7 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 									fileName: fileName,
 									fileSize: Number(stats.size),
 									uploadedAt: new Date(),
-								}).pipe(Effect.map((res) => res[0]!))
+								}, tx).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -84,7 +84,7 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* AttachmentRepo.deleteById(path.id)
+								yield* AttachmentRepo.deleteById(path.id, tx)
 
 								const txid = yield* generateTransactionId(tx)
 

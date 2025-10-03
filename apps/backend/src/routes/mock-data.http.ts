@@ -25,6 +25,7 @@ export const HttpMockDataLive = HttpApiBuilder.group(HazelApi, "mockData", (hand
 									channelCount: payload.channelCount,
 									messageCount: payload.messageCount,
 								},
+								tx,
 							)
 
 							const txid = yield* generateTransactionId(tx)

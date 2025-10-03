@@ -23,7 +23,7 @@ export const HttpTypingIndicatorLive = HttpApiBuilder.group(HazelApi, "typingInd
 									channelId: payload.channelId,
 									memberId: payload.memberId,
 									lastTyped: payload.lastTyped ?? Date.now(),
-								}).pipe(policyUse(TypingIndicatorPolicy.canCreate(payload.channelId)))
+								}, tx).pipe(policyUse(TypingIndicatorPolicy.canCreate(payload.channelId)))
 
 								const typingIndicator = result[0]!
 
@@ -50,7 +50,7 @@ export const HttpTypingIndicatorLive = HttpApiBuilder.group(HazelApi, "typingInd
 									...payload,
 									id: path.id,
 									lastTyped: Date.now(),
-								}).pipe(policyUse(TypingIndicatorPolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(TypingIndicatorPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -72,7 +72,7 @@ export const HttpTypingIndicatorLive = HttpApiBuilder.group(HazelApi, "typingInd
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
 								// First find the typing indicator to return it
-								const existingOption = yield* TypingIndicatorRepo.findById(path.id).pipe(
+								const existingOption = yield* TypingIndicatorRepo.findById(path.id, tx).pipe(
 									policyUse(TypingIndicatorPolicy.canRead(path.id)),
 								)
 
@@ -84,7 +84,7 @@ export const HttpTypingIndicatorLive = HttpApiBuilder.group(HazelApi, "typingInd
 
 								const existing = existingOption.value
 
-								yield* TypingIndicatorRepo.deleteById(path.id).pipe(
+								yield* TypingIndicatorRepo.deleteById(path.id, tx).pipe(
 									policyUse(TypingIndicatorPolicy.canDelete({ id: path.id })),
 								)
 

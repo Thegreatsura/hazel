@@ -51,6 +51,8 @@ export const NewChannelModalWrapper = ({ isOpen, setIsOpen }: NewChannelModalWra
 					deletedAt: null,
 				})
 
+				await _tx.isPersisted.promise
+
 				toast.success("Channel created successfully")
 				setIsOpen(false)
 				form.reset()

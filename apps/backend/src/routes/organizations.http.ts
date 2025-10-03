@@ -21,7 +21,7 @@ export const HttpOrganizationLive = HttpApiBuilder.group(HazelApi, "organization
 								const createdOrganization = yield* OrganizationRepo.insert({
 									...payload,
 									deletedAt: null,
-								}).pipe(
+								}, tx).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(OrganizationPolicy.canCreate()),
 								)
@@ -55,7 +55,7 @@ export const HttpOrganizationLive = HttpApiBuilder.group(HazelApi, "organization
 									id: path.id,
 
 									...payload,
-								}).pipe(policyUse(OrganizationPolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(OrganizationPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -82,7 +82,7 @@ export const HttpOrganizationLive = HttpApiBuilder.group(HazelApi, "organization
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* OrganizationRepo.deleteById(path.id).pipe(
+								yield* OrganizationRepo.deleteById(path.id, tx).pipe(
 									policyUse(OrganizationPolicy.canDelete(path.id)),
 								)
 

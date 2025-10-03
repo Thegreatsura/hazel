@@ -30,11 +30,14 @@ export const HttpMessageLive = HttpApiBuilder.group(HazelApi, "messages", (handl
 								// Extract attachmentIds from payload (it's not a database field)
 								const { attachmentIds, ...messageData } = payload
 
-								const createdMessage = yield* MessageRepo.insert({
-									...messageData,
-									authorId: user.id,
-									deletedAt: null,
-								}).pipe(
+								const createdMessage = yield* MessageRepo.insert(
+									{
+										...messageData,
+										authorId: user.id,
+										deletedAt: null,
+									},
+									tx,
+								).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(MessagePolicy.canCreate(payload.channelId)),
 								)
@@ -46,7 +49,7 @@ export const HttpMessageLive = HttpApiBuilder.group(HazelApi, "messages", (handl
 										AttachmentRepo.update({
 											id: attachmentId,
 											messageId: createdMessage.id,
-										}).pipe(withSystemActor),
+										}, tx).pipe(withSystemActor),
 									)
 								}
 
@@ -72,7 +75,7 @@ export const HttpMessageLive = HttpApiBuilder.group(HazelApi, "messages", (handl
 								const createdMessage = yield* MessageRepo.update({
 									id: path.id,
 									...payload,
-								}).pipe(policyUse(MessagePolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(MessagePolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -93,7 +96,7 @@ export const HttpMessageLive = HttpApiBuilder.group(HazelApi, "messages", (handl
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* MessageRepo.deleteById(path.id).pipe(
+								yield* MessageRepo.deleteById(path.id, tx).pipe(
 									policyUse(MessagePolicy.canDelete(path.id)),
 								)
 

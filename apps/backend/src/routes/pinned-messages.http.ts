@@ -23,7 +23,7 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 								const createdPinnedMessage = yield* PinnedMessageRepo.insert({
 									...payload,
 									pinnedBy: user.id,
-								}).pipe(
+								}, tx).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(PinnedMessagePolicy.canCreate(payload.channelId)),
 								)
@@ -50,7 +50,7 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 								const updatedPinnedMessage = yield* PinnedMessageRepo.update({
 									id: path.id,
 									...payload,
-								}).pipe(policyUse(PinnedMessagePolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(PinnedMessagePolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -71,7 +71,7 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* PinnedMessageRepo.deleteById(path.id).pipe(
+								yield* PinnedMessageRepo.deleteById(path.id, tx).pipe(
 									policyUse(PinnedMessagePolicy.canDelete(path.id)),
 								)
 

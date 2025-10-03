@@ -35,7 +35,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 								const createdChannel = yield* ChannelRepo.insert({
 									...payload,
 									deletedAt: null,
-								}).pipe(
+								}, tx).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(ChannelPolicy.canCreate(payload.organizationId)),
 								)
@@ -50,7 +50,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 									notificationCount: 0,
 									joinedAt: new Date(),
 									deletedAt: null,
-								}).pipe(withSystemActor)
+								}, tx).pipe(withSystemActor)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -74,7 +74,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 								const updatedChannel = yield* ChannelRepo.update({
 									id: path.id,
 									...payload,
-								}).pipe(policyUse(ChannelPolicy.canUpdate(path.id)))
+								}, tx).pipe(policyUse(ChannelPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -95,7 +95,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* ChannelRepo.deleteById(path.id)
+								yield* ChannelRepo.deleteById(path.id, tx)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -135,6 +135,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 											user.id,
 											payload.participantIds[0],
 											OrganizationId.make(payload.organizationId),
+											tx,
 										)
 
 									if (Option.isSome(existingChannel)) {
@@ -153,8 +154,9 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 								if (payload.type === "single") {
 									const otherUser = yield* UserRepo.findById(
 										payload.participantIds[0],
+										tx,
 									).pipe(policyUse(UserPolicy.canRead(payload.participantIds[0]!)))
-									const currentUser = yield* UserRepo.findById(user.id).pipe(
+									const currentUser = yield* UserRepo.findById(user.id, tx).pipe(
 										policyUse(UserPolicy.canRead(payload.participantIds[0]!)),
 									)
 
@@ -175,7 +177,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 									organizationId: OrganizationId.make(payload.organizationId),
 									parentChannelId: null,
 									deletedAt: null,
-								}).pipe(
+								}, tx).pipe(
 									Effect.map((res) => res[0]!),
 									policyUse(
 										ChannelPolicy.canCreate(OrganizationId.make(payload.organizationId)),
@@ -193,7 +195,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 									notificationCount: 0,
 									joinedAt: new Date(),
 									deletedAt: null,
-								}).pipe(withSystemActor)
+								}, tx).pipe(withSystemActor)
 
 								// Add all participants as members
 								for (const participantId of payload.participantIds) {
@@ -207,7 +209,7 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 										notificationCount: 0,
 										joinedAt: new Date(),
 										deletedAt: null,
-									}).pipe(withSystemActor)
+									}, tx).pipe(withSystemActor)
 								}
 
 								// For DMs, add to direct_message_participants
@@ -217,14 +219,14 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 										channelId: createdChannel.id,
 										userId: user.id,
 										organizationId: OrganizationId.make(payload.organizationId),
-									}).pipe(withSystemActor)
+									}, tx).pipe(withSystemActor)
 
 									// Add other participant
 									yield* DirectMessageParticipantRepo.insert({
 										channelId: createdChannel.id,
 										userId: payload.participantIds[0],
 										organizationId: OrganizationId.make(payload.organizationId),
-									}).pipe(withSystemActor)
+									}, tx).pipe(withSystemActor)
 								}
 
 								const txid = yield* generateTransactionId(tx)

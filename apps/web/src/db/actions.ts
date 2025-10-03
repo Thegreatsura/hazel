@@ -120,7 +120,7 @@ export const sendMessage = createOptimisticAction<{
 			}),
 		)
 
-		localStorage.debug = "*"
+		console.log(transactionId)
 
 		await messageCollection.utils.awaitTxId(transactionId)
 

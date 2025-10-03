@@ -679,6 +679,7 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 
 	readonly update: (
 		update: PartialExcept<S["update"]["Type"], Col>,
+		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
 	) => Effect.Effect<RecordType, DatabaseError | ParseError, AuthorizedActor<Name, "update">>
 
 	readonly updateVoid: (

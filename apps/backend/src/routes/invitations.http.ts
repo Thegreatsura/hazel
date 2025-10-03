@@ -20,7 +20,7 @@ export const HttpInvitationLive = HttpApiBuilder.group(HazelApi, "invitations", 
 							Effect.fnUntraced(function* (tx) {
 								const createdInvitation = yield* InvitationRepo.insert({
 									...payload,
-								}).pipe(Effect.map((res) => res[0]!))
+								}, tx).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -47,7 +47,7 @@ export const HttpInvitationLive = HttpApiBuilder.group(HazelApi, "invitations", 
 								const updatedInvitation = yield* InvitationRepo.update({
 									id: path.id,
 									...payload,
-								})
+								}, tx)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -71,7 +71,7 @@ export const HttpInvitationLive = HttpApiBuilder.group(HazelApi, "invitations", 
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* InvitationRepo.deleteById(path.id)
+								yield* InvitationRepo.deleteById(path.id, tx)
 
 								const txid = yield* generateTransactionId(tx)
 

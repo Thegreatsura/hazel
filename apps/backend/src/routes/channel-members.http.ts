@@ -32,7 +32,7 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 									userId: user.id,
 									joinedAt: new Date(),
 									deletedAt: null,
-								}).pipe(Effect.map((res) => res[0]!))
+								}, tx).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -59,7 +59,7 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 								const updatedChannelMember = yield* ChannelMemberRepo.update({
 									id: path.id,
 									...payload,
-								})
+								}, tx)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -83,7 +83,7 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* ChannelMemberRepo.deleteById(path.id)
+								yield* ChannelMemberRepo.deleteById(path.id, tx)
 
 								const txid = yield* generateTransactionId(tx)
 

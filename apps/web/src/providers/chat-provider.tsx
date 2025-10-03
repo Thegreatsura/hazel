@@ -123,7 +123,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		if (!user?.id) return
 
 		// Use the sendMessage action which handles both message creation and attachment linking
-		const _tx = sendMessageAction({
+		const tx = sendMessageAction({
 			channelId,
 			authorId: UserId.make(user.id),
 			content,
@@ -131,6 +131,10 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			threadChannelId: null,
 			attachmentIds: attachments as AttachmentId[] | undefined,
 		})
+
+		await tx.isPersisted.promise
+
+		console.log("tx", tx)
 
 		// Clear reply state after sending
 		setReplyToMessageId(null)

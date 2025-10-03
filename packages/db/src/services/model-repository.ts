@@ -6,8 +6,10 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
 import * as Schema from "effect/Schema"
-import { Database, type DatabaseError } from "./database"
+import { Database, type DatabaseError, type TransactionClient } from "./database"
 import { EntityNotFound, type EntitySchema, type Repository, type RepositoryOptions } from "./model"
+
+type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, DatabaseError, never>
 
 export function makeRepository<
 	T extends Table<any>,
@@ -25,23 +27,23 @@ export function makeRepository<
 		const db = yield* Database
 		const { idColumn } = options
 
-		const insert = (data: S["insert"]["Type"]) =>
+		const insert = (data: S["insert"]["Type"], tx?: TxFn) =>
 			pipe(
 				db.makeQueryWithSchema(
 					schema.insert as Schema.Schema<S["insert"]>,
 					(execute, input) => execute((client) => client.insert(table).values([input]).returning()),
 					policyRequire(options.name, "create"),
-				)(data),
+				)(data, tx),
 			) as unknown as Effect.Effect<RecordType[], DatabaseError | ParseError>
 
-		const insertVoid = (data: S["insert"]["Type"]) =>
+		const insertVoid = (data: S["insert"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
 				schema.insert as Schema.Schema<S["insert"]>,
 				(execute, input) => execute((client) => client.insert(table).values(input)),
 				policyRequire(options.name, "create"),
-			)(data) as unknown as Effect.Effect<void, DatabaseError | ParseError>
+			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
 
-		const update = (data: S["update"]["Type"]) =>
+		const update = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
 				Schema.partial(schema.update as Schema.Schema<S["update"]>),
 				(execute, input) =>
@@ -54,9 +56,9 @@ export function makeRepository<
 							.returning(),
 					).pipe(Effect.map((result) => result[0] as RecordType)),
 				policyRequire(options.name, "update"),
-			)(data) as Effect.Effect<RecordType, DatabaseError | ParseError>
+			)(data, tx) as Effect.Effect<RecordType, DatabaseError | ParseError>
 
-		const updateVoid = (data: S["update"]["Type"]) =>
+		const updateVoid = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
 				Schema.partial(schema.update as Schema.Schema<S["update"]>),
 				(execute, input) =>
@@ -68,9 +70,9 @@ export function makeRepository<
 							.where(eq(table[idColumn], input[idColumn])),
 					),
 				policyRequire(options.name, "update"),
-			)(data) as unknown as Effect.Effect<void, DatabaseError | ParseError>
+			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
 
-		const findById = (id: Id) =>
+		const findById = (id: Id, tx?: TxFn) =>
 			db.makeQuery(
 				(execute, id: Id) =>
 					execute((client) =>
@@ -82,15 +84,15 @@ export function makeRepository<
 							.limit(1),
 					).pipe(Effect.map((results) => Option.fromNullable(results[0] as RecordType))),
 				policyRequire(options.name, "select"),
-			)(id) as Effect.Effect<Option.Option<RecordType>, DatabaseError>
+			)(id, tx) as Effect.Effect<Option.Option<RecordType>, DatabaseError>
 
-		const deleteById = (id: Id) =>
+		const deleteById = (id: Id, tx?: TxFn) =>
 			db.makeQuery(
 				(execute, id: Id) =>
 					// @ts-expect-error
 					execute((client) => client.delete(table).where(eq(table[idColumn], id))),
 				policyRequire(options.name, "delete"),
-			)(id) as Effect.Effect<unknown, DatabaseError>
+			)(id, tx) as Effect.Effect<unknown, DatabaseError>
 
 		const with_ = <A, E, R>(
 			id: Id,
