@@ -13,16 +13,15 @@ import {
 	TypingIndicator,
 	User,
 } from "@hazel/db/models"
-import { electricCollectionOptions } from "@tanstack/electric-db-collection"
+import { effectElectricCollectionOptions } from "@hazel/effect-electric-db-collection"
 import { createCollection } from "@tanstack/react-db"
 import { Effect, Schema } from "effect"
 import { ApiClient } from "~/lib/services/common/api-client"
-import { runtime } from "~/lib/services/common/runtime"
 
 const electricUrl: string = import.meta.env.VITE_ELECTRIC_URL
 
 export const organizationCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "organizations",
 		shapeOptions: {
 			url: electricUrl,
@@ -35,61 +34,49 @@ export const organizationCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Organization.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newOrganization } = transaction.mutations[0]
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newOrganization } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.organizations.create({
+					payload: newOrganization,
+				})
 
-					return yield* client.organizations.create({
-						payload: newOrganization,
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newOrganization } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newOrganization } = transaction.mutations[0]
+				const results = yield* client.organizations.update({
+					payload: newOrganization,
+					path: {
+						id: newOrganization.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedOrganization } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.organizations.update({
-						payload: newOrganization,
-						path: {
-							id: newOrganization.id,
-						},
-					})
-				}),
-			)
+				const results = yield* client.organizations.delete({
+					path: {
+						id: deletedOrganization.id,
+					},
+				})
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedOrganization } = transaction.mutations[0]
-
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.organizations.delete({
-						path: {
-							id: deletedOrganization.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const invitationCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "invitations",
 		shapeOptions: {
 			url: electricUrl,
@@ -102,60 +89,49 @@ export const invitationCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Invitation.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newInvitation } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newInvitation } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.invitations.create({
-						payload: newInvitation,
-					})
-				}),
-			)
+				const results = yield* client.invitations.create({
+					payload: newInvitation,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newInvitation } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newInvitation } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.invitations.update({
+					payload: newInvitation,
+					path: {
+						id: newInvitation.id,
+					},
+				})
 
-					return yield* client.invitations.update({
-						payload: newInvitation,
-						path: {
-							id: newInvitation.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedInvitation } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedInvitation } = transaction.mutations[0]
+				const results = yield* client.invitations.delete({
+					path: {
+						id: deletedInvitation.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.invitations.delete({
-						path: {
-							id: deletedInvitation.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const messageCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "messages",
 		shapeOptions: {
 			url: electricUrl,
@@ -168,61 +144,49 @@ export const messageCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Message.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newMessage } = transaction.mutations[0]
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.messages.create({
+					payload: newMessage,
+				})
 
-					return yield* client.messages.create({
-						payload: newMessage,
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newMessage } = transaction.mutations[0]
+				const results = yield* client.messages.update({
+					payload: newMessage,
+					path: {
+						id: newMessage.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.messages.update({
-						payload: newMessage,
-						path: {
-							id: newMessage.id,
-						},
-					})
-				}),
-			)
+				const results = yield* client.messages.delete({
+					path: {
+						id: deletedMessage.id,
+					},
+				})
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedMessage } = transaction.mutations[0]
-
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.messages.delete({
-						path: {
-							id: deletedMessage.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const messageReactionCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "message_reactions",
 		shapeOptions: {
 			url: electricUrl,
@@ -235,60 +199,49 @@ export const messageReactionCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(MessageReaction.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newMessageReaction } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newMessageReaction } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.messageReactions.create({
-						payload: newMessageReaction,
-					})
-				}),
-			)
+				const results = yield* client.messageReactions.create({
+					payload: newMessageReaction,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newMessageReaction } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newMessageReaction } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.messageReactions.update({
+					payload: newMessageReaction,
+					path: {
+						id: newMessageReaction.id,
+					},
+				})
 
-					return yield* client.messageReactions.update({
-						payload: newMessageReaction,
-						path: {
-							id: newMessageReaction.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedMessageReaction } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedMessageReaction } = transaction.mutations[0]
+				const results = yield* client.messageReactions.delete({
+					path: {
+						id: deletedMessageReaction.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.messageReactions.delete({
-						path: {
-							id: deletedMessageReaction.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const pinnedMessageCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "pinned_messages",
 		shapeOptions: {
 			url: electricUrl,
@@ -301,60 +254,49 @@ export const pinnedMessageCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(PinnedMessage.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newPinnedMessage } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newPinnedMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.pinnedMessages.create({
-						payload: newPinnedMessage,
-					})
-				}),
-			)
+				const results = yield* client.pinnedMessages.create({
+					payload: newPinnedMessage,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newPinnedMessage } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newPinnedMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.pinnedMessages.update({
+					payload: newPinnedMessage,
+					path: {
+						id: newPinnedMessage.id,
+					},
+				})
 
-					return yield* client.pinnedMessages.update({
-						payload: newPinnedMessage,
-						path: {
-							id: newPinnedMessage.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedPinnedMessage } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedPinnedMessage } = transaction.mutations[0]
+				const results = yield* client.pinnedMessages.delete({
+					path: {
+						id: deletedPinnedMessage.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.pinnedMessages.delete({
-						path: {
-							id: deletedPinnedMessage.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const notificationCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "notifications",
 		shapeOptions: {
 			url: electricUrl,
@@ -367,60 +309,49 @@ export const notificationCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Notification.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newNotification } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newNotification } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.notifications.create({
-						payload: newNotification,
-					})
-				}),
-			)
+				const results = yield* client.notifications.create({
+					payload: newNotification,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newNotification } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newNotification } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.notifications.update({
+					payload: newNotification,
+					path: {
+						id: newNotification.id,
+					},
+				})
 
-					return yield* client.notifications.update({
-						payload: newNotification,
-						path: {
-							id: newNotification.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedNotification } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedNotification } = transaction.mutations[0]
+				const results = yield* client.notifications.delete({
+					path: {
+						id: deletedNotification.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.notifications.delete({
-						path: {
-							id: deletedNotification.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const userCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "users",
 		shapeOptions: {
 			url: electricUrl,
@@ -433,60 +364,49 @@ export const userCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(User.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newUser } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newUser } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.users.create({
-						payload: newUser,
-					})
-				}),
-			)
+				const results = yield* client.users.create({
+					payload: newUser,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newUser } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newUser } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.users.update({
+					payload: newUser,
+					path: {
+						id: newUser.id,
+					},
+				})
 
-					return yield* client.users.update({
-						payload: newUser,
-						path: {
-							id: newUser.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedUser } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedUser } = transaction.mutations[0]
+				const results = yield* client.users.delete({
+					path: {
+						id: deletedUser.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.users.delete({
-						path: {
-							id: deletedUser.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const organizationMemberCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "organization_members",
 		shapeOptions: {
 			url: electricUrl,
@@ -499,60 +419,49 @@ export const organizationMemberCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(OrganizationMember.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newOrganizationMember } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newOrganizationMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.organizationMembers.create({
-						payload: newOrganizationMember,
-					})
-				}),
-			)
+				const results = yield* client.organizationMembers.create({
+					payload: newOrganizationMember,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newOrganizationMember } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newOrganizationMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.organizationMembers.update({
+					payload: newOrganizationMember,
+					path: {
+						id: newOrganizationMember.id,
+					},
+				})
 
-					return yield* client.organizationMembers.update({
-						payload: newOrganizationMember,
-						path: {
-							id: newOrganizationMember.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedOrganizationMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedOrganizationMember } = transaction.mutations[0]
+				const results = yield* client.organizationMembers.delete({
+					path: {
+						id: deletedOrganizationMember.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.organizationMembers.delete({
-						path: {
-							id: deletedOrganizationMember.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const channelCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "channels",
 		shapeOptions: {
 			url: electricUrl,
@@ -565,61 +474,49 @@ export const channelCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Channel.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newChannel } = transaction.mutations[0]
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newChannel } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.channels.create({
+					payload: newChannel,
+				})
 
-					return yield* client.channels.create({
-						payload: newChannel,
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newChannel } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newChannel } = transaction.mutations[0]
+				const results = yield* client.channels.update({
+					payload: newChannel,
+					path: {
+						id: newChannel.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedChannel } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.channels.update({
-						payload: newChannel,
-						path: {
-							id: newChannel.id,
-						},
-					})
-				}),
-			)
+				const results = yield* client.channels.delete({
+					path: {
+						id: deletedChannel.id,
+					},
+				})
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedChannel } = transaction.mutations[0]
-
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.channels.delete({
-						path: {
-							id: deletedChannel.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const channelMemberCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "channel_members",
 		shapeOptions: {
 			url: `${electricUrl}`,
@@ -632,61 +529,49 @@ export const channelMemberCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(ChannelMember.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newChannelMember } = transaction.mutations[0]
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newChannelMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.channelMembers.create({
+					payload: newChannelMember,
+				})
 
-					return yield* client.channelMembers.create({
-						payload: newChannelMember,
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newChannelMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newChannelMember } = transaction.mutations[0]
+				const results = yield* client.channelMembers.update({
+					payload: newChannelMember,
+					path: {
+						id: newChannelMember.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedChannelMember } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.channelMembers.update({
-						payload: newChannelMember,
-						path: {
-							id: newChannelMember.id,
-						},
-					})
-				}),
-			)
+				const results = yield* client.channelMembers.delete({
+					path: {
+						id: deletedChannelMember.id,
+					},
+				})
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedChannelMember } = transaction.mutations[0]
-
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.channelMembers.delete({
-						path: {
-							id: deletedChannelMember.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const attachmentCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "attachments",
 		shapeOptions: {
 			url: electricUrl,
@@ -699,28 +584,24 @@ export const attachmentCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Attachment.Model.json),
 		getKey: (item) => item.id,
-		onDelete: async ({ transaction }) => {
-			const { original: deletedAttachment } = transaction.mutations[0]
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedAttachment } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.attachments.delete({
+					path: {
+						id: deletedAttachment.id,
+					},
+				})
 
-					return yield* client.attachments.delete({
-						path: {
-							id: deletedAttachment.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const directMessageParticipantCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "direct_message_participants",
 		shapeOptions: {
 			url: electricUrl,
@@ -730,60 +611,49 @@ export const directMessageParticipantCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(DirectMessageParticipant.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newDirectMessageParticipant } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.directMessageParticipants.create({
-						payload: newDirectMessageParticipant,
-					})
-				}),
-			)
+				const results = yield* client.directMessageParticipants.create({
+					payload: newDirectMessageParticipant,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newDirectMessageParticipant } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.directMessageParticipants.update({
+					payload: newDirectMessageParticipant,
+					path: {
+						id: newDirectMessageParticipant.id,
+					},
+				})
 
-					return yield* client.directMessageParticipants.update({
-						payload: newDirectMessageParticipant,
-						path: {
-							id: newDirectMessageParticipant.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedDirectMessageParticipant } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedDirectMessageParticipant } = transaction.mutations[0]
+				const results = yield* client.directMessageParticipants.delete({
+					path: {
+						id: deletedDirectMessageParticipant.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.directMessageParticipants.delete({
-						path: {
-							id: deletedDirectMessageParticipant.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )
 
 export const typingIndicatorCollection = createCollection(
-	electricCollectionOptions({
+	effectElectricCollectionOptions({
 		id: "typing_indicators",
 		shapeOptions: {
 			url: electricUrl,
@@ -793,54 +663,43 @@ export const typingIndicatorCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(TypingIndicator.Model.json),
 		getKey: (item) => item.id,
-		onInsert: async ({ transaction }) => {
-			const { modified: newTypingIndicator } = transaction.mutations[0]
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newTypingIndicator } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-					return yield* client.typingIndicators.create({
-						payload: newTypingIndicator,
-					})
-				}),
-			)
+				const results = yield* client.typingIndicators.create({
+					payload: newTypingIndicator,
+				})
 
-			return { txid: results.transactionId }
-		},
-		onUpdate: async ({ transaction }) => {
-			const { modified: newTypingIndicator } = transaction.mutations[0]
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newTypingIndicator } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
+				const results = yield* client.typingIndicators.update({
+					payload: newTypingIndicator,
+					path: {
+						id: newTypingIndicator.id,
+					},
+				})
 
-					return yield* client.typingIndicators.update({
-						payload: newTypingIndicator,
-						path: {
-							id: newTypingIndicator.id,
-						},
-					})
-				}),
-			)
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { original: deletedTypingIndicator } = transaction.mutations[0]
+				const client = yield* ApiClient
 
-			return { txid: results.transactionId }
-		},
-		onDelete: async ({ transaction }) => {
-			const { original: deletedTypingIndicator } = transaction.mutations[0]
+				const results = yield* client.typingIndicators.delete({
+					path: {
+						id: deletedTypingIndicator.id,
+					},
+				})
 
-			const results = await runtime.runPromise(
-				Effect.gen(function* () {
-					const client = yield* ApiClient
-
-					return yield* client.typingIndicators.delete({
-						path: {
-							id: deletedTypingIndicator.id,
-						},
-					})
-				}),
-			)
-
-			return { txid: results.transactionId }
-		},
+				return { txid: results.transactionId }
+			}).pipe(Effect.provide(ApiClient.Default)),
 	}),
 )

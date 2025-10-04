@@ -23,7 +23,7 @@ export type EffectInsertHandler<
 
 /**
  * Effect-based update handler
- * Note: Handlers must be self-contained with all dependencies provided.
+ * Note: Handlers must be self-contained, all dependencies provided.
  * Use Effect.provideService or Layer.provide to inject dependencies before returning.
  */
 export type EffectUpdateHandler<
@@ -53,7 +53,6 @@ export interface EffectElectricCollectionConfig<
 	TKey extends string | number = string | number,
 	TSchema extends StandardSchemaV1 = never,
 	TUtils extends UtilsRecord = Record<string, never>,
-	E = never,
 > {
 	/**
 	 * Unique identifier for the collection
@@ -77,18 +76,21 @@ export interface EffectElectricCollectionConfig<
 
 	/**
 	 * Effect-based insert handler (must be self-contained, all dependencies provided)
+	 * Each handler can have its own error type
 	 */
-	onInsert?: EffectInsertHandler<T, TKey, TUtils, E>
+	onInsert?: EffectInsertHandler<T, TKey, TUtils, any>
 
 	/**
 	 * Effect-based update handler (must be self-contained, all dependencies provided)
+	 * Each handler can have its own error type
 	 */
-	onUpdate?: EffectUpdateHandler<T, TKey, TUtils, E>
+	onUpdate?: EffectUpdateHandler<T, TKey, TUtils, any>
 
 	/**
 	 * Effect-based delete handler (must be self-contained, all dependencies provided)
+	 * Each handler can have its own error type
 	 */
-	onDelete?: EffectDeleteHandler<T, TKey, TUtils, E>
+	onDelete?: EffectDeleteHandler<T, TKey, TUtils, any>
 
 	/**
 	 * Time in milliseconds after which the collection will be garbage collected

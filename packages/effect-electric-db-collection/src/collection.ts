@@ -41,7 +41,8 @@ export function effectElectricCollectionOptions<T extends StandardSchemaV1>(
   config: EffectElectricCollectionConfig<
     InferSchemaOutput<T>,
     string | number,
-    T
+    T,
+    Record<string, never>
   > & {
     schema: T
   }
@@ -52,7 +53,7 @@ export function effectElectricCollectionOptions<T extends StandardSchemaV1>(
 }
 
 export function effectElectricCollectionOptions<T extends Row<unknown>>(
-  config: EffectElectricCollectionConfig<T> & {
+  config: EffectElectricCollectionConfig<T, string | number, never, Record<string, never>> & {
     schema?: never
   }
 ): CollectionConfig<T, string | number> & {
@@ -62,7 +63,7 @@ export function effectElectricCollectionOptions<T extends Row<unknown>>(
 }
 
 export function effectElectricCollectionOptions(
-  config: EffectElectricCollectionConfig<any, any, any>
+  config: EffectElectricCollectionConfig<any, any, any, any>
 ): CollectionConfig<any, string | number, any> & {
   id?: string
   utils: EffectElectricCollectionUtils

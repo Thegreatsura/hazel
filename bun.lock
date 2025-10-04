@@ -68,6 +68,7 @@
         "@fontsource/inter": "^5.2.8",
         "@hazel/backend": "workspace:*",
         "@hazel/db": "workspace:*",
+        "@hazel/effect-electric-db-collection": "workspace:*",
         "@paper-design/shaders-react": "^0.0.55",
         "@platejs/ai": "^49.2.15",
         "@platejs/autoformat": "^49.0.0",
@@ -163,8 +164,8 @@
       },
     },
     "packages/effect-electric-db-collection": {
-      "name": "@tanstack/effect-electric-db-collection",
-      "version": "0.1.0",
+      "name": "@hazel/effect-electric-db-collection",
+      "version": "0.0.0",
       "dependencies": {
         "@electric-sql/client": "^1.0.14",
         "@standard-schema/spec": "^1.0.0",
@@ -175,6 +176,7 @@
       },
       "devDependencies": {
         "@vitest/coverage-istanbul": "^3.2.4",
+        "typescript": "^5.9.3",
       },
     },
     "packages/effect-lib": {
@@ -548,6 +550,8 @@
     "@hazel/backend": ["@hazel/backend@workspace:apps/backend"],
 
     "@hazel/db": ["@hazel/db@workspace:packages/db"],
+
+    "@hazel/effect-electric-db-collection": ["@hazel/effect-electric-db-collection@workspace:packages/effect-electric-db-collection"],
 
     "@hazel/effect-lib": ["@hazel/effect-lib@workspace:packages/effect-lib"],
 
@@ -1276,8 +1280,6 @@
     "@tanstack/db-ivm": ["@tanstack/db-ivm@0.1.9", "", { "dependencies": { "fractional-indexing": "^3.2.0", "sorted-btree": "^1.8.1" }, "peerDependencies": { "typescript": ">=4.7" } }, "sha512-EfrtTn34SQ6HOw1ZI4O1DKsrCSCzMufIYMpAYlO6kE7/DMZ7M9N8tQdXYyN2ZasL0zR8zjB1AHj4tMqcmPIt7w=="],
 
     "@tanstack/devtools-event-client": ["@tanstack/devtools-event-client@0.3.2", "", {}, "sha512-gkvph/YMCFUfAca75EsJBJnhbKitDGix7vdEcT/3lAV+eyGSv+uECYG43apVQN4yLJKnV6mzcNvGzOhDhb72gg=="],
-
-    "@tanstack/effect-electric-db-collection": ["@tanstack/effect-electric-db-collection@workspace:packages/effect-electric-db-collection"],
 
     "@tanstack/electric-db-collection": ["@tanstack/electric-db-collection@0.1.27", "", { "dependencies": { "@electric-sql/client": "^1.0.10", "@standard-schema/spec": "^1.0.0", "@tanstack/db": "0.4.3", "@tanstack/store": "^0.7.7", "debug": "^4.4.3" } }, "sha512-7B9Zn4XhHwNQV6zjEPc6iV9jNX84TT5Mla/7P1X9+6IXoTdUOjvMEmSzZUqiNND5Y50p4Uo17WClSM3F2YgqaA=="],
 
