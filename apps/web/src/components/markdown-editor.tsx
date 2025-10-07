@@ -67,8 +67,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
 		const focusEditor = useCallback(() => {
 			requestAnimationFrame(() => {
-				// Don't steal focus if a modal is open
-				if (document.querySelector('[role="dialog"]')) return
+				// Don't steal focus if a modal is open and focused
+				const dialog = document.querySelector('[role="dialog"]')
+				const activeElement = document.activeElement
+				if (dialog && activeElement && dialog.contains(activeElement)) return
 
 				editor.tf.focus({
 					edge: "end",
@@ -80,8 +82,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			(text: string) => {
 				// Use requestAnimationFrame to ensure DOM is ready
 				requestAnimationFrame(() => {
-					// Don't steal focus if a modal is open
-					if (document.querySelector('[role="dialog"]')) return
+					// Don't steal focus if a modal is open and focused
+					const dialog = document.querySelector('[role="dialog"]')
+					const activeElement = document.activeElement
+					if (dialog && activeElement && dialog.contains(activeElement)) return
 
 					// First focus the editor
 					editor.tf.focus()
@@ -98,8 +102,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 		const resetAndFocus = useCallback(() => {
 			editor.tf.reset()
 			setTimeout(() => {
-				// Don't steal focus if a modal is open
-				if (document.querySelector('[role="dialog"]')) return
+				// Don't steal focus if a modal is open and focused
+				const dialog = document.querySelector('[role="dialog"]')
+				const activeElement = document.activeElement
+				if (dialog && activeElement && dialog.contains(activeElement)) return
 
 				editor.tf.focus({
 					at: {
@@ -164,6 +170,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 				) {
 					return
 				}
+
+				if (document.querySelector('[role="dialog"]')) return
 
 				// Skip if user is pressing modifier keys
 				if (event.ctrlKey || event.altKey || event.metaKey) {

@@ -59,12 +59,20 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 		}
 	}, [pageHistory])
 
-	// Reset to home when modal closes
+	// Reset to home when modal closes/opens
 	useEffect(() => {
 		if (!props.isOpen) {
 			setCurrentPage("home")
 			setPageHistory([])
 			setInputValue("")
+		} else {
+			// Ensure search input gets focus when modal opens
+			setTimeout(() => {
+				const searchInput = document.querySelector('[role="dialog"] input') as HTMLInputElement
+				if (searchInput) {
+					searchInput.focus()
+				}
+			}, 100)
 		}
 	}, [props.isOpen])
 
@@ -82,27 +90,6 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 		return () => document.removeEventListener("keydown", handleKeyDown, { capture: true })
 	}, [currentPage, goBack, props.isOpen])
 
-	// Prevent focus from escaping the modal when open
-	useEffect(() => {
-		if (!props.isOpen) return
-
-		const handleFocusIn = (e: FocusEvent) => {
-			const target = e.target as HTMLElement
-			const dialog = document.querySelector('[role="dialog"][aria-modal="true"]')
-
-			if (dialog && !dialog.contains(target)) {
-				// Focus escaped the modal, bring it back
-				const searchInput = dialog.querySelector('input[type="search"]') as HTMLElement
-				if (searchInput) {
-					searchInput.focus()
-				}
-			}
-		}
-
-		document.addEventListener("focusin", handleFocusIn, { capture: true })
-		return () => document.removeEventListener("focusin", handleFocusIn, { capture: true })
-	}, [props.isOpen])
-
 	const searchPlaceholder = useMemo(() => {
 		switch (currentPage) {
 			case "channels":
@@ -116,8 +103,8 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 
 	return (
 		<CommandMenu
-			shortcut="k"
 			key={currentPage}
+			shortcut="k"
 			inputValue={inputValue}
 			onInputChange={setInputValue}
 			{...props}
