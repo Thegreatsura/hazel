@@ -6,6 +6,7 @@
 ## Medium Priority Features
 
 - Setup Organization should display better errors 
+- Add toast popup when new app version is available to reload tab
 
 
 ### Core Features
