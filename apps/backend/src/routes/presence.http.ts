@@ -27,7 +27,7 @@ export const HttpPresenceLive = HttpApiBuilder.group(HazelApi, "presence", (hand
 									customMessage: payload.customMessage ?? null,
 									activeChannelId: null,
 									updatedAt: new Date(),
-								}).pipe(policyUse(UserPresenceStatusPolicy.canUpdate()))
+								}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
 
 								const txid = yield* generateTransactionId()
 
@@ -63,7 +63,7 @@ export const HttpPresenceLive = HttpApiBuilder.group(HazelApi, "presence", (hand
 									customMessage: existing?.customMessage ?? null,
 									activeChannelId: payload.activeChannelId,
 									updatedAt: new Date(),
-								}).pipe(policyUse(UserPresenceStatusPolicy.canUpdate()))
+								}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
 
 								const txid = yield* generateTransactionId()
 
