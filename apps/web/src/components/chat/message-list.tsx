@@ -1,19 +1,66 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useLiveInfiniteQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
-import { messagesByChannelAtomFamily, processedMessagesByChannelAtomFamily } from "~/atoms/chat-query-atoms"
+import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
 import { useChat } from "~/hooks/use-chat"
 import { useScrollToBottom } from "~/hooks/use-scroll-to-bottom"
+import { Route } from "~/routes/_app/$orgSlug/chat/$id"
 
 import { MessageItem } from "./message-item"
 
 export function MessageList() {
 	const { channelId } = useChat()
+	const { messagesInfiniteQuery } = Route.useLoaderData()
 
-	const messagesResult = useAtomValue(messagesByChannelAtomFamily(channelId))
-	const messages = Result.getOrElse(messagesResult, () => [])
-	const isLoadingMessages = Result.isInitial(messagesResult)
+	// Use infinite query hook with the preloaded collection from router
+	const {
+		data,
+		pages: _pages,
+		fetchNextPage: _fetchNextPage,
+		hasNextPage: _hasNextPage,
+		isLoading,
+	} = useLiveInfiniteQuery(messagesInfiniteQuery, {
+		pageSize: 50,
+		getNextPageParam: (lastPage) => (lastPage.length === 20 ? lastPage.length : undefined),
+	})
 
-	const processedMessages = useAtomValue(processedMessagesByChannelAtomFamily(channelId))
+	// Flatten pages into a single array of messages
+	const messages = (data || []) as MessageWithPinned[]
+	const isLoadingMessages = isLoading
+
+	// Process messages for grouping (same logic as before)
+	const processedMessages = useMemo(() => {
+		const timeThreshold = 5 * 60 * 1000
+		const chronologicalMessages = [...messages].reverse()
+
+		return chronologicalMessages.map((message, index): ProcessedMessage => {
+			// Determine isGroupStart
+			const prevMessage = index > 0 ? chronologicalMessages[index - 1] : null
+			const isGroupStart =
+				!prevMessage ||
+				message.authorId !== prevMessage.authorId ||
+				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
+				!!prevMessage.replyToMessageId
+
+			// Determine isGroupEnd
+			const nextMessage =
+				index < chronologicalMessages.length - 1 ? chronologicalMessages[index + 1] : null
+			const isGroupEnd =
+				!nextMessage ||
+				message.authorId !== nextMessage.authorId ||
+				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
+
+			const isFirstNewMessage = false
+			const isPinned = !!message.pinnedMessage?.id
+
+			return {
+				message,
+				isGroupStart,
+				isGroupEnd,
+				isFirstNewMessage,
+				isPinned,
+			}
+		})
+	}, [messages])
 
 	const groupedMessages = useMemo(() => {
 		return processedMessages.reduce(
@@ -79,6 +126,15 @@ export function MessageList() {
 				opacity: isLoadingMessages && messages.length > 0 ? 0.7 : 1,
 			}}
 		>
+			{/*
+			TODO: Add pagination controls to load older messages
+			Available: _fetchNextPage(), _hasNextPage
+			Implementation options:
+			  1. "Load More" button at top of message list (like Slack)
+			  2. Auto-load when user scrolls near top (like Discord)
+			  3. Intersection Observer on first message
+			*/}
+
 			{Object.entries(groupedMessages).map(([date, dateMessages]) => (
 				<div key={date}>
 					<div className="sticky top-0 z-10 my-4 flex items-center justify-center">

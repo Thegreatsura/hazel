@@ -1,6 +1,6 @@
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
-import { PlateStatic, type PlateStaticProps } from "platejs"
+import { PlateView, type PlateViewProps } from "platejs/react"
 
 import { cn } from "~/lib/utils"
 
@@ -40,6 +40,6 @@ export function EditorStatic({
 	className,
 	variant,
 	...props
-}: PlateStaticProps & VariantProps<typeof editorVariants>) {
-	return <PlateStatic className={cn(editorVariants({ variant }), className)} {...props} />
+}: PlateViewProps & VariantProps<typeof editorVariants>) {
+	return <PlateView className={cn(editorVariants({ variant }), className)} {...props} />
 }

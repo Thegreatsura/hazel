@@ -1,26 +1,29 @@
-import { MarkdownPlugin } from "@platejs/markdown"
-import type { VariantProps } from "class-variance-authority"
-import type { PlateStaticProps } from "platejs"
-import { createPlateEditor } from "platejs/react"
+"use client"
+
+import { PlateView, usePlateViewEditor } from "platejs/react"
 import { memo, useMemo } from "react"
-import { EditorStatic, type editorVariants } from "./editor/editor-ui/editor-static"
-import { BasicNodesKit } from "./editor/plugins/basic-nodes-kit"
+import { cn } from "~/lib/utils"
+import { BasicBlocksKitStatic } from "./editor/plugins/basic-blocks-kit-static"
+import { BasicMarksKitStatic } from "./editor/plugins/basic-marks-kit-static"
 import { CodeBlockKit } from "./editor/plugins/code-block-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
-import { MentionKitReadonly } from "./editor/plugins/mention-kit-readonly"
 
-const editor = createPlateEditor({
-	plugins: [...BasicNodesKit, ...MarkdownKit, ...CodeBlockKit, ...MentionKitReadonly],
+export const MarkdownReadonly = memo(({ content, className }: { content: string; className?: string }) => {
+	const editor = usePlateViewEditor({
+		plugins: [...BasicBlocksKitStatic, ...BasicMarksKitStatic, ...MarkdownKit],
+	})
+
+	const editorValue = useMemo(() => editor.api.markdown.deserialize(content), [editor, content])
+
+	return (
+		<PlateView
+			editor={editor}
+			value={editorValue}
+			className={cn(
+				"w-full cursor-text select-text whitespace-pre-wrap break-words",
+				"[&_strong]:font-bold",
+				className,
+			)}
+		/>
+	)
 })
-
-export const MarkdownReadonly = memo(
-	({
-		content,
-		...props
-	}: Omit<PlateStaticProps & VariantProps<typeof editorVariants>, "editor" | "value"> & {
-		content: string
-	}) => {
-		const editorValue = useMemo(() => editor.api.markdown.deserialize(content), [content])
-		return <EditorStatic {...props} value={editorValue} editor={editor}></EditorStatic>
-	},
-)

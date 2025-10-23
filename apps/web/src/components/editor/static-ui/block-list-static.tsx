@@ -1,6 +1,7 @@
 import { isOrderedList } from "@platejs/list"
 import { Check } from "@untitledui/icons"
-import type { RenderStaticNodeWrapper, SlateRenderElementProps, TListElement } from "platejs"
+import type { RenderStaticNodeWrapper } from "platejs"
+import type { SlateRenderElementProps } from "platejs/static"
 import type * as React from "react"
 
 import { cn } from "~/lib/utils"
@@ -25,7 +26,8 @@ export const BlockListStatic: RenderStaticNodeWrapper = (props) => {
 }
 
 function List(props: SlateRenderElementProps) {
-	const { listStart, listStyleType } = props.element as TListElement
+	const element = props.element as any
+	const { listStart, listStyleType } = element
 	const { Li, Marker } = config[listStyleType] ?? {}
 	const List = isOrderedList(props.element) ? "ol" : "ul"
 

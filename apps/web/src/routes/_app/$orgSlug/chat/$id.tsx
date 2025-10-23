@@ -1,11 +1,12 @@
 import type { ChannelId, OrganizationId } from "@hazel/db/schema"
+import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChatHeader } from "~/components/chat/chat-header"
 import { MessageComposer } from "~/components/chat/message-composer"
 import { MessageList } from "~/components/chat/message-list"
 import { ThreadPanel } from "~/components/chat/thread-panel"
 import { TypingIndicator } from "~/components/chat/typing-indicator"
-import { messageCollection } from "~/db/collections"
+import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
 import { ChatProvider } from "~/providers/chat-provider"
@@ -13,10 +14,37 @@ import { ChatProvider } from "~/providers/chat-provider"
 export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	component: RouteComponent,
 	loader: async ({ params }) => {
-		// Preload messages for this channel before navigation completes
-		// This ensures messages are ready when the component renders
-		await messageCollection.preload()
-		return null
+		const channelId = params.id as ChannelId
+
+		// Create infinite query collection for messages
+		// This replaces the simple messageCollection.preload() with pagination support
+		const messagesInfiniteQuery = createLiveQueryCollection({
+			query: (q) =>
+				q
+					.from({ message: messageCollection })
+					.leftJoin({ pinned: pinnedMessageCollection }, ({ message, pinned }) =>
+						eq(message.id, pinned.messageId),
+					)
+					.leftJoin({ author: userCollection }, ({ message, author }) =>
+						eq(message.authorId, author.id),
+					)
+					.where(({ message }) => eq(message.channelId, channelId))
+					.select(({ message, pinned, author }) => ({
+						...message,
+						pinnedMessage: pinned,
+						author: author,
+					}))
+					.orderBy(({ message }) => message.createdAt, "desc")
+					.limit(20) // Initial limit for first page
+					.offset(0),
+		})
+
+		// Preload the collection before navigation completes
+		await messagesInfiniteQuery.preload()
+
+		return {
+			messagesInfiniteQuery,
+		}
 	},
 })
 
