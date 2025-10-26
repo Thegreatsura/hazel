@@ -114,8 +114,6 @@ describe("Result Pattern Matching", () => {
 
 	describe("Result.isFailure", () => {
 		it("should correctly identify failure state", async () => {
-			const registry = Registry.make()
-
 			// Test Result.isFailure with manually created failure Result
 			const error = new Error("Test error")
 			const failureResult = Result.fail(error)

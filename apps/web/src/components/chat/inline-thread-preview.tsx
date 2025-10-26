@@ -2,7 +2,11 @@ import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { Message } from "@hazel/db/models"
 import type { ChannelId, MessageId } from "@hazel/db/schema"
 import { format } from "date-fns"
-import { threadMessageCountAtomFamily, threadMessagesAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import {
+	threadMessageCountAtomFamily,
+	threadMessagesAtomFamily,
+	userWithPresenceAtomFamily,
+} from "~/atoms/message-atoms"
 import { useChat } from "~/hooks/use-chat"
 import { Avatar } from "../base/avatar/avatar"
 import IconThread from "../icons/icon-thread"

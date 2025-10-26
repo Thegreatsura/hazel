@@ -11,11 +11,11 @@ import {
 } from "@hazel/db/schema"
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
 import {
-	type UploadingFile,
 	activeThreadChannelIdAtom,
 	activeThreadMessageIdAtom,
 	isUploadingAtomFamily,
 	replyToMessageAtomFamily,
+	type UploadingFile,
 	uploadedAttachmentsAtomFamily,
 	uploadingFilesAtomFamily,
 } from "~/atoms/chat-atoms"

@@ -16,9 +16,7 @@ import {
  */
 export const messageReactionsAtomFamily = Atom.family((messageId: MessageId) =>
 	makeQuery((q) =>
-		q
-			.from({ reactions: messageReactionCollection })
-			.where((q) => eq(q.reactions.messageId, messageId)),
+		q.from({ reactions: messageReactionCollection }).where((q) => eq(q.reactions.messageId, messageId)),
 	),
 )
 
@@ -81,9 +79,7 @@ export const messageWithAuthorAtomFamily = Atom.family((messageId: MessageId) =>
 	makeQuery((q) =>
 		q
 			.from({ message: messageCollection })
-			.innerJoin({ author: userCollection }, ({ message, author }) =>
-				eq(message.authorId, author.id),
-			)
+			.innerJoin({ author: userCollection }, ({ message, author }) => eq(message.authorId, author.id))
 			.where((q) => eq(q.message.id, messageId))
 			.limit(1)
 			.select(({ message, author }) => ({ ...message, author: author }))
@@ -97,12 +93,13 @@ export const messageWithAuthorAtomFamily = Atom.family((messageId: MessageId) =>
  */
 export const threadMessagesAtomFamily = Atom.family(
 	({ threadChannelId, maxPreviewMessages }: { threadChannelId: ChannelId; maxPreviewMessages: number }) =>
-		makeQuery((q) =>
-			q
-				.from({ message: messageCollection })
-				.where(({ message }) => eq(message.channelId, threadChannelId))
-				.orderBy(({ message }) => message.createdAt, "asc")
-				.limit(maxPreviewMessages + 1), // Fetch one extra to check if there are more
+		makeQuery(
+			(q) =>
+				q
+					.from({ message: messageCollection })
+					.where(({ message }) => eq(message.channelId, threadChannelId))
+					.orderBy(({ message }) => message.createdAt, "asc")
+					.limit(maxPreviewMessages + 1), // Fetch one extra to check if there are more
 		),
 )
 

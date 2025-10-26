@@ -331,7 +331,7 @@ export const makeQueryConditional = <TContext extends Context>(
 				queryReturnsNull = false
 				// Return a function that returns the proxy itself for chaining
 				return () => proxyBuilder
-			}
+			},
 		})
 
 		const query = queryFn(proxyBuilder)
