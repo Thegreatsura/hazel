@@ -189,24 +189,8 @@ export function MessageList() {
 		messages,
 	})
 
-	if (isLoadingMessages && messages.length === 0) {
-		return (
-			<div className="flex h-full flex-col gap-4 p-4">
-				{[...Array(5)].map((_, index) => (
-					<div key={index} className="flex animate-pulse gap-3">
-						<div className="size-10 rounded-full bg-muted" />
-						<div className="flex-1 space-y-2">
-							<div className="h-4 w-32 rounded bg-muted" />
-							<div className="h-4 w-3/4 rounded bg-muted" />
-							{index % 2 === 0 && <div className="h-4 w-1/2 rounded bg-muted" />}
-						</div>
-					</div>
-				))}
-			</div>
-		)
-	}
-
-	if (!isLoadingMessages && messages.length === 0) {
+	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
+	if (messages.length === 0) {
 		return (
 			<div className="flex size-full flex-col items-center justify-center p-4 sm:p-8">
 				<div className="mask-radial-at-center mask-radial-from-black mask-radial-to-transparent relative aspect-square w-full max-w-sm">

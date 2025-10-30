@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Navigate, Outlet, useRouterState } from "@tanstack/react-router"
 import { Loader } from "~/components/loader"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
@@ -15,9 +15,12 @@ export const Route = createFileRoute("/_app")({
 
 function RouteComponent() {
 	const { user, isLoading } = useAuth()
+	const isRouterPending = useRouterState({ select: (s) => s.status === "pending" })
+	const showLoader = isLoading || isRouterPending
+
 	return (
 		<>
-			{!user && !isLoading && (
+			{!user && !showLoader && (
 				<Navigate
 					to="/auth/login"
 					search={{
@@ -25,7 +28,7 @@ function RouteComponent() {
 					}}
 				/>
 			)}
-			{isLoading ? <Loader /> : <Outlet />}
+			{showLoader ? <Loader /> : <Outlet />}
 		</>
 	)
 }
