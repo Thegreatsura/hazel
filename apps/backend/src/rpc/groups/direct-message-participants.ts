@@ -96,11 +96,7 @@ export class DirectMessageParticipantRpcs extends RpcGroup.make(
 			...DirectMessageParticipant.Model.jsonUpdate.fields,
 		}),
 		success: DirectMessageParticipantResponse,
-		error: Schema.Union(
-			DirectMessageParticipantNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-		),
+		error: Schema.Union(DirectMessageParticipantNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -118,10 +114,6 @@ export class DirectMessageParticipantRpcs extends RpcGroup.make(
 	Rpc.make("directMessageParticipant.delete", {
 		payload: Schema.Struct({ id: DirectMessageParticipantId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
-			DirectMessageParticipantNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-		),
+		error: Schema.Union(DirectMessageParticipantNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 ) {}

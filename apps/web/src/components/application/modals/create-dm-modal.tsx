@@ -7,6 +7,7 @@ import { Mail01, MessageSquare02, Plus } from "@untitledui/icons"
 import { type } from "arktype"
 import { useMemo, useState } from "react"
 import { Heading as AriaHeading } from "react-aria-components"
+import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { Dialog, Modal, ModalFooter, ModalOverlay } from "~/components/application/modals/modal"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Button } from "~/components/base/buttons/button"
@@ -22,7 +23,6 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
 import { cx } from "~/utils/cx"
-import { createDmChannelMutation } from "~/atoms/channel-atoms"
 
 const dmFormSchema = type({
 	userIds: "string[]",

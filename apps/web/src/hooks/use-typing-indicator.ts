@@ -1,11 +1,8 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import { Exit } from "effect"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/db/schema"
+import { Exit } from "effect"
 import { useCallback, useRef } from "react"
-import {
-	deleteTypingIndicatorMutation,
-	upsertTypingIndicatorMutation,
-} from "~/atoms/typing-indicator-atom"
+import { deleteTypingIndicatorMutation, upsertTypingIndicatorMutation } from "~/atoms/typing-indicator-atom"
 
 interface UseTypingIndicatorOptions {
 	channelId: ChannelId
@@ -20,11 +17,7 @@ interface UseTypingIndicatorOptions {
 /**
  * Hook for managing typing indicators with Effect Atom patterns
  */
-export function useTypingIndicator({
-	channelId,
-	memberId,
-	debounceMs = 2000,
-}: UseTypingIndicatorOptions) {
+export function useTypingIndicator({ channelId, memberId, debounceMs = 2000 }: UseTypingIndicatorOptions) {
 	const upsertTypingIndicator = useAtomSet(upsertTypingIndicatorMutation, {
 		mode: "promiseExit",
 	})
@@ -65,10 +58,13 @@ export function useTypingIndicator({
 			typingIndicatorIdRef.current = result.value.data.id
 		} else {
 			// Silent failure - just log to console
-			console.error("Failed to create typing indicator:", Exit.match(result, {
-				onFailure: (cause) => cause,
-				onSuccess: () => null,
-			}))
+			console.error(
+				"Failed to create typing indicator:",
+				Exit.match(result, {
+					onFailure: (cause) => cause,
+					onSuccess: () => null,
+				}),
+			)
 		}
 	}, [channelId, memberId, debounceMs, upsertTypingIndicator])
 
@@ -86,10 +82,13 @@ export function useTypingIndicator({
 			typingIndicatorIdRef.current = null
 			lastTypedRef.current = 0
 		} else {
-			console.error("Failed to delete typing indicator:", Exit.match(result, {
-				onFailure: (cause) => cause,
-				onSuccess: () => null,
-			}))
+			console.error(
+				"Failed to delete typing indicator:",
+				Exit.match(result, {
+					onFailure: (cause) => cause,
+					onSuccess: () => null,
+				}),
+			)
 		}
 
 		// Clear any pending debounce timer

@@ -24,6 +24,13 @@ export {
 	convertInsertHandler,
 	convertUpdateHandler,
 } from "./handlers"
+// Optimistic Actions
+export {
+	createEffectOptimisticAction,
+	type EffectOptimisticActionOptions,
+	type MutationParams,
+	type OptimisticMutateResult,
+} from "./optimistic-action"
 // Service and Layer APIs
 export {
 	ElectricCollection,
@@ -37,10 +44,3 @@ export type {
 	EffectInsertHandler,
 	EffectUpdateHandler,
 } from "./types"
-// Optimistic Actions
-export {
-	createEffectOptimisticAction,
-	type EffectOptimisticActionOptions,
-	type MutationParams,
-	type OptimisticMutateResult,
-} from "./optimistic-action"

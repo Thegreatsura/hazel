@@ -249,8 +249,7 @@ export const toggleReactionEffect = createEffectOptimisticAction({
 		// Check if reaction already exists in the collection
 		const reactionsMap = messageReactionCollection.state
 		const existingReaction = Array.from(reactionsMap.values()).find(
-			(r) =>
-				r.messageId === props.messageId && r.userId === props.userId && r.emoji === props.emoji,
+			(r) => r.messageId === props.messageId && r.userId === props.userId && r.emoji === props.emoji,
 		)
 
 		if (existingReaction) {

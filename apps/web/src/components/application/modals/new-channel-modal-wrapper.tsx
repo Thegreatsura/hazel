@@ -2,6 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
+import { createChannelMutation } from "~/atoms/channel-atoms"
 import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
@@ -11,7 +12,6 @@ import { useAppForm } from "~/hooks/use-app-form"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
-import { createChannelMutation } from "~/atoms/channel-atoms"
 
 const channelSchema = type({
 	name: "string > 2",

@@ -5,6 +5,7 @@ import type { UserId } from "@hazel/db/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo } from "react"
+import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { type CommandPalettePage, commandPaletteAtom } from "~/atoms/command-palette-atoms"
 import {
 	CommandMenu,
@@ -27,7 +28,6 @@ import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
 import { Avatar } from "./base/avatar/avatar"
-import { createDmChannelMutation } from "~/atoms/channel-atoms"
 
 import IconBell from "./icons/icon-bell"
 import IconCircleDottedUser from "./icons/icon-circle-dotted-user"

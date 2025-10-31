@@ -6,6 +6,7 @@ import { PhoneCall01 } from "@untitledui/icons"
 
 import { useMemo, useState } from "react"
 import { twJoin } from "tailwind-merge"
+import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
@@ -13,7 +14,6 @@ import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { Input } from "~/components/base/input/input"
 import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
 import IconCopy from "~/components/icons/icon-copy"
-
 import IconDots from "~/components/icons/icon-dots"
 import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import IconMsgs from "~/components/icons/icon-msgs"
@@ -22,7 +22,6 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
-import { createDmChannelMutation } from "~/atoms/channel-atoms"
 
 export const Route = createFileRoute("/_app/$orgSlug/")({
 	component: RouteComponent,

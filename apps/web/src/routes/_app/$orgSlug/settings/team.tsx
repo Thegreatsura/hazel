@@ -7,6 +7,7 @@ import { useState } from "react"
 import type { SortDescriptor } from "react-aria-components"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
+import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { openModal } from "~/atoms/modal-atoms"
 import { ChangeRoleModal } from "~/components/application/modals/change-role-modal"
 import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
@@ -28,7 +29,6 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
-import { createDmChannelMutation } from "~/atoms/channel-atoms"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
 	component: RouteComponent,

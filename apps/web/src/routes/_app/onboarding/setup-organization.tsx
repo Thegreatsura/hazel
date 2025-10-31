@@ -1,5 +1,5 @@
-import type { OrganizationId } from "@hazel/db/schema"
 import { useAtomSet } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate, useNavigate, useSearch } from "@tanstack/react-router"
 import { Building02 } from "@untitledui/icons"
@@ -103,7 +103,11 @@ function RouteComponent() {
 				let errorMessage = "Failed to update organization"
 				if (Option.isSome(firstFailureOption)) {
 					const firstFailure = firstFailureOption.value
-					if (typeof firstFailure === "object" && firstFailure !== null && "message" in firstFailure) {
+					if (
+						typeof firstFailure === "object" &&
+						firstFailure !== null &&
+						"message" in firstFailure
+					) {
 						errorMessage = String(firstFailure.message)
 					}
 				}

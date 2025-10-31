@@ -63,7 +63,9 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		payload: Schema.Struct({
 			status: Schema.optional(UserPresenceStatus.Model.json.fields.status),
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
-			activeChannelId: Schema.optional(Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId)),
+			activeChannelId: Schema.optional(
+				Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId),
+			),
 		}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),

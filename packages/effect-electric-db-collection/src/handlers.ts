@@ -101,7 +101,7 @@ export function convertUpdateHandler<
 		const effect = handler(params).pipe(
 			Effect.tap(() => Effect.sync(() => console.log("[handlers.ts] Effect executed successfully"))),
 			Effect.tapError((error: E | unknown) =>
-				Effect.sync(() => console.error("[handlers.ts] Effect error before catchAll:", error))
+				Effect.sync(() => console.error("[handlers.ts] Effect error before catchAll:", error)),
 			),
 			Effect.catchAll((error: E | unknown) =>
 				Effect.fail(

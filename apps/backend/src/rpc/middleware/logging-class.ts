@@ -24,9 +24,6 @@ import { RpcMiddleware } from "@effect/rpc"
  * ).middleware(RpcLoggingMiddleware)
  * ```
  */
-export class RpcLoggingMiddleware extends RpcMiddleware.Tag<RpcLoggingMiddleware>()(
-	"RpcLoggingMiddleware",
-	{
-		wrap: true,
-	},
-) {}
+export class RpcLoggingMiddleware extends RpcMiddleware.Tag<RpcLoggingMiddleware>()("RpcLoggingMiddleware", {
+	wrap: true,
+}) {}
