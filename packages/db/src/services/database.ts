@@ -2,7 +2,6 @@ import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
 import { Schema } from "effect"
-import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -146,11 +145,7 @@ const makeService = (config: Config) =>
 									resume(Effect.succeed(value))
 								},
 								onFailure: (cause) => {
-									if (Cause.isFailure(cause)) {
-										resume(Effect.fail(Cause.originalError(cause) as E))
-									} else {
-										resume(Effect.die(cause))
-									}
+									resume(Effect.failCause(cause))
 								},
 							})
 						}).catch((cause) => {
