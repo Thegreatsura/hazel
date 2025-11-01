@@ -84,7 +84,7 @@ const ChannelGroup = (props: { organizationId: OrganizationId }) => {
 				</Button>
 			</div>
 			{channels.map((channel) => (
-				<SidebarItem key={channel.id} href={`#/chat/${channel.id}`} tooltip={channel.name}>
+				<SidebarItem key={channel.id} href={`//chat/${channel.id}`} tooltip={channel.name}>
 					<IconHashtag />
 					<SidebarLabel>{channel.name}</SidebarLabel>
 				</SidebarItem>
@@ -130,7 +130,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 				</Button>
 			</div>
 			{dmChannels.map((channel) => (
-				<SidebarItem key={channel.id} href={`#/chat/${channel.id}`} tooltip={channel.name}>
+				<SidebarItem key={channel.id} href={`/`} tooltip={channel.name}>
 					<IconHashtag />
 					<SidebarLabel>{channel.name}</SidebarLabel>
 				</SidebarItem>
@@ -142,8 +142,8 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 export function ChannelsSidebar() {
 	const [isSelected, setIsSelected] = useState<Selection>(new Set([servers[1].id]))
 	const { isMobile } = useSidebar()
-	const currentServer = [...isSelected][0]
-	const { organizationId } = useOrganization()
+	const _currentServer = [...isSelected][0]
+	const { organizationId, organization } = useOrganization()
 
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
@@ -155,9 +155,11 @@ export function ChannelsSidebar() {
 								<Avatar
 									isSquare
 									size="sm"
-									src={servers.find((i) => i.id === currentServer)?.avatar}
+									src={
+										organization?.logoUrl || `https://avatar.vercel.sh/${organizationId}`
+									}
 								/>
-								{servers.find((i) => i.id === currentServer)?.name}
+								{organization?.name}
 							</span>
 							<ChevronUpDownIcon className="ml-auto size-4 text-muted-fg" />
 						</div>
@@ -181,11 +183,11 @@ export function ChannelsSidebar() {
 						) : (
 							<>
 								<MenuSection>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<UserPlusIcon />
 										<MenuLabel>Invite people</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<UserGroupIcon />
 										<MenuLabel>Manage members</MenuLabel>
 									</MenuItem>
@@ -194,15 +196,15 @@ export function ChannelsSidebar() {
 								<MenuSeparator />
 
 								<MenuSection>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<PlusCircleIcon />
 										<MenuLabel>Create channel</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<FolderPlusIcon />
 										<MenuLabel>Create category</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<CalendarDaysIcon />
 										<MenuLabel>Create event</MenuLabel>
 									</MenuItem>
@@ -211,34 +213,25 @@ export function ChannelsSidebar() {
 								<MenuSeparator />
 
 								<MenuSection>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<Cog6ToothIcon />
 										<MenuLabel>Server settings</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<ShieldCheckIcon />
 										<MenuLabel>Roles & permissions</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<AdjustmentsHorizontalIcon />
 										<MenuLabel>Notification settings</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<FaceSmileIcon />
 										<MenuLabel>Custom emojis</MenuLabel>
 									</MenuItem>
-									<MenuItem href="#">
+									<MenuItem href="/">
 										<WrenchScrewdriverIcon />
 										<MenuLabel>Integrations</MenuLabel>
-									</MenuItem>
-								</MenuSection>
-
-								<MenuSeparator />
-
-								<MenuSection>
-									<MenuItem intent="danger" href="#">
-										<ArrowRightEndOnRectangleIcon />
-										<MenuLabel>Leave server</MenuLabel>
 									</MenuItem>
 								</MenuSection>
 							</>
@@ -249,7 +242,7 @@ export function ChannelsSidebar() {
 			<SidebarContent>
 				<SidebarSectionGroup>
 					<SidebarSection aria-label="Goto">
-						<SidebarItem href="#">
+						<SidebarItem href="/">
 							<CalendarDaysIcon />
 							<SidebarLabel>Events</SidebarLabel>
 						</SidebarItem>
@@ -260,7 +253,7 @@ export function ChannelsSidebar() {
 								⌘K
 							</Keyboard>
 						</SidebarItem>
-						<SidebarItem href="#">
+						<SidebarItem href="/">
 							<UsersIcon />
 							<SidebarLabel>Members</SidebarLabel>
 						</SidebarItem>
