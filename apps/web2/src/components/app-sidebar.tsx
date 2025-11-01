@@ -2,7 +2,7 @@ import { ChannelsSidebar } from "~/components/channels-sidebar"
 import { NavSidebar } from "~/components/nav-sidebar"
 import { Sidebar } from "~/components/ui/sidebar"
 
-export function AppSidebar({ openCmd }: { openCmd: (isOpen: boolean) => void }) {
+export function AppSidebar() {
 	return (
 		<Sidebar
 			closeButton={false}
@@ -11,7 +11,7 @@ export function AppSidebar({ openCmd }: { openCmd: (isOpen: boolean) => void }) 
 		>
 			<NavSidebar />
 
-			<ChannelsSidebar openCmd={openCmd} />
+			<ChannelsSidebar />
 		</Sidebar>
 	)
 }

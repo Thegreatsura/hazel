@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
 import { AppSidebar } from "~/components/app-sidebar"
-import { CommandPalette } from "~/components/command-palette"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
 	attachmentCollection,
@@ -29,8 +28,6 @@ export const Route = createFileRoute("/_app/$orgSlug")({
 })
 
 function RouteComponent() {
-	const [openCmd, setOpenCmd] = useState(false)
-
 	return (
 		<SidebarProvider
 			style={
@@ -39,8 +36,7 @@ function RouteComponent() {
 				} as React.CSSProperties
 			}
 		>
-			<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />
-			<AppSidebar openCmd={setOpenCmd} />
+			<AppSidebar />
 			<SidebarInset>{/* <Outlet /> */}</SidebarInset>
 		</SidebarProvider>
 	)

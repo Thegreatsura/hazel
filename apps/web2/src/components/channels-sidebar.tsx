@@ -1,5 +1,6 @@
 "use client"
 
+import type { OrganizationId } from "@hazel/db/schema"
 import {
 	AdjustmentsHorizontalIcon,
 	ArrowRightEndOnRectangleIcon,
@@ -25,16 +26,15 @@ import {
 	UsersIcon,
 	WrenchScrewdriverIcon,
 } from "@heroicons/react/20/solid"
-import { useState } from "react"
+import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
+import { useMemo, useState } from "react"
 import type { Selection } from "react-aria-components"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { twJoin } from "tailwind-merge"
 import { servers } from "~/components/nav-sidebar"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
-import { ChoiceBox, ChoiceBoxDescription, ChoiceBoxItem, ChoiceBoxLabel } from "~/components/ui/choice-box"
-import { Label } from "~/components/ui/field"
-import { Input } from "~/components/ui/input"
+
 import { Keyboard } from "~/components/ui/keyboard"
 import {
 	Menu,
@@ -59,45 +59,107 @@ import {
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
-import { TextField } from "~/components/ui/text-field"
+import { channelCollection, channelMemberCollection } from "~/db/collections"
+import { useOrganization } from "~/hooks/use-organization"
+import { useAuth } from "~/lib/auth"
 
-export const selectedServer = [
-	{
-		id: "text",
-		name: "Text channels",
-		items: [
-			{ id: "chn_01", name: "general", href: "#" },
-			{ id: "chn_02", name: "memes", href: "#" },
-			{ id: "chn_03", name: "game-news", href: "#" },
-			{ id: "chn_04", name: "off-topic", href: "#" },
-			{ id: "chn_05", name: "tournaments", href: "#" },
-		],
-	},
-	{
-		id: "voice",
-		name: "Voice channels",
-		items: [
-			{ id: "chn_11", name: "Lobby", href: "#" },
-			{ id: "chn_12", name: "Casual play", href: "#" },
-			{ id: "chn_13", name: "Ranked matches", href: "#" },
-		],
-	},
-	{
-		id: "forum",
-		name: "Forum",
-		items: [
-			{ id: "chn_19", name: "announcements", href: "#" },
-			{ id: "chn_20", name: "patch-notes", href: "#" },
-			{ id: "chn_21", name: "game-strategies", href: "#" },
-			{ id: "chn_22", name: "modding-community", href: "#" },
-		],
-	},
-]
+const ChannelGroup = (props: { organizationId: OrganizationId }) => {
+	const { user } = useAuth()
 
-export function ChannelsSidebar({ openCmd }: { openCmd: (open: boolean) => void }) {
+	const { data: userChannels } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, props.organizationId),
+						or(eq(q.channel.type, "public"), eq(q.channel.type, "private")),
+						eq(q.member.userId, user?.id || ""),
+						eq(q.member.isHidden, false),
+						eq(q.member.isFavorite, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[user?.id, props.organizationId],
+	)
+
+	const channels = useMemo(() => {
+		if (!userChannels) return []
+		return userChannels.map((row) => row.channel)
+	}, [userChannels])
+
+	return (
+		<SidebarSection label="Channels">
+			<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
+				<Strong>Channels</Strong>
+				<Button intent="plain" isCircle size="sq-sm">
+					<PlusIcon />
+				</Button>
+			</div>
+			{channels.map((channel) => (
+				<SidebarItem key={channel.id} href={`#/chat/${channel.id}`} tooltip={channel.name}>
+					<ChatBubbleOvalLeftEllipsisIcon />
+					<SidebarLabel>{channel.name}</SidebarLabel>
+				</SidebarItem>
+			))}
+		</SidebarSection>
+	)
+}
+
+const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
+	const { user } = useAuth()
+
+	const { data: userDmChannels } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, props.organizationId),
+						or(eq(q.channel.type, "direct"), eq(q.channel.type, "single")),
+						eq(q.member.userId, user?.id || ""),
+						eq(q.member.isHidden, false),
+						eq(q.member.isFavorite, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[user?.id, props.organizationId],
+	)
+
+	const dmChannels = useMemo(() => {
+		if (!userDmChannels) return []
+		return userDmChannels.map((row) => row.channel)
+	}, [userDmChannels])
+
+	return (
+		<SidebarSection label="Direct Messages">
+			<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
+				<Strong>Direct Messages</Strong>
+				<Button intent="plain" isCircle size="sq-sm">
+					<PlusIcon />
+				</Button>
+			</div>
+			{dmChannels.map((channel) => (
+				<SidebarItem key={channel.id} href={`#/chat/${channel.id}`} tooltip={channel.name}>
+					<ChatBubbleLeftRightIcon />
+					<SidebarLabel>{channel.name}</SidebarLabel>
+				</SidebarItem>
+			))}
+		</SidebarSection>
+	)
+}
+
+export function ChannelsSidebar() {
 	const [isSelected, setIsSelected] = useState<Selection>(new Set([servers[1].id]))
 	const { isMobile } = useSidebar()
 	const currentServer = [...isSelected][0]
+	const { organizationId } = useOrganization()
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
 			<SidebarHeader className="border-b py-4">
@@ -210,7 +272,7 @@ export function ChannelsSidebar({ openCmd }: { openCmd: (open: boolean) => void 
 							<CalendarDaysIcon />
 							<SidebarLabel>Events</SidebarLabel>
 						</SidebarItem>
-						<SidebarItem onPress={() => openCmd(true)}>
+						<SidebarItem>
 							<MagnifyingGlassIcon />
 							<SidebarLabel>Browse channels</SidebarLabel>
 							<Keyboard className="-translate-y-1/2 absolute top-1/2 right-2 font-mono text-muted-fg text-xs">
@@ -232,87 +294,12 @@ export function ChannelsSidebar({ openCmd }: { openCmd: (open: boolean) => void 
 							<SidebarLabel>Rules</SidebarLabel>
 						</SidebarItem>
 					</SidebarSection>
-					{selectedServer.map((group) => (
-						<SidebarSection id={group.id} key={group.id}>
-							<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
-								<Strong>{group.name}</Strong>
-								<Modal>
-									<Button intent="plain" isCircle size="sq-sm">
-										<PlusIcon />
-									</Button>
-									<ModalContent>
-										{({ close }) => (
-											<>
-												<div className="flex items-center gap-x-(--gp) p-(--gutter) pb-(--gp) [--gp:calc(var(--gutter)/2)]">
-													<div className="inset-ring inset-ring-primary-subtle-fg/20 grid size-12 shrink-0 place-content-center rounded-xl bg-primary-subtle text-primary-subtle-fg">
-														{group.id === "text" && (
-															<ChatBubbleOvalLeftEllipsisIcon className="size-6" />
-														)}
-														{group.id === "forum" && (
-															<ChatBubbleLeftRightIcon className="size-6" />
-														)}
-														{group.id === "voice" && (
-															<SpeakerWaveIcon className="size-6" />
-														)}
-													</div>
-													<ModalHeader
-														className="p-0"
-														title={`New ${group.id} channel`}
-														description={`Set up a new ${group.id} channel for your server.`}
-													/>
-												</div>
-												<ModalBody>
-													<TextField className="w-full">
-														<Label>Channel name</Label>
-														<Input placeholder="e.g. Design discussion" />
-													</TextField>
-													<div className="mt-4 flex flex-col gap-y-1">
-														<Label className="font-medium">Visibility</Label>
-														<ChoiceBox defaultSelectedKeys={["public"]}>
-															<ChoiceBoxItem id="public">
-																<ChoiceBoxLabel>Public</ChoiceBoxLabel>
-																<ChoiceBoxDescription>
-																	Anyone can view and join this channel
-																</ChoiceBoxDescription>
-															</ChoiceBoxItem>
-															<ChoiceBoxItem id="private">
-																<ChoiceBoxLabel>Private</ChoiceBoxLabel>
-																<ChoiceBoxDescription>
-																	Only selected members can view and join
-																	this channel
-																</ChoiceBoxDescription>
-															</ChoiceBoxItem>
-														</ChoiceBox>
-													</div>
-												</ModalBody>
-												<ModalFooter>
-													<ModalClose>Cancel</ModalClose>
-													<Button onPress={close}>Create channel</Button>
-												</ModalFooter>
-											</>
-										)}
-									</ModalContent>
-								</Modal>
-							</div>
-							{group.items.map((item) => (
-								<SidebarItem
-									key={item.id}
-									href={item.href}
-									tooltip={item.name}
-									isCurrent={item.name === "general"}
-								>
-									{group.id === "text" ? (
-										<ChatBubbleOvalLeftEllipsisIcon />
-									) : group.id === "forum" ? (
-										<ChatBubbleLeftRightIcon />
-									) : (
-										<SpeakerWaveIcon />
-									)}
-									<SidebarLabel>{item.name}</SidebarLabel>
-								</SidebarItem>
-							))}
-						</SidebarSection>
-					))}
+					{organizationId && (
+						<>
+							<ChannelGroup organizationId={organizationId} />
+							<DmChannelGroup organizationId={organizationId} />
+						</>
+					)}
 				</SidebarSectionGroup>
 			</SidebarContent>
 			<SidebarFooter className="flex flex-row justify-between gap-4 group-data-[state=collapsed]:flex-col">

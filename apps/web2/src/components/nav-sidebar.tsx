@@ -2,7 +2,6 @@ import { twJoin } from "tailwind-merge"
 import IconDashboard from "~/components/icons/icon-dashboard"
 import IconMsgs from "~/components/icons/icon-msgs"
 import { Logo } from "~/components/logo"
-import { Avatar } from "~/components/ui/avatar"
 import { Link } from "~/components/ui/link"
 import {
 	Sidebar,

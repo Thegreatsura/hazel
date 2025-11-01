@@ -12,8 +12,8 @@ import "./styles/styles.css"
 import "./lib/registry"
 
 import { Toaster } from "./components/application/notifications/toaster.tsx"
-import { ThemeProvider } from "./components/theme-provider.tsx"
 import { Loader } from "./components/loader.tsx"
+import { ThemeProvider } from "./components/theme-provider.tsx"
 
 import reportWebVitals from "./reportWebVitals.ts"
 
