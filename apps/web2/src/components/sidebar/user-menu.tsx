@@ -67,7 +67,7 @@ export function UserMenu() {
 					<ChartPieIcon />
 					<MenuLabel>Dashboard</MenuLabel>
 				</MenuItem>
-				<MenuItem href="#settings">
+				<MenuItem href="/settings">
 					<Cog6ToothIcon />
 					<MenuLabel>Settings</MenuLabel>
 				</MenuItem>
