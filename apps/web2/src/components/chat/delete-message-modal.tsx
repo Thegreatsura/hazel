@@ -16,8 +16,8 @@ export function DeleteMessageModal({ isOpen, onOpenChange, onConfirm }: DeleteMe
 	}
 
 	return (
-		<Modal>
-			<ModalContent isOpen={isOpen} onOpenChange={onOpenChange} size="md">
+		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+			<ModalContent size="md">
 				<Dialog>
 					<DialogHeader>
 						<div className="flex size-12 items-center justify-center rounded-lg border border-danger/10 bg-danger/5">

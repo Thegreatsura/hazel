@@ -118,25 +118,21 @@ export function EmojiPicker(props: EmojiPickerProps) {
 								layout="grid"
 								className="max-h-full w-full flex-1 overflow-auto [scroll-padding-bottom:4px] [scroll-padding-top:4px]"
 							>
-								{(item) => <EmojiRow id={item.unicode} item={item} />}
+								{(item) => (
+									<ListBoxItem
+										id={item.unicode}
+										value={item}
+										textValue={item.label + (item.tags || []).join(" ")}
+										className="flex size-full cursor-default items-center justify-center rounded-lg pressed:bg-warning-subtle selected:bg-warning-subtle text-2xl hover:bg-warning-subtle focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+									>
+										{item.unicode}
+									</ListBoxItem>
+								)}
 							</ListBox>
 						</Virtualizer>
 					</div>
 				</Autocomplete>
 			</PopoverContent>
 		</Select>
-	)
-}
-
-function EmojiRow({ id, item }: { id: string; item: EmojiItemShape }) {
-	return (
-		<ListBoxItem
-			id={id}
-			value={item}
-			textValue={item.label + (item.tags || []).join(" ")}
-			className="flex size-full cursor-default items-center justify-center rounded-lg pressed:bg-warning-subtle selected:bg-warning-subtle text-2xl hover:bg-warning-subtle focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
-		>
-			{item.unicode}
-		</ListBoxItem>
 	)
 }

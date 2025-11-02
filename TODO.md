@@ -4,6 +4,8 @@
 # UI REWORK
 - Settings Pages (TEST TES TEST)
 - Onboarding
+- DM Channels to use Channel Item
+- Highlight active link in sidebar
 
 ## High Priority Features
 

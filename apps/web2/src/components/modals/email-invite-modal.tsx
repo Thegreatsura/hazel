@@ -123,8 +123,8 @@ export const EmailInviteModal = ({
 	const validInvitesCount = invites.filter((i) => validateEmail(i.email)).length
 
 	return (
-		<Modal>
-			<ModalContent isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
+		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+			<ModalContent size="lg">
 				<Dialog>
 					<DialogHeader>
 						<div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/50">
