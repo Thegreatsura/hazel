@@ -3,6 +3,7 @@ import {
 	ChannelId,
 	ChannelMemberId,
 	DirectMessageParticipantId,
+	InvitationId,
 	MessageId,
 	MessageReactionId,
 	OrganizationId,
@@ -16,6 +17,7 @@ import {
 	channelCollection,
 	channelMemberCollection,
 	directMessageParticipantCollection,
+	invitationCollection,
 	messageCollection,
 	messageReactionCollection,
 	organizationCollection,
@@ -284,6 +286,56 @@ export const toggleReactionEffect = createEffectOptimisticAction({
 			yield* Effect.promise(() => messageReactionCollection.utils.awaitTxId(result.transactionId))
 
 			return result
+		}),
+	runtime: runtime,
+})
+
+export const sendInvitationEffect = createEffectOptimisticAction({
+	onMutate: (props: {
+		organizationId: OrganizationId
+		email: string
+		role: "member" | "admin"
+		invitedBy: UserId
+	}) => {
+		const invitationId = InvitationId.make(crypto.randomUUID())
+		const now = new Date()
+		const expiresAt = new Date()
+		expiresAt.setDate(expiresAt.getDate() + 7) // 7 days from now
+
+		// Optimistically insert the invitation
+		// Note: workosInvitationId will be set by backend after creating invitation in WorkOS
+		invitationCollection.insert({
+			id: invitationId,
+			workosInvitationId: "", // Will be set by backend
+			organizationId: props.organizationId,
+			email: props.email,
+			invitedBy: props.invitedBy,
+			invitedAt: now,
+			expiresAt: expiresAt,
+			status: "pending",
+			acceptedAt: null,
+			acceptedBy: null,
+		})
+
+		return { invitationId }
+	},
+	mutationFn: (
+		props: { organizationId: OrganizationId; email: string; role: "member" | "admin"; invitedBy: UserId },
+		_params,
+	) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+
+			const result = yield* client("invitation.create", {
+				organizationId: props.organizationId,
+				email: props.email,
+				role: props.role,
+			})
+
+			// Wait for the invitation collection to sync
+			yield* Effect.promise(() => invitationCollection.utils.awaitTxId(result.transactionId))
+
+			return { transactionId: result.transactionId, invitationId: result.data.id }
 		}),
 	runtime: runtime,
 })

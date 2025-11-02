@@ -7,19 +7,6 @@ import { InvitationRepo } from "../../repositories/invitation-repo"
 import { WorkOS } from "../../services/workos"
 import { InvitationNotFoundError, InvitationRpcs } from "../groups/invitations"
 
-/**
- * Invitation RPC Handlers
- *
- * Implements the business logic for all invitation-related RPC methods.
- * Each handler receives the payload and has access to CurrentUser via Effect context
- * (provided by AuthMiddleware).
- *
- * All handlers use:
- * - Database transactions for atomicity
- * - Policy checks for authorization
- * - Transaction IDs for optimistic updates
- * - Error remapping for consistent error handling
- */
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
@@ -32,12 +19,28 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Send invitation via WorkOS (uses organizationId as externalId)
+							// Get WorkOS organization ID using the local DB organization ID as externalId
+							const workosOrg = yield* workos
+								.call((client) =>
+									client.organizations.getOrganizationByExternalId(payload.organizationId),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to get organization from WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
 							const workosInvitation = yield* workos
 								.call((client) =>
 									client.userManagement.sendInvitation({
 										email: payload.email,
-										organizationId: payload.organizationId,
+										organizationId: workosOrg.id,
+										roleSlug: payload.role,
 									}),
 								)
 								.pipe(

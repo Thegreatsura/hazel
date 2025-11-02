@@ -42,6 +42,7 @@ export class InvitationRpcs extends RpcGroup.make(
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 			email: Schema.String,
+			role: Schema.Literal("member", "admin"),
 		}),
 		success: InvitationResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),

@@ -78,15 +78,9 @@ export const invitationCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Invitation.Model.json),
 		getKey: (item) => item.id,
-		onInsert: ({ transaction }) =>
-			Effect.gen(function* () {
-				const { modified: newInvitation } = transaction.mutations[0]
-				const client = yield* HazelRpcClient
-
-				const results = yield* client("invitation.create", newInvitation)
-
-				return { txid: results.transactionId }
-			}),
+		// Note: Invitations are created via the sendInvitationEffect action in actions.ts
+		// which calls the RPC with the role parameter. The onInsert handler is intentionally
+		// omitted because invitations require a role field that doesn't exist in the database.
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newInvitation } = transaction.mutations[0]

@@ -1,3 +1,4 @@
+import { useAtomSet } from "@effect-atom/atom-react"
 import { Mail01, Plus, UsersPlus, X } from "@untitledui/icons"
 import { useState } from "react"
 import { Heading as AriaHeading } from "react-aria-components"
@@ -11,6 +12,9 @@ import { Label } from "~/components/base/input/label"
 import { Select } from "~/components/base/select/select"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
+import { useOrganization } from "~/hooks/use-organization"
+import { useAuth } from "~/lib/auth"
+import { sendInvitationEffect } from "~/db/actions"
 
 interface EmailInviteModalProps {
 	isOpen: boolean
@@ -24,6 +28,9 @@ interface InviteEntry {
 }
 
 export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps) => {
+	const { organizationId } = useOrganization()
+	const { user } = useAuth()
+	const sendInvitation = useAtomSet(sendInvitationEffect, { mode: "promiseExit" })
 	const [invites, setInvites] = useState<InviteEntry[]>([{ id: "1", email: "", role: "member" }])
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -59,12 +66,29 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 			return
 		}
 
+		if (!organizationId) {
+			toast.error("Organization not found")
+			return
+		}
+
+		if (!user?.id) {
+			toast.error("User not found")
+			return
+		}
+
 		setIsSubmitting(true)
 		let successCount = 0
 		let errorCount = 0
 
 		for (const invite of validInvites) {
 			try {
+				// Call the optimistic action to send the invitation with role
+				await sendInvitation({
+					organizationId,
+					email: invite.email,
+					role: invite.role,
+					invitedBy: user.id,
+				})
 				successCount++
 			} catch (error) {
 				errorCount++

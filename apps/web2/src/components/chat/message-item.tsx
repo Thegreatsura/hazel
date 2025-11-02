@@ -9,6 +9,7 @@ import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import { messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
+import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 import IconPin from "~/components/icons/icon-pin"
@@ -35,6 +36,7 @@ export function MessageItem({
 	onHoverChange,
 }: MessageItemProps) {
 	const { addReaction } = useChat()
+	const { trackEmojiUsage } = useEmojiStats()
 
 	const [isEditing, _setIsEditing] = useState(false)
 	const messageRef = useRef<HTMLDivElement>(null)
@@ -60,6 +62,7 @@ export function MessageItem({
 
 	const handleReaction = (emoji: string) => {
 		if (!message) return
+		trackEmojiUsage(emoji)
 		// addReaction now handles the toggle logic internally
 		addReaction(message.id, emoji)
 	}
