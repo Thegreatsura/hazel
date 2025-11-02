@@ -19,7 +19,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Get WorkOS organization ID using the local DB organization ID as externalId
 							const workosOrg = yield* workos
 								.call((client) =>
 									client.organizations.getOrganizationByExternalId(payload.organizationId),
@@ -69,7 +68,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 								status: "pending",
 								acceptedAt: null,
 								acceptedBy: null,
-							})
+							}).pipe(policyUse(InvitationPolicy.canCreate(payload.organizationId)))
 
 							const txid = yield* generateTransactionId()
 
@@ -77,10 +76,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canCreate(payload.organizationId)),
 						withRemapDbErrors("Invitation", "create"),
-					)
-					.pipe(
 						Effect.map(({ createdInvitation, txid }) => ({
 							data: createdInvitation,
 							transactionId: txid,
@@ -91,8 +87,9 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							// Find invitation in database
-							const invitationOption = yield* InvitationRepo.findById(invitationId)
+							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
+								policyUse(InvitationPolicy.canRead(invitationId)),
+							)
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
 							}
@@ -126,8 +123,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					.pipe(
 						policyUse(InvitationPolicy.canUpdate(invitationId)),
 						withRemapDbErrors("Invitation", "update"),
-					)
-					.pipe(
 						Effect.map(({ invitation, txid }) => ({
 							data: invitation,
 							transactionId: txid,
@@ -138,8 +133,10 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							// Find invitation in database
-							const invitationOption = yield* InvitationRepo.findById(invitationId)
+							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
+								policyUse(InvitationPolicy.canRead(invitationId)),
+							)
+
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
 							}
@@ -162,8 +159,9 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 									),
 								)
 
-							// Update local database status to "revoked"
-							yield* InvitationRepo.updateStatus(invitationId, "revoked")
+							yield* InvitationRepo.updateStatus(invitationId, "revoked").pipe(
+								policyUse(InvitationPolicy.canUpdate(invitationId)),
+							)
 
 							const txid = yield* generateTransactionId()
 
@@ -171,10 +169,9 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canDelete(invitationId)),
 						withRemapDbErrors("Invitation", "delete"),
-					)
-					.pipe(Effect.map(({ txid }) => ({ transactionId: txid }))),
+						Effect.map(({ txid }) => ({ transactionId: txid })),
+					),
 
 			"invitation.update": ({ id, ...payload }) =>
 				db
@@ -193,8 +190,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					.pipe(
 						policyUse(InvitationPolicy.canUpdate(id)),
 						withRemapDbErrors("Invitation", "update"),
-					)
-					.pipe(
 						Effect.map(({ updatedInvitation, txid }) => ({
 							data: updatedInvitation,
 							transactionId: txid,
@@ -215,8 +210,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					.pipe(
 						policyUse(InvitationPolicy.canDelete(id)),
 						withRemapDbErrors("Invitation", "delete"),
-					)
-					.pipe(Effect.map(({ txid }) => ({ transactionId: txid }))),
+						Effect.map(({ txid }) => ({ transactionId: txid })),
+					),
 		}
 	}),
 )
