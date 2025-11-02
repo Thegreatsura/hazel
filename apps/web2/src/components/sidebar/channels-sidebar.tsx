@@ -170,7 +170,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 export function ChannelsSidebar() {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
-	const [modalType, setModalType] = useState<"create" | "join" | "dm" | "invite" | null>(null)
+	const [_modalType, setModalType] = useState<"create" | "join" | "dm" | "invite" | null>(null)
 
 	return (
 		<>
@@ -239,22 +239,25 @@ export function ChannelsSidebar() {
 											<Cog6ToothIcon />
 											<MenuLabel>Server settings</MenuLabel>
 										</MenuItemLink>
-										<MenuItem href="/">
+										<MenuItemLink to="/">
 											<ShieldCheckIcon />
 											<MenuLabel>Roles & permissions</MenuLabel>
-										</MenuItem>
-										<MenuItem href="/">
+										</MenuItemLink>
+										<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
 											<AdjustmentsHorizontalIcon />
 											<MenuLabel>Notification settings</MenuLabel>
-										</MenuItem>
-										<MenuItem href="/">
+										</MenuItemLink>
+										<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
 											<FaceSmileIcon />
 											<MenuLabel>Custom emojis</MenuLabel>
-										</MenuItem>
-										<MenuItem href="/">
+										</MenuItemLink>
+										<MenuItemLink
+											to="/$orgSlug/settings/integrations"
+											params={{ orgSlug: slug }}
+										>
 											<WrenchScrewdriverIcon />
 											<MenuLabel>Integrations</MenuLabel>
-										</MenuItem>
+										</MenuItemLink>
 									</MenuSection>
 								</>
 							)}
@@ -301,22 +304,10 @@ export function ChannelsSidebar() {
 					<UserMenu />
 				</SidebarFooter>
 			</Sidebar>
-
-			{modalType === "create" && (
-				<CreateChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-
-			{modalType === "join" && (
-				<JoinChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-
-			{modalType === "dm" && (
-				<CreateDmModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-
-			{modalType === "invite" && (
-				<EmailInviteModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
+			modalType === "create" && (
+			<CreateChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
+			)modmodalType === "invite" && (
+			<EmailInviteModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />)
 		</>
 	)
 }
