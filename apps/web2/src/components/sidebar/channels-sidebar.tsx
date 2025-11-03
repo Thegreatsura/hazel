@@ -1,19 +1,7 @@
 "use client"
 
 import type { OrganizationId } from "@hazel/db/schema"
-import {
-	AdjustmentsHorizontalIcon,
-	ChevronUpDownIcon,
-	Cog6ToothIcon,
-	FaceSmileIcon,
-	FolderPlusIcon,
-	PlusCircleIcon,
-	PlusIcon,
-	ShieldCheckIcon,
-	UserGroupIcon,
-	UsersIcon,
-	WrenchScrewdriverIcon,
-} from "@heroicons/react/20/solid"
+import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useMemo, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
@@ -57,6 +45,14 @@ import { Strong } from "~/components/ui/text"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
+import IconCirclePlus from "../icons/icon-circle-plus"
+import IconEmoji1 from "../icons/icon-emoji-1"
+import { IconFolderPlus } from "../icons/icon-folder-plus"
+import IconGear from "../icons/icon-gear"
+import IconIntegratio from "../icons/icon-integratio-"
+import IconPlus from "../icons/icon-plus"
+import { IconServers } from "../icons/icon-servers"
+import IconUsers from "../icons/icon-users"
 import IconUsersPlus from "../icons/icon-users-plus"
 
 const ChannelGroup = (props: {
@@ -100,11 +96,11 @@ const ChannelGroup = (props: {
 				<Strong>Channels</Strong>
 				<Menu>
 					<Button intent="plain" isCircle size="sq-sm">
-						<PlusIcon />
+						<IconPlus />
 					</Button>
 					<MenuContent>
 						<MenuItem onAction={props.onCreateChannel}>
-							<PlusCircleIcon />
+							<IconCirclePlus />
 							<MenuLabel>Create new channel</MenuLabel>
 						</MenuItem>
 						<MenuItem onAction={props.onJoinChannel}>
@@ -154,7 +150,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 			<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
 				<Strong>Direct Messages</Strong>
 				<Button intent="plain" isCircle size="sq-sm" onPress={props.onCreateDm}>
-					<PlusIcon />
+					<IconPlus />
 				</Button>
 			</div>
 			{dmChannels.map((channel) => (
@@ -201,14 +197,14 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 											<MenuLabel>Invite people</MenuLabel>
 										</MenuItem>
 										<MenuItem href="/">
-											<UserGroupIcon />
+											<IconUsers />
 											<MenuLabel>Manage members</MenuLabel>
 										</MenuItem>
 									</MenuSection>
 
 									<MenuSubMenu>
 										<MenuItem>
-											<UserGroupIcon />
+											<IconServers />
 											<MenuLabel>Switch Server</MenuLabel>
 										</MenuItem>
 										<MenuContent>
@@ -220,11 +216,11 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 
 									<MenuSection>
 										<MenuItem onAction={() => setModalType("create")}>
-											<PlusCircleIcon />
+											<IconCirclePlus />
 											<MenuLabel>Create channel</MenuLabel>
 										</MenuItem>
 										<MenuItem href="/">
-											<FolderPlusIcon />
+											<IconFolderPlus />
 											<MenuLabel>Create category</MenuLabel>
 										</MenuItem>
 									</MenuSection>
@@ -233,26 +229,18 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 
 									<MenuSection>
 										<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
-											<Cog6ToothIcon />
+											<IconGear />
 											<MenuLabel>Server settings</MenuLabel>
 										</MenuItemLink>
-										<MenuItemLink to="/">
-											<ShieldCheckIcon />
-											<MenuLabel>Roles & permissions</MenuLabel>
-										</MenuItemLink>
 										<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
-											<AdjustmentsHorizontalIcon />
-											<MenuLabel>Notification settings</MenuLabel>
-										</MenuItemLink>
-										<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
-											<FaceSmileIcon />
+											<IconEmoji1 />
 											<MenuLabel>Custom emojis</MenuLabel>
 										</MenuItemLink>
 										<MenuItemLink
 											to="/$orgSlug/settings/integrations"
 											params={{ orgSlug: slug }}
 										>
-											<WrenchScrewdriverIcon />
+											<IconIntegratio />
 											<MenuLabel>Integrations</MenuLabel>
 										</MenuItemLink>
 									</MenuSection>
@@ -272,8 +260,17 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								</Keyboard>
 							</SidebarItem>
 							<SidebarItem>
-								<SidebarLink to="/$orgSlug" params={{ orgSlug: slug }}>
-									<UsersIcon />
+								<SidebarLink
+									to="/$orgSlug"
+									params={{ orgSlug: slug }}
+									activeOptions={{
+										exact: true,
+									}}
+									activeProps={{
+										className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+									}}
+								>
+									<IconUsers />
 									<SidebarLabel>Members</SidebarLabel>
 								</SidebarLink>
 							</SidebarItem>
