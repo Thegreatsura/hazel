@@ -1,7 +1,7 @@
-import { PaperClipIcon } from "@heroicons/react/20/solid"
 import { ItalicSquare } from "@untitledui/icons"
 import { forwardRef, useRef } from "react"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
+import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { useOrganization } from "~/hooks/use-organization"
@@ -110,7 +110,7 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 							disabled={isUploading}
 							className="inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs transition-colors hover:text-fg disabled:opacity-50"
 						>
-							<PaperClipIcon className="size-4 text-muted-fg" />
+							<IconPaperclip className="size-4 text-muted-fg" />
 							Attach
 						</button>
 

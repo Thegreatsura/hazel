@@ -1,4 +1,3 @@
-import { XMarkIcon } from "@heroicons/react/24/solid"
 import { useEffect, useRef } from "react"
 import type { HeadingProps, TextProps } from "react-aria-components"
 import {
@@ -7,6 +6,7 @@ import {
   Dialog as PrimitiveDialog,
 } from "react-aria-components"
 import { twMerge } from "tailwind-merge"
+import IconClose from "~/components/icons/icon-close"
 import { cx } from "~/lib/primitive"
 import { Button, type ButtonProps } from "./button"
 
@@ -177,7 +177,7 @@ const DialogCloseIcon = ({ className, ...props }: CloseButtonIndicatorProps) => 
         className,
       )}
     >
-      <XMarkIcon className="size-4" />
+      <IconClose className="size-4" />
     </PrimitiveButton>
   ) : null
 }

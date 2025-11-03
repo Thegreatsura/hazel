@@ -1,4 +1,3 @@
-import { FaceSmileIcon } from "@heroicons/react/20/solid"
 import { useEffect, useMemo, useState } from "react"
 import type { Key } from "react-aria-components"
 import {
@@ -15,6 +14,7 @@ import {
 import { Button } from "~/components/ui/button"
 import { PopoverContent } from "~/components/ui/popover"
 import { SearchField, SearchInput } from "~/components/ui/search-field"
+import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 
 type RawEmoji = {
 	label?: string
@@ -91,7 +91,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
 			<Button size="sq-sm" intent="plain" isCircle>
 				<SelectValue>
 					{({ isPlaceholder, defaultChildren }) =>
-						isPlaceholder ? <FaceSmileIcon className="block size-4" /> : defaultChildren
+						isPlaceholder ? <IconEmojiAdd className="block size-4" /> : defaultChildren
 					}
 				</SelectValue>
 			</Button>

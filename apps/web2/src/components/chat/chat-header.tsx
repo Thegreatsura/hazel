@@ -1,8 +1,8 @@
 import type { UserId } from "@hazel/db/schema"
-import { PhoneIcon } from "@heroicons/react/20/solid"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import IconHashtag from "~/components/icons/icon-hashtag"
+import IconPhone from "~/components/icons/icon-phone"
 import { useChannel } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
 import { useUserPresence } from "~/hooks/use-presence"
@@ -90,7 +90,7 @@ export function ChatHeader() {
 					// TODO: Add navigation when route is available
 					// onPress={() => navigate to call}
 				>
-					<PhoneIcon data-slot="icon" />
+					<IconPhone data-slot="icon" />
 				</Button>
 
 				{/* TODO: Add PinnedMessagesModal when available */}

@@ -1,12 +1,14 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { User } from "@hazel/db/models"
 import type { UserId } from "@hazel/db/schema"
-import { ChatBubbleLeftRightIcon, CheckIcon, EnvelopeIcon } from "@heroicons/react/20/solid"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useMemo, useState } from "react"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
+import IconCheck from "~/components/icons/icon-check"
+import IconEnvelope from "~/components/icons/icon-envelope"
+import IconMsgs from "~/components/icons/icon-msgs"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Description } from "~/components/ui/field"
@@ -173,7 +175,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 				<ModalHeader>
 					<div className="flex items-center gap-3">
 						<div className="flex size-10 items-center justify-center rounded-lg bg-primary-subtle">
-							<ChatBubbleLeftRightIcon className="size-5 text-primary" />
+							<IconMsgs className="size-5 text-primary" />
 						</div>
 						<div className="flex flex-col">
 							<ModalTitle>Start a conversation</ModalTitle>
@@ -186,7 +188,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 					{/* Search Input */}
 					<div className="flex flex-col gap-2">
 						<InputGroup>
-							<EnvelopeIcon data-slot="icon" className="text-muted-fg" />
+							<IconEnvelope data-slot="icon" className="text-muted-fg" />
 							<Input
 								placeholder="Search team members..."
 								value={searchQuery}
@@ -259,7 +261,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 													)}
 												</div>
 											</div>
-											{isSelected && <CheckIcon className="size-5 text-primary" />}
+											{isSelected && <IconCheck className="size-5 text-primary" />}
 										</button>
 									)
 								})}

@@ -1,7 +1,7 @@
-import { XMarkIcon } from "@heroicons/react/20/solid"
 import { and, eq, inArray, useLiveQuery } from "@tanstack/react-db"
 import { FileIcon } from "@untitledui/file-icons"
 import { useMemo, useRef } from "react"
+import IconClose from "~/components/icons/icon-close"
 import { Button } from "~/components/ui/button"
 import { Loader } from "~/components/ui/loader"
 import { cn } from "~/lib/utils"
@@ -121,7 +121,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 											size="sq-xs"
 											onPress={() => removeAttachment(attachmentId)}
 										>
-											<XMarkIcon data-slot="icon" />
+											<IconClose data-slot="icon" />
 										</Button>
 									</div>
 								)

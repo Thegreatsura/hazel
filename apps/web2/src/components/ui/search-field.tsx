@@ -1,6 +1,6 @@
 "use client"
 
-import { XMarkIcon } from "@heroicons/react/20/solid"
+import IconClose from "~/components/icons/icon-close"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import type { InputProps, SearchFieldProps } from "react-aria-components"
 import { Button, SearchField as SearchFieldPrimitive } from "react-aria-components"
@@ -30,7 +30,7 @@ export function SearchInput(props: InputProps) {
           "px-3 py-2 sm:px-2.5 sm:py-1.5 sm:text-sm/5",
         )}
       >
-        <XMarkIcon className="size-5 sm:size-4" />
+        <IconClose className="size-5 sm:size-4" />
       </Button>
     </InputGroup>
   )

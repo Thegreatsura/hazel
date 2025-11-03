@@ -1,11 +1,12 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/db/schema"
-import { PhoneIcon, StarIcon } from "@heroicons/react/20/solid"
-import { EllipsisVerticalIcon } from "@heroicons/react/24/solid"
 import { useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import IconDotsVertical from "~/components/icons/icon-dots-vertical"
+import IconPhone from "~/components/icons/icon-phone"
+import IconStar from "~/components/icons/icon-star"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { DropdownLabel, DropdownSeparator } from "~/components/ui/dropdown"
@@ -102,7 +103,7 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 								aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
 								isCircle
 							>
-								<StarIcon data-slot="icon" />
+								<IconStar data-slot="icon" />
 							</Button>
 
 							<Button
@@ -112,13 +113,13 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 								aria-label="Call user"
 								isCircle
 							>
-								<PhoneIcon data-slot="icon" />
+								<IconPhone data-slot="icon" />
 							</Button>
 
 							<Menu>
 								<MenuTrigger aria-label="More options">
 									<Button size="sq-xs" intent="outline" isCircle>
-										<EllipsisVerticalIcon data-slot="icon" />
+										<IconDotsVertical data-slot="icon" />
 									</Button>
 								</MenuTrigger>
 

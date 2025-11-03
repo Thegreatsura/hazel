@@ -1,4 +1,3 @@
-import { CheckIcon } from "@heroicons/react/20/solid"
 import type { ListBoxItemProps, ListBoxProps, ListBoxSectionProps } from "react-aria-components"
 import {
   composeRenderProps,
@@ -6,6 +5,7 @@ import {
   ListBox as ListBoxPrimitive,
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
+import IconCheck from "~/components/icons/icon-check"
 import { cx } from "~/lib/primitive"
 import {
   DropdownDescription,
@@ -86,7 +86,7 @@ const ListBoxItem = <T extends object>({ children, className, ...props }: ListBo
               </svg>
             )}
             {isSelected && (
-              <CheckIcon
+              <IconCheck
                 className="-mx-0.5 mr-2 h-[1lh] w-5 shrink-0 group-allows-dragging:col-start-2 sm:w-4"
                 data-slot="check-icon"
               />

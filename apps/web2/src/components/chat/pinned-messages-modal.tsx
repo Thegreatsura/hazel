@@ -1,4 +1,3 @@
-import { XMarkIcon } from "@heroicons/react/20/solid"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import { Button as PrimitiveButton } from "react-aria-components"
@@ -7,6 +6,7 @@ import { useChat } from "~/hooks/use-chat"
 import { cn } from "~/lib/utils"
 import { Button } from "../ui/button"
 import { Popover, PopoverContent } from "../ui/popover"
+import IconClose from "../icons/icon-close"
 import IconPin from "../icons/icon-pin"
 import { UserProfilePopover } from "./user-profile-popover"
 
@@ -105,7 +105,7 @@ export function PinnedMessagesModal() {
 												aria-label="Unpin message"
 												type="button"
 											>
-												<XMarkIcon className="size-3.5 text-muted-fg" />
+												<IconClose className="size-3.5 text-muted-fg" />
 											</button>
 
 											{/* Message Content */}

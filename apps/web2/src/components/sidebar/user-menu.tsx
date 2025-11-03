@@ -1,9 +1,6 @@
 import {
-	ArrowRightStartOnRectangleIcon,
 	ChartPieIcon,
-	ChatBubbleLeftRightIcon,
 	ChevronUpDownIcon,
-	Cog6ToothIcon,
 	ShieldCheckIcon,
 } from "@heroicons/react/20/solid"
 import { twJoin } from "tailwind-merge"

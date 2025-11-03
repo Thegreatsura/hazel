@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckIcon, ChevronRightIcon } from "@heroicons/react/20/solid"
+import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import { createLink } from "@tanstack/react-router"
 import type {
 	ButtonProps,
@@ -22,6 +22,7 @@ import {
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
 import { tv, type VariantProps } from "tailwind-variants"
+import IconCheck from "~/components/icons/icon-check"
 import { cx } from "~/lib/primitive"
 import {
 	DropdownDescription,
@@ -122,10 +123,10 @@ const MenuItem = ({ className, intent, children, ...props }: MenuItemProps) => {
 							)}
 						>
 							{values.selectionMode === "single" && (
-								<CheckIcon className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
+								<IconCheck className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
 							)}
 							{values.selectionMode === "multiple" && (
-								<CheckIcon className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
+								<IconCheck className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
 							)}
 						</span>
 					)}

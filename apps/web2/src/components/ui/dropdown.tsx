@@ -1,6 +1,5 @@
 "use client"
 
-import { CheckIcon } from "@heroicons/react/16/solid"
 import type {
   ListBoxItemProps,
   ListBoxSectionProps,
@@ -18,6 +17,7 @@ import {
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
+import IconCheck from "~/components/icons/icon-check"
 import { Keyboard } from "./keyboard"
 
 const dropdownSectionStyles = tv({
@@ -111,7 +111,7 @@ const DropdownItem = ({ className, children, intent, ...props }: DropdownItemPro
       {composeRenderProps(children, (children, { isSelected }) => (
         <>
           {isSelected && (
-            <CheckIcon
+            <IconCheck
               className={twJoin(
                 "-ml-0.5 mr-1.5 h-[1lh] w-4 shrink-0",
                 "group-has-data-[slot=icon]:-translate-y-1/2 group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:top-1/2 group-has-data-[slot=icon]:right-0.5",

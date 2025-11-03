@@ -1,4 +1,4 @@
-import { CircleStackIcon, ExclamationTriangleIcon } from "@heroicons/react/20/solid"
+import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
@@ -15,6 +15,7 @@ import {
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
+import IconServers from "~/components/icons/icon-servers"
 import { useOrganization } from "~/hooks/use-organization"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { toastExit } from "~/lib/toast-exit"
@@ -96,7 +97,7 @@ function DebugSettings() {
 							<div className="rounded-lg border border-border bg-secondary/50 p-4">
 								<div className="flex items-start gap-3">
 									<div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/5">
-										<CircleStackIcon className="size-6 text-primary" />
+										<IconServers className="size-6 text-primary" />
 									</div>
 									<div className="flex-1">
 										<h3 className="font-medium text-fg">Generate Sample Data</h3>
