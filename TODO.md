@@ -5,7 +5,6 @@
 - Settings Pages (TEST TES TEST)
 - Fix Theme colors not working
 - Onboarding
-- Highlight active link in sidebar
 - channel overview page
 
 ## High Priority Features
