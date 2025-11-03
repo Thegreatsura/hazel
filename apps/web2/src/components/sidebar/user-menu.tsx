@@ -22,6 +22,10 @@ import {
 import { SidebarLabel } from "~/components/ui/sidebar"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
+import IconGear from "../icons/icon-gear"
+import IconLogout from "../icons/icon-logout"
+import IconProfiles2 from "../icons/icon-persons-2"
+import IconSupport from "../icons/icon-support"
 
 export function UserMenu() {
 	const { user, logout } = useAuth()
@@ -68,8 +72,8 @@ export function UserMenu() {
 				</MenuSection>
 
 				<MenuItem>
-					<ChartPieIcon />
-					<MenuLabel>Dashboard</MenuLabel>
+					<IconProfiles2 />
+					<MenuLabel>Profile</MenuLabel>
 				</MenuItem>
 				<MenuItemLink
 					to="/$orgSlug/settings"
@@ -77,22 +81,19 @@ export function UserMenu() {
 						orgSlug: orgSlug,
 					}}
 				>
-					<Cog6ToothIcon />
+					<IconGear />
 					<MenuLabel>Settings</MenuLabel>
 				</MenuItemLink>
-				<MenuItem>
-					<ShieldCheckIcon />
-					<MenuLabel>Security</MenuLabel>
-				</MenuItem>
+
 				<MenuSeparator />
 
 				<MenuItem>
-					<ChatBubbleLeftRightIcon />
-					<MenuLabel>Customer support</MenuLabel>
+					<IconSupport />
+					<MenuLabel>Feedback</MenuLabel>
 				</MenuItem>
 				<MenuSeparator />
 				<MenuItem onAction={() => logout()}>
-					<ArrowRightStartOnRectangleIcon />
+					<IconLogout />
 					<MenuLabel>Log out</MenuLabel>
 				</MenuItem>
 			</MenuContent>
