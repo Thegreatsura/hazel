@@ -12,6 +12,7 @@ import {
 	organizationCollection,
 	organizationMemberCollection,
 } from "~/db/collections"
+import { PresenceProvider } from "~/providers/presence-provider"
 
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
@@ -46,11 +47,13 @@ function RouteComponent() {
 				} as React.CSSProperties
 			}
 		>
-			<AppSidebar openChannelsBrowser={openChannelsBrowser} />
-			<SidebarInset>
-				<Outlet />
-				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} initialPage={initialPage} />
-			</SidebarInset>
+			<PresenceProvider>
+				<AppSidebar openChannelsBrowser={openChannelsBrowser} />
+				<SidebarInset>
+					<Outlet />
+					<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} initialPage={initialPage} />
+				</SidebarInset>
+			</PresenceProvider>
 		</SidebarProvider>
 	)
 }
