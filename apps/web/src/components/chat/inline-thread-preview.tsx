@@ -96,7 +96,7 @@ function ThreadMessagePreview({ message }: { message: typeof Message.Model.Type 
 					</span>
 					<span className="text-muted-fg text-xs">{format(message.createdAt, "HH:mm")}</span>
 				</div>
-				<p className="text-fg text-sm leading-snug">{message.content}</p>
+				<p className="text-base text-fg leading-snug">{message.content}</p>
 			</div>
 		</div>
 	)

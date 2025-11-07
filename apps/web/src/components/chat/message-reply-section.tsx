@@ -57,7 +57,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 						<span className="font-medium text-fg text-sm hover:underline">
 							{data.author.firstName} {data.author.lastName}
 						</span>
-						<span className="max-w-xs truncate text-ellipsis text-muted-fg text-xs">
+						<span className="max-w-xs truncate text-ellipsis text-muted-fg text-sm">
 							{data.content.split("\n")[0]}
 						</span>
 					</>
