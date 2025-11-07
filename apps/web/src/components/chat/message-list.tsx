@@ -1,11 +1,10 @@
-import { LegendList } from "@legendapp/list"
+import { LegendList, type LegendListRef } from "@legendapp/list"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
-import { memo, useCallback, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
 import { useChat } from "~/hooks/use-chat"
-import { useScrollToBottom } from "~/hooks/use-scroll-to-bottom"
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
 import { MessageItem } from "./message-item"
 import { MessageToolbar } from "./message-toolbar"
@@ -23,9 +22,17 @@ interface MessageVirtualListProps {
 }
 
 const MessageVirtualList = memo(
-	({ messageRows, stickyIndices, onHoverChange, hasNextPage, fetchNextPage }: MessageVirtualListProps) => {
+	({
+		messageRows,
+		stickyIndices,
+		onHoverChange,
+		hasNextPage,
+		fetchNextPage,
+		ref,
+	}: MessageVirtualListProps & { ref: React.Ref<LegendListRef> }) => {
 		return (
 			<LegendList<MessageRow>
+				ref={ref}
 				alignItemsAtEnd
 				maintainScrollAtEnd
 				maintainVisibleContentPosition
@@ -66,16 +73,26 @@ const MessageVirtualList = memo(
 
 MessageVirtualList.displayName = "MessageVirtualList"
 
-export function MessageList() {
-	const { channelId } = useChat()
+export interface MessageListRef {
+	scrollToBottom: () => void
+}
+
+export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	const { messagesInfiniteQuery } = Route.useLoaderData()
 
+	const legendListRef = useRef<LegendListRef>(null)
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 	const targetRef = useRef<HTMLDivElement | null>(null)
 	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
 	const isToolbarHoveredRef = useRef(false)
 	const overlayRef = useRef<HTMLDivElement>(null)
 	const hideTimeoutRef = useRef<number | null>(null)
+
+	useImperativeHandle(ref, () => ({
+		scrollToBottom: () => {
+			legendListRef.current?.scrollToEnd({ animated: true })
+		},
+	}))
 
 	const {
 		data,
@@ -181,11 +198,6 @@ export function MessageList() {
 		return { messageRows: rows, stickyIndices: sticky }
 	}, [processedMessages])
 
-	const { scrollContainerRef } = useScrollToBottom({
-		channelId,
-		messages,
-	})
-
 	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
 	if (messages.length === 0) {
 		return (
@@ -204,7 +216,6 @@ export function MessageList() {
 
 	return (
 		<div
-			ref={scrollContainerRef}
 			className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2 transition-opacity duration-200"
 			style={{
 				overflowAnchor: "auto",
@@ -213,6 +224,7 @@ export function MessageList() {
 			}}
 		>
 			<MessageVirtualList
+				ref={legendListRef}
 				messageRows={messageRows}
 				stickyIndices={stickyIndices}
 				onHoverChange={handleHoverChange}

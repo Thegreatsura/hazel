@@ -74,9 +74,10 @@ interface ChatProviderProps {
 	channelId: ChannelId
 	organizationId: OrganizationId
 	children: ReactNode
+	onMessageSent?: () => void
 }
 
-export function ChatProvider({ channelId, organizationId, children }: ChatProviderProps) {
+export function ChatProvider({ channelId, organizationId, children, onMessageSent }: ChatProviderProps) {
 	const { user } = useAuth()
 
 	const sendMessageMutation = useAtomSet(sendMessageAction, { mode: "promiseExit" })
@@ -153,6 +154,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 				onSuccess: () => {
 					setReplyToMessageId(null)
 					clearAttachments()
+					onMessageSent?.()
 				},
 				onFailure: (error) => {
 					toast.error("Failed to send message", {
@@ -169,6 +171,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			sendMessageMutation,
 			setReplyToMessageId,
 			clearAttachments,
+			onMessageSent,
 		],
 	)
 
