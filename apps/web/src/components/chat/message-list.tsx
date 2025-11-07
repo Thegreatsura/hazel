@@ -42,9 +42,9 @@ const MessageVirtualList = memo(
 						fetchNextPage()
 					}
 				}}
-				recycleItems
+				// recycleItems
 				estimatedItemSize={80}
-				keyExtractor={(it) => it?.id}
+				keyExtractor={(it) => it.id}
 				initialScrollIndex={messageRows.length - 1}
 				stickyIndices={stickyIndices}
 				renderItem={(props) =>
@@ -107,6 +107,8 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 
 	const messages = (data || []) as MessageWithPinned[]
 	const isLoadingMessages = isLoading
+
+	console.log(messages?.map((m) => m.content))
 
 	const hoveredMessage = useMemo(
 		() => messages.find((m) => m.id === hoveredMessageId) || null,
