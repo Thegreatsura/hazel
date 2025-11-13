@@ -139,6 +139,7 @@ const MainLive = Layer.mergeAll(
 			},
 		}),
 	),
+	Layer.provideMerge(FetchHttpClient.layer),
 )
 
 HttpLayerRouter.serve(AllRoutes).pipe(
