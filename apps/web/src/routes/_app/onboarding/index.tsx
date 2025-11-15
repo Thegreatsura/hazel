@@ -4,7 +4,8 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useMachine } from "@xstate/react"
 import { Exit } from "effect"
-import { useEffect } from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { useEffect, useState } from "react"
 import { fromPromise } from "xstate"
 import { createOrganizationMutation, setOrganizationSlugMutation } from "~/atoms/organization-atoms"
 import { updateUserMutation } from "~/atoms/user-atoms"
@@ -31,6 +32,9 @@ function RouteComponent() {
 	const createOrganization = useAtomSet(createOrganizationMutation, { mode: "promiseExit" })
 	const setOrganizationSlugAction = useAtomSet(setOrganizationSlugMutation, { mode: "promiseExit" })
 	const updateUser = useAtomSet(updateUserMutation, { mode: "promiseExit" })
+
+	// Track transition direction for animations
+	const [direction, setDirection] = useState<"forward" | "backward">("forward")
 
 	// Fetch user's organizations to determine if they're creating or joining
 	const { data: userOrganizations } = useLiveQuery(
@@ -199,90 +203,196 @@ function RouteComponent() {
 		return stepNumber
 	}
 
+	// Animation variants based on direction
+	const variants = {
+		enter: {
+			x: direction === "forward" ? 20 : -20,
+			opacity: 0,
+		},
+		center: {
+			x: 0,
+			opacity: 1,
+		},
+		exit: {
+			x: direction === "forward" ? -20 : 20,
+			opacity: 0,
+		},
+	}
+
+	// Helper to send events and track direction
+	const sendWithDirection = (event: any) => {
+		if (event.type === "BACK") {
+			setDirection("backward")
+		} else {
+			setDirection("forward")
+		}
+		send(event)
+	}
+
 	return (
 		<OnboardingLayout currentStep={getCurrentStepNumber()} totalSteps={getTotalSteps()}>
-			{state.matches("welcome") && (
-				<WelcomeStep
-					onContinue={() => send({ type: "WELCOME_CONTINUE" })}
-					isCreatingOrg={isCreator}
-					organizationName={organization?.name}
-				/>
-			)}
+			<AnimatePresence mode="wait" initial={false}>
+				{state.matches("welcome") && (
+					<motion.div
+						key="welcome"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<WelcomeStep
+							onContinue={() => sendWithDirection({ type: "WELCOME_CONTINUE" })}
+							isCreatingOrg={isCreator}
+							organizationName={organization?.name}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches("profileInfo") && (
-				<ProfileInfoStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={async (data) => {
-						// Save user profile info
-						if (user?.id) {
-							await updateUser({
-								payload: {
-									id: user.id,
-									firstName: data.firstName,
-									lastName: data.lastName,
-								} as any, // TODO: Fix type - need to check RPC contract for partial update
-							})
-						}
-						send({ type: "PROFILE_INFO_CONTINUE", data })
-					}}
-					defaultFirstName={user?.firstName || ""}
-					defaultLastName={user?.lastName || ""}
-				/>
-			)}
+				{state.matches("profileInfo") && (
+					<motion.div
+						key="profileInfo"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<ProfileInfoStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={async (data) => {
+								// Save user profile info
+								if (user?.id) {
+									await updateUser({
+										payload: {
+											id: user.id,
+											firstName: data.firstName,
+											lastName: data.lastName,
+										} as any, // TODO: Fix type - need to check RPC contract for partial update
+									})
+								}
+								sendWithDirection({ type: "PROFILE_INFO_CONTINUE", data })
+							}}
+							defaultFirstName={user?.firstName || ""}
+							defaultLastName={user?.lastName || ""}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches("themeSelection") && (
-				<ThemeSelectionStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={(data) => send({ type: "THEME_CONTINUE", data })}
-				/>
-			)}
+				{state.matches("themeSelection") && (
+					<motion.div
+						key="themeSelection"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<ThemeSelectionStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={(data) => sendWithDirection({ type: "THEME_CONTINUE", data })}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches({ organizationSetup: "form" }) && isCreator && (
-				<OrgSetupStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={async (data) => {
-						send({ type: "ORG_SETUP_CONTINUE", data })
-					}}
-					defaultName={organization?.name}
-					defaultSlug={organization?.slug || ""}
-				/>
-			)}
+				{state.matches({ organizationSetup: "form" }) && isCreator && (
+					<motion.div
+						key="organizationSetup"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<OrgSetupStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={async (data) => {
+								sendWithDirection({ type: "ORG_SETUP_CONTINUE", data })
+							}}
+							defaultName={organization?.name}
+							defaultSlug={organization?.slug || ""}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches({ profileSetup: "useCases" }) && (
-				<UseCaseStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={(useCases) => send({ type: "USE_CASE_CONTINUE", data: { useCases } })}
-					defaultSelection={state.context.useCases}
-				/>
-			)}
+				{state.matches({ profileSetup: "useCases" }) && (
+					<motion.div
+						key="useCases"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<UseCaseStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={(useCases) =>
+								sendWithDirection({ type: "USE_CASE_CONTINUE", data: { useCases } })
+							}
+							defaultSelection={state.context.useCases}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches({ profileSetup: "role" }) && (
-				<RoleStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={(role) => send({ type: "ROLE_CONTINUE", data: { role } })}
-					defaultSelection={state.context.role}
-				/>
-			)}
+				{state.matches({ profileSetup: "role" }) && (
+					<motion.div
+						key="role"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<RoleStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={(role) =>
+								sendWithDirection({ type: "ROLE_CONTINUE", data: { role } })
+							}
+							defaultSelection={state.context.role}
+						/>
+					</motion.div>
+				)}
 
-			{state.matches({ teamInvitation: "inviteForm" }) && isCreator && (
-				<InviteTeamStep
-					onBack={() => send({ type: "BACK" })}
-					onContinue={async (emails) => {
-						send({ type: "INVITE_TEAM_CONTINUE", data: { emails } })
-					}}
-					onSkip={() => send({ type: "INVITE_TEAM_SKIP" })}
-				/>
-			)}
+				{state.matches({ teamInvitation: "inviteForm" }) && isCreator && (
+					<motion.div
+						key="teamInvitation"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<InviteTeamStep
+							onBack={() => sendWithDirection({ type: "BACK" })}
+							onContinue={async (emails) => {
+								sendWithDirection({ type: "INVITE_TEAM_CONTINUE", data: { emails } })
+							}}
+							onSkip={() => sendWithDirection({ type: "INVITE_TEAM_SKIP" })}
+						/>
+					</motion.div>
+				)}
 
-			{(state.matches({ finalization: "processing" }) ||
-				state.matches({ organizationSetup: "processing" })) && (
-				<div className="flex flex-col items-center justify-center space-y-4 py-12 text-center">
-					<div className="size-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-					<p className="font-medium text-lg">Setting up your workspace...</p>
-					<p className="text-muted-fg text-sm">This will just take a moment</p>
-					{state.context.error && <p className="text-red-600 text-sm">{state.context.error}</p>}
-				</div>
-			)}
+				{(state.matches({ finalization: "processing" }) ||
+					state.matches({ organizationSetup: "processing" })) && (
+					<motion.div
+						key="processing"
+						variants={variants}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+					>
+						<div className="flex flex-col items-center justify-center space-y-4 py-12 text-center">
+							<div className="size-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+							<p className="font-medium text-lg">Setting up your workspace...</p>
+							<p className="text-muted-fg text-sm">This will just take a moment</p>
+							{state.context.error && (
+								<p className="text-red-600 text-sm">{state.context.error}</p>
+							)}
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</OnboardingLayout>
 	)
 }
