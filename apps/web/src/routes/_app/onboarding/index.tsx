@@ -182,7 +182,7 @@ function RouteComponent() {
 	// Determine if this is a creator or invited user
 	const isCreator = !orgId || !organization?.slug
 
-	const getTotalSteps = () => (isCreator ? 7 : 5)
+	const getTotalSteps = () => (isCreator ? 7 : 4)
 	const getCurrentStepNumber = () => {
 		const flowType = isCreator ? "creator" : "invited"
 		const allMeta = state.getMeta()
@@ -298,7 +298,7 @@ function RouteComponent() {
 					</motion.div>
 				)}
 
-				{state.matches({ organizationSetup: "form" }) && isCreator && (
+				{state.matches({ organizationSetup: "form" }) && (
 					<motion.div
 						key="organizationSetup"
 						variants={variants}
@@ -356,7 +356,7 @@ function RouteComponent() {
 					</motion.div>
 				)}
 
-				{state.matches({ teamInvitation: "inviteForm" }) && isCreator && (
+				{state.matches({ teamInvitation: "inviteForm" }) && (
 					<motion.div
 						key="teamInvitation"
 						variants={variants}

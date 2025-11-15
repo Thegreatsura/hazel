@@ -243,7 +243,7 @@ export const onboardingMachine = setup({
 						actions: "setThemePreferences",
 					},
 					{
-						target: "profileSetup",
+						target: "profileSetup.role",
 						guard: "isInvited",
 						actions: "setThemePreferences",
 					},
@@ -310,7 +310,7 @@ export const onboardingMachine = setup({
 			states: {
 				useCases: {
 					meta: {
-						stepNumber: { creator: 5, invited: 4 },
+						stepNumber: { creator: 5, invited: null },
 					},
 					on: {
 						BACK: [
@@ -331,10 +331,19 @@ export const onboardingMachine = setup({
 				},
 				role: {
 					meta: {
-						stepNumber: { creator: 6, invited: 5 },
+						stepNumber: { creator: 6, invited: 4 },
 					},
 					on: {
-						BACK: "useCases",
+						BACK: [
+							{
+								target: "useCases",
+								guard: "isCreator",
+							},
+							{
+								target: "#onboarding.themeSelection",
+								guard: "isInvited",
+							},
+						],
 						ROLE_CONTINUE: [
 							{
 								target: "#onboarding.teamInvitation",
@@ -372,12 +381,12 @@ export const onboardingMachine = setup({
 		finalization: {
 			initial: "processing",
 			meta: {
-				stepNumber: { creator: 7, invited: 5 },
+				stepNumber: { creator: 7, invited: 4 },
 			},
 			states: {
 				processing: {
 					meta: {
-						stepNumber: { creator: 7, invited: 5 },
+						stepNumber: { creator: 7, invited: 4 },
 					},
 					tags: ["loading"],
 					entry: "clearError",
