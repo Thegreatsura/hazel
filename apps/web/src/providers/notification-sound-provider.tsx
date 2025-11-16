@@ -47,33 +47,33 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		}
 
 		// Helper to parse time string (HH:MM) to hour number
-		// const parseTimeToHour = (time: string): number => {
-		// 	const [hours] = time.split(":").map(Number)
-		// 	return hours ?? 0
-		// }
+		const parseTimeToHour = (time: string): number => {
+			const [hours] = time.split(":").map(Number)
+			return hours ?? 0
+		}
 
 		// Check quiet hours
-		// const isInQuietHours = () => {
-		// 	if (!quietHoursStart || !quietHoursEnd) {
-		// 		return false
-		// 	}
+		const isInQuietHours = () => {
+			if (!quietHoursStart || !quietHoursEnd) {
+				return false
+			}
 
-		// 	const now = new Date()
-		// 	const currentHour = now.getHours()
-		// 	const start = parseTimeToHour(quietHoursStart)
-		// 	const end = parseTimeToHour(quietHoursEnd)
+			const now = new Date()
+			const currentHour = now.getHours()
+			const start = parseTimeToHour(quietHoursStart)
+			const end = parseTimeToHour(quietHoursEnd)
 
-		// 	// Handle quiet hours that span midnight
-		// 	if (start <= end) {
-		// 		return currentHour >= start && currentHour < end
-		// 	}
-		// 	return currentHour >= start || currentHour < end
-		// }
+			// Handle quiet hours that span midnight
+			if (start <= end) {
+				return currentHour >= start && currentHour < end
+			}
+			return currentHour >= start || currentHour < end
+		}
 
 		// Don't start stream if in quiet hours
-		// if (isInQuietHours()) {
-		// 	return
-		// }
+		if (isInQuietHours()) {
+			return
+		}
 
 		// Create the ShapeStream for notifications
 		const electricUrl = import.meta.env.VITE_ELECTRIC_URL
