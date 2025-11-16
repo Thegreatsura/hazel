@@ -25,6 +25,7 @@ export class Model extends M.Class<Model>("User")({
 			value: Schema.Unknown,
 		}),
 	),
+	isOnboarded: Schema.Boolean,
 	...baseFields,
 }) {}
 

@@ -174,6 +174,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 							status: "online" as const,
 							lastSeen: new Date(),
 							settings: null,
+							isOnboarded: false,
 							deletedAt: null,
 						})
 						.pipe(Effect.orDie, withSystemActor),
@@ -194,6 +195,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 				firstName: string
 				lastName: string
 				avatarUrl: string | null
+				isOnboarded: boolean
 			},
 		) {
 			return new CurrentUser.Schema({
@@ -204,6 +206,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 				firstName: user.firstName,
 				lastName: user.lastName,
 				email: user.email,
+				isOnboarded: user.isOnboarded,
 			})
 		})
 

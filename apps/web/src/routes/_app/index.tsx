@@ -37,6 +37,13 @@ function RouteComponent() {
 		return null
 	}
 
+	// Check if user has completed onboarding
+	if (!user.isOnboarded) {
+		const orgId = organizations?.[0]?.id
+		return <Navigate to="/onboarding" search={orgId ? { orgId } : undefined} />
+	}
+
+	// User is onboarded, check their organization
 	if (organizations && organizations.length > 0) {
 		const org = organizations[0]!
 
@@ -47,5 +54,6 @@ function RouteComponent() {
 		return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />
 	}
 
+	// User is onboarded but has no organization - shouldn't happen, but redirect to onboarding
 	return <Navigate to="/onboarding" />
 }

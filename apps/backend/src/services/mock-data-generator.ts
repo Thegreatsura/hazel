@@ -35,6 +35,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 					lastSeen: new Date(),
 
 					settings: null,
+					isOnboarded: false,
 					deletedAt: null,
 				}))
 

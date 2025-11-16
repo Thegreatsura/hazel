@@ -1,4 +1,4 @@
-import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import { boolean, index, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
 import type { UserId } from "@hazel/schema"
 
 export const userStatusEnum = pgEnum("user_status", ["online", "offline", "away"])
@@ -18,6 +18,7 @@ export const usersTable = pgTable(
 		status: userStatusEnum().notNull().default("offline"),
 		lastSeen: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		settings: jsonb().$type<Record<string, any>>(),
+		isOnboarded: boolean().notNull().default(false),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),

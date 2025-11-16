@@ -102,6 +102,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								status: "offline" as const,
 								lastSeen: new Date(),
 								settings: null,
+								isOnboarded: false,
 								deletedAt: null,
 							})
 							.pipe(withSystemActor),
@@ -559,6 +560,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								status: "offline" as const,
 								lastSeen: new Date(),
 								settings: null,
+								isOnboarded: false,
 								deletedAt: null,
 							}
 							yield* userRepo.upsertByExternalId(userData)

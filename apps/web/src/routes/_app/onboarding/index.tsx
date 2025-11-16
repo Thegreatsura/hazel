@@ -148,6 +148,20 @@ function RouteComponent() {
 						}
 					}
 
+					// Mark user as onboarded
+					if (user?.id) {
+						const userUpdateResult = await updateUser({
+							payload: {
+								id: user.id,
+								isOnboarded: true,
+							} as any,
+						})
+
+						if (!Exit.isSuccess(userUpdateResult)) {
+							console.error("Failed to mark user as onboarded:", userUpdateResult.cause)
+						}
+					}
+
 					if (input.emails.length > 0) {
 						try {
 							const result = await createInvitation({

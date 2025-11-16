@@ -110,6 +110,7 @@ export const AuthorizationLive = Layer.effect(
 										status: "online" as const,
 										lastSeen: new Date(),
 										settings: null,
+										isOnboarded: false,
 										deletedAt: null,
 									})
 									.pipe(Effect.orDie, withSystemActor)
@@ -127,6 +128,7 @@ export const AuthorizationLive = Layer.effect(
 						firstName: user.firstName,
 						lastName: user.lastName,
 						email: user.email,
+						isOnboarded: user.isOnboarded,
 					})
 				}),
 		}

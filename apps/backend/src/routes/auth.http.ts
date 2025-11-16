@@ -134,6 +134,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						status: "online" as const,
 						lastSeen: new Date(),
 						settings: null,
+						isOnboarded: false,
 						deletedAt: null,
 					})
 					.pipe(Effect.orDie, withSystemActor)

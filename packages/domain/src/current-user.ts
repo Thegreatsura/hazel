@@ -11,6 +11,7 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	firstName: S.optional(S.String),
 	lastName: S.optional(S.String),
 	email: S.String,
+	isOnboarded: S.Boolean,
 }) {}
 
 export class Context extends C.Tag("CurrentUser")<Context, Schema>() {}
