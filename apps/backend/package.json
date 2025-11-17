@@ -13,7 +13,10 @@
 		"dev": "bun run --hot src/index.ts",
 		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit",
-		"sync:workos": "bun run src/scripts/sync-workos.ts"
+		"sync:workos": "bun run src/scripts/sync-workos.ts",
+		"reset": "bun run scripts/reset-all.ts",
+		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
+		"reset:force": "bun run scripts/reset-all.ts --force"
 	},
 	"devDependencies": {
 		"@effect/language-service": "catalog:effect",

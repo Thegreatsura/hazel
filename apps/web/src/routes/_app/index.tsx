@@ -12,7 +12,7 @@ function RouteComponent() {
 	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const {
-		data: organizations,
+		data: organization,
 		isLoading,
 		isReady,
 	} = useLiveQuery(
@@ -32,26 +32,27 @@ function RouteComponent() {
 		return <Loader />
 	}
 
-	// Let parent layout handle auth redirect
 	if (!user) {
 		return null
 	}
 
-	// Check if user has completed onboarding
 	if (!user.isOnboarded) {
-		const orgId = organizations?.id
+		const orgId = organization?.id
 		return <Navigate to="/onboarding" search={orgId ? { orgId } : undefined} />
 	}
 
-	// User is onboarded, check their organization
-	if (organizations) {
-		const org = organizations
+	if (organization) {
+		const org = organization
 
 		if (!org.slug) {
 			return <Navigate to="/onboarding" search={{ orgId: org.id }} />
 		}
 
 		return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />
+	}
+
+	if (user.organizationId && !organization) {
+		return <Navigate to="/select-organization" />
 	}
 
 	// User is onboarded but has no organization - shouldn't happen, but redirect to onboarding
