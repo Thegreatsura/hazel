@@ -150,7 +150,10 @@ function RouteComponent() {
 					}
 
 					// Mark user as onboarded
-					const finalizeResult = await finalizeOnboarding({ payload: void 0 })
+					const finalizeResult = await finalizeOnboarding({
+						payload: void 0,
+						reactivityKeys: ["currentUser"],
+					})
 
 					if (!Exit.isSuccess(finalizeResult)) {
 						console.error("Failed to finalize onboarding:", finalizeResult.cause)
@@ -314,6 +317,7 @@ function RouteComponent() {
 											firstName: data.firstName,
 											lastName: data.lastName,
 										},
+										reactivityKeys: ["currentUser"],
 									})
 								}
 								sendWithDirection({ type: "PROFILE_INFO_CONTINUE", data })
