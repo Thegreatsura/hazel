@@ -1,6 +1,4 @@
 # Today
-- Fix onboarding redirects 
-- Add local running version of electric + sequin + postgres and have it setup with one command
 
 
 
@@ -8,7 +6,7 @@
 
 
 # Before release
-- Settings Pages (TEST TES TEST)
+- Test Invite Flow
 - Electric proxy
 
 - Migrate the missing icons to nucleo
