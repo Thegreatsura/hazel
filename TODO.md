@@ -1,6 +1,12 @@
 # Today
-- Electric Proxy Auth + Table Queries
 - Electric Proxy Table Queries for Bots 
+
+Deploy production
+- deploy electric proxy 
+- change secrets and save them in doppler
+
+
+
 
 
 # Project TODOs

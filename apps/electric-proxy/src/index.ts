@@ -88,7 +88,7 @@ const handleRequest = (request: Request, env: Env) =>
 		console.log("whereClause", whereClause)
 
 		// // Always set where clause (no nullable check needed)
-		// originUrl.searchParams.set("where", whereClause)
+		originUrl.searchParams.set("where", whereClause)
 
 		// Proxy request to Electric
 		const response = yield* Effect.promise(() => proxyElectricRequest(originUrl))
