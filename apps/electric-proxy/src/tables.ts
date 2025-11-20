@@ -1,3 +1,15 @@
+import { Effect, Match, Schema } from "effect"
+import type { AuthenticatedUser } from "./auth"
+
+/**
+ * Error thrown when table access is denied or where clause cannot be generated
+ */
+export class TableAccessError extends Schema.TaggedError<TableAccessError>()("TableAccessError", {
+	message: Schema.String,
+	detail: Schema.optional(Schema.String),
+	table: Schema.String,
+}) {}
+
 /**
  * Whitelisted tables that can be accessed through the Electric proxy.
  * Only these tables are allowed for authenticated users.
@@ -67,4 +79,120 @@ export function validateTable(table: string | null): {
 		valid: true,
 		table: table as AllowedTable,
 	}
+}
+
+/**
+ * Get the WHERE clause for a table based on the authenticated user.
+ * This ensures users can only access data they have permission to see.
+ *
+ * @param table - The table name
+ * @param user - The authenticated user context
+ * @returns Effect that succeeds with SQL WHERE clause string or fails with TableAccessError
+ */
+export function getWhereClauseForTable(
+	table: AllowedTable,
+	user: AuthenticatedUser,
+): Effect.Effect<string, TableAccessError> {
+	return Match.value(table).pipe(
+		// User tables
+		Match.when("users", () =>
+			// Users can see other users who are members of their organizations
+			Effect.succeed(
+				`"id" IN (SELECT "userId" FROM "organization_members" WHERE "organizationId" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		Match.when("user_presence_status", () =>
+			// See presence status of users in the same organizations
+			Effect.succeed(
+				`"userId" IN (SELECT "userId" FROM "organization_members" WHERE "organizationId" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL)`,
+			),
+		),
+		// Organization tables
+		Match.when("organizations", () =>
+			// Show only organizations where the user is a member
+			Effect.succeed(
+				`"id" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		Match.when("organization_members", () =>
+			// Show members from organizations where the user is a member
+			Effect.succeed(
+				`"organizationId" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		// Channel tables
+		Match.when("channels", () =>
+			// Users can only see channels they're members of
+			Effect.succeed(
+				`"id" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		Match.when("channel_members", () =>
+			// See all members of channels the user belongs to
+			Effect.succeed(
+				`"channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		// Message tables
+		Match.when("messages", () =>
+			// Messages only from channels the user is a member of
+			Effect.succeed(
+				`"channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		Match.when("message_reactions", () =>
+			// Reactions on messages from accessible channels
+			Effect.succeed(
+				`"messageId" IN (SELECT "id" FROM "messages" WHERE "channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL)`,
+			),
+		),
+		Match.when("attachments", () =>
+			// Attachments from accessible channels only
+			Effect.succeed(
+				`"channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL`,
+			),
+		),
+		// Notification tables
+		Match.when("notifications", () =>
+			// Users can only see their own notifications
+			Effect.succeed(
+				`"memberId" IN (SELECT "id" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL)`,
+			),
+		),
+		Match.when("pinned_messages", () =>
+			// Pinned messages from accessible channels
+			Effect.succeed(
+				`"channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL)`,
+			),
+		),
+		// Interaction tables
+		Match.when("typing_indicators", () =>
+			// Typing indicators from accessible channels
+			Effect.succeed(
+				`"channelId" IN (SELECT "channelId" FROM "channel_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL)`,
+			),
+		),
+		Match.when("invitations", () =>
+			// Invitations for organizations the user belongs to
+			Effect.succeed(
+				`"organizationId" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL)`,
+			),
+		),
+		// Bot tables
+		Match.when("bots", () =>
+			// Public bots, bots created by user, or bots belonging to users in the same orgs
+			Effect.succeed(
+				`("isPublic" = true OR "createdBy" = '${user.internalUserId}' OR "userId" IN (SELECT "userId" FROM "organization_members" WHERE "organizationId" IN (SELECT "organizationId" FROM "organization_members" WHERE "userId" = '${user.internalUserId}' AND "deletedAt" IS NULL) AND "deletedAt" IS NULL)) AND "deletedAt" IS NULL`,
+			),
+		),
+		Match.orElse((table) =>
+			Effect.fail(
+				new TableAccessError({
+					message: "Table not handled in where clause system",
+					detail: `Missing where clause implementation for table: ${table}`,
+					table,
+				}),
+			),
+		),
+	)
 }

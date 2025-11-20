@@ -1,7 +1,8 @@
-import { ConfigProvider, Effect } from "effect"
+import { Database } from "@hazel/db"
+import { Config, ConfigProvider, Effect, Layer, Redacted } from "effect"
 import { type AuthenticationError, validateSession } from "./auth"
 import { prepareElectricUrl, proxyElectricRequest } from "./electric-proxy"
-import { validateTable } from "./tables"
+import { getWhereClauseForTable, type TableAccessError, validateTable } from "./tables"
 
 /**
  * Get CORS headers for response
@@ -57,8 +58,7 @@ const handleRequest = (request: Request, env: Env) =>
 		}
 
 		// Authenticate user - Config validation happens inside validateSession
-		const _user = yield* validateSession(request)
-		// TODO: Use user context for table-specific WHERE clause filtering
+		const user = yield* validateSession(request)
 
 		// Extract and validate table parameter
 		const searchParams = new URL(request.url).searchParams
@@ -84,6 +84,14 @@ const handleRequest = (request: Request, env: Env) =>
 		const originUrl = prepareElectricUrl(request.url)
 		originUrl.searchParams.set("table", tableValidation.table!)
 
+		// Get table-specific where clause (returns Effect)
+		// This will fail if the table doesn't have a where clause implementation
+		const whereClause = yield* getWhereClauseForTable(tableValidation.table!, user)
+		console.log("whereClause", whereClause)
+
+		// Always set where clause (no nullable check needed)
+		originUrl.searchParams.set("where", whereClause)
+
 		// Proxy request to Electric
 		const response = yield* Effect.promise(() => proxyElectricRequest(originUrl))
 
@@ -104,9 +112,20 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const allowedOrigin = env.ALLOWED_ORIGIN || "http://localhost:3000"
 
-		console.log("env", env)
+		// Create Database layer
+		const DatabaseLive = Layer.unwrapEffect(
+			Effect.gen(function* () {
+				const dbUrl = yield* Config.string("DATABASE_URL")
+				return Database.layer({
+					url: Redacted.make(dbUrl),
+					ssl: false,
+				})
+			}),
+		)
+
 		// Run Effect pipeline
 		const program = handleRequest(request, env).pipe(
+			Effect.provide(DatabaseLive),
 			Effect.catchTag("AuthenticationError", (error: AuthenticationError) =>
 				Effect.succeed(
 					new Response(
@@ -116,6 +135,24 @@ export default {
 						}),
 						{
 							status: 401,
+							headers: {
+								"Content-Type": "application/json",
+								...getCorsHeaders(request, allowedOrigin),
+							},
+						},
+					),
+				),
+			),
+			Effect.catchTag("TableAccessError", (error: TableAccessError) =>
+				Effect.succeed(
+					new Response(
+						JSON.stringify({
+							error: error.message,
+							detail: error.detail,
+							table: error.table,
+						}),
+						{
+							status: 500,
 							headers: {
 								"Content-Type": "application/json",
 								...getCorsHeaders(request, allowedOrigin),

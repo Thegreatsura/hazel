@@ -1,5 +1,6 @@
+import { Database, eq, schema } from "@hazel/db"
 import { WorkOS } from "@workos-inc/node"
-import { Config, Effect, Redacted, Schema } from "effect"
+import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { decodeJwt } from "jose"
 
 /**
@@ -17,7 +18,8 @@ const JwtPayload = Schema.Struct({
  * Authenticated user context extracted from session
  */
 export interface AuthenticatedUser {
-	userId: string
+	userId: string // WorkOS external ID (e.g., user_01KAA...)
+	internalUserId: string // Internal database UUID
 	email: string
 	organizationId?: string
 	role?: string
@@ -155,9 +157,40 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 			),
 		)
 
+		// Lookup internal user ID from database
+		const db = yield* Database.Database
+		const userOption = yield* db
+			.execute((client) =>
+				client
+					.select({ id: schema.usersTable.id })
+					.from(schema.usersTable)
+					.where(eq(schema.usersTable.externalId, jwtPayload.sub))
+					.limit(1),
+			)
+			.pipe(
+				Effect.map((results) => Option.fromNullable(results[0])),
+				Effect.mapError(
+					(error) =>
+						new AuthenticationError({
+							message: "Failed to lookup user in database",
+							detail: String(error),
+						}),
+				),
+			)
+
+		if (Option.isNone(userOption)) {
+			return yield* Effect.fail(
+				new AuthenticationError({
+					message: "User not found in database",
+					detail: `No user found with externalId: ${jwtPayload.sub}`,
+				}),
+			)
+		}
+
 		// Return authenticated user
 		return {
 			userId: jwtPayload.sub,
+			internalUserId: userOption.value.id,
 			email: jwtPayload.email,
 			organizationId: jwtPayload.org_id,
 			role: jwtPayload.role,

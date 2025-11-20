@@ -7,6 +7,9 @@
 	"name": "proxyv2",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-11-19",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"observability": {
 		"enabled": true
 	},
@@ -26,6 +29,8 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
 	"vars": {
+		// Database connection - use secrets for production
+		"DATABASE_URL": "",
 		// Electric URL will be overridden by .dev.vars for local development
 		"ELECTRIC_URL": "http://localhost:3333",
 		// WorkOS credentials - use secrets for production
