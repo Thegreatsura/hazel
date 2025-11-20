@@ -84,13 +84,11 @@ const handleRequest = (request: Request, env: Env) =>
 		const originUrl = prepareElectricUrl(request.url)
 		originUrl.searchParams.set("table", tableValidation.table!)
 
-		// Get table-specific where clause (returns Effect)
-		// This will fail if the table doesn't have a where clause implementation
 		const whereClause = yield* getWhereClauseForTable(tableValidation.table!, user)
 		console.log("whereClause", whereClause)
 
-		// Always set where clause (no nullable check needed)
-		originUrl.searchParams.set("where", whereClause)
+		// // Always set where clause (no nullable check needed)
+		// originUrl.searchParams.set("where", whereClause)
 
 		// Proxy request to Electric
 		const response = yield* Effect.promise(() => proxyElectricRequest(originUrl))
