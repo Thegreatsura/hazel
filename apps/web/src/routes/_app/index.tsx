@@ -17,7 +17,7 @@ function RouteComponent() {
 		isReady,
 	} = useLiveQuery(
 		(q) => {
-			if (!user?.organizationId) return null
+			// if (!user?.organizationId) return null
 			return q
 				.from({ member: organizationMemberCollection })
 				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
@@ -31,17 +31,13 @@ function RouteComponent() {
 		[user?.id, user?.organizationId],
 	)
 
-	console.log(isLoading, isAuthLoading, !isReady)
-
 	if (isLoading || isAuthLoading || !isReady) {
 		return <Loader />
 	}
 
 	if (!user) {
-		return null
+		throw new Error("Should never get here without user loaded")
 	}
-
-	console.log("user", user)
 
 	if (!user.isOnboarded) {
 		const orgId = membership?.org.id
