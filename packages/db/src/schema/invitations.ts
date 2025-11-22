@@ -9,6 +9,7 @@ export const invitationsTable = pgTable(
 	"invitations",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<InvitationId>(),
+		invitationUrl: varchar({ length: 255 }).notNull(),
 		workosInvitationId: varchar({ length: 255 }).notNull().unique(),
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		email: varchar({ length: 255 }).notNull(),

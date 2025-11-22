@@ -1,7 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import { useState } from "react"
-import { toast } from "sonner"
 import { createInvitationMutation } from "~/atoms/invitation-atoms"
 import IconClose from "~/components/icons/icon-close"
 import IconEnvelope from "~/components/icons/icon-envelope"
@@ -20,18 +18,21 @@ import { Label } from "~/components/ui/field"
 import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
+import { useAppForm } from "~/hooks/use-app-form"
 import { useOrganization } from "~/hooks/use-organization"
+import { toastExit } from "~/lib/toast-exit"
+
+interface InviteFormData {
+	invites: {
+		email: string
+		role: "member" | "admin"
+	}[]
+}
 
 interface EmailInviteModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
 	organizationId?: OrganizationId
-}
-
-interface InviteEntry {
-	id: string
-	email: string
-	role: "member" | "admin"
 }
 
 export const EmailInviteModal = ({
@@ -41,77 +42,54 @@ export const EmailInviteModal = ({
 }: EmailInviteModalProps) => {
 	const { organizationId: hookOrgId } = useOrganization()
 	const organizationId = propOrgId || hookOrgId
-	const [invites, setInvites] = useState<InviteEntry[]>([{ id: "1", email: "", role: "member" }])
 
 	const createInvitation = useAtomSet(createInvitationMutation, {
 		mode: "promiseExit",
 	})
 
-	const addInviteEntry = () => {
-		if (invites.length >= 10) return
-		setInvites([
-			...invites,
-			{
-				id: Date.now().toString(),
-				email: "",
-				role: "member",
-			},
-		])
-	}
+	const form = useAppForm({
+		defaultValues: {
+			invites: [{ email: "", role: "member" as const }],
+		} as InviteFormData,
+		onSubmit: async ({ value }) => {
+			if (!organizationId) return
 
-	const removeInviteEntry = (id: string) => {
-		setInvites(invites.filter((invite) => invite.id !== id))
-	}
+			// Filter out empty emails
+			const validInvites = value.invites.filter((invite) => invite.email.trim() !== "")
 
-	const updateInviteEntry = (id: string, field: keyof InviteEntry, value: string) => {
-		setInvites(invites.map((invite) => (invite.id === id ? { ...invite, [field]: value } : invite)))
-	}
+			if (validInvites.length === 0) return
 
-	const validateEmail = (email: string) => {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-		return emailRegex.test(email)
-	}
+			const exit = await toastExit(
+				createInvitation({
+					payload: {
+						organizationId,
+						invites: validInvites,
+					},
+				}),
+				{
+					loading: "Sending invitations...",
+					success: (result) => {
+						const { successCount, errorCount } = result
 
-	const handleSubmit = async () => {
-		const validInvites = invites.filter((invite) => validateEmail(invite.email))
+						// Close modal and reset form
+						onOpenChange(false)
+						form.reset()
 
-		if (validInvites.length === 0) {
-			toast.error("Please enter at least one valid email address")
-			return
-		}
+						if (successCount > 0 && errorCount === 0) {
+							return `Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`
+						}
+						if (successCount > 0 && errorCount > 0) {
+							return `Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`
+						}
+						return "Failed to send invitations"
+					},
+					error: "Failed to send invitations",
+				},
+			)
 
-		const result = await createInvitation({
-			payload: {
-				organizationId: organizationId!,
-				invites: validInvites.map((invite) => ({
-					email: invite.email,
-					role: invite.role,
-				})),
-			},
-		})
-
-		// Check if the result is a success Exit
-		if (result._tag === "Success") {
-			const { successCount, errorCount } = result.value
-
-			if (successCount > 0 && errorCount === 0) {
-				toast.success(`Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`)
-				onOpenChange(false)
-				setInvites([{ id: "1", email: "", role: "member" }])
-			} else if (successCount > 0 && errorCount > 0) {
-				toast.warning(
-					`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`,
-				)
-			} else {
-				toast.error("Failed to send invitations")
-			}
-		} else {
-			console.error("Failed to send invitations:", result.cause)
-			toast.error("Failed to send invitations")
-		}
-	}
-
-	const validInvitesCount = invites.filter((i) => validateEmail(i.email)).length
+			return exit
+		},
+	})
 
 	return (
 		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -127,72 +105,112 @@ export const EmailInviteModal = ({
 						</DialogDescription>
 					</DialogHeader>
 
-					<DialogBody className="space-y-4">
-						{invites.map((invite, index) => (
-							<div key={invite.id} className="flex w-full items-end gap-2">
-								<div className="flex-1 space-y-1.5">
-									{index === 0 && <Label>Email address</Label>}
-									<InputGroup>
-										<IconEnvelope />
-										<Input
-											placeholder="colleague@company.com"
-											value={invite.email}
-											onChange={(e) =>
-												updateInviteEntry(invite.id, "email", e.target.value)
+					<form
+						onSubmit={(e) => {
+							e.preventDefault()
+							form.handleSubmit()
+						}}
+					>
+						<DialogBody className="space-y-4">
+							<form.Field name="invites" mode="array">
+								{(field) => (
+									<>
+										{field.state.value.map((_, index) => (
+											<div key={index} className="flex w-full items-end gap-2">
+												<div className="flex-1 space-y-1.5">
+													{index === 0 && <Label>Email address</Label>}
+													<form.Field name={`invites[${index}].email`}>
+														{(emailField) => (
+															<InputGroup>
+																<IconEnvelope />
+																<Input
+																	placeholder="colleague@company.com"
+																	value={emailField.state.value}
+																	onChange={(e) =>
+																		emailField.handleChange(e.target.value)
+																	}
+																	onBlur={emailField.handleBlur}
+																/>
+															</InputGroup>
+														)}
+													</form.Field>
+												</div>
+												<div className="w-28 space-y-1.5">
+													{index === 0 && <Label>Role</Label>}
+													<form.Field name={`invites[${index}].role`}>
+														{(roleField) => (
+															<Select
+																defaultSelectedKey={roleField.state.value}
+																onSelectionChange={(key) =>
+																	roleField.handleChange(
+																		key as "member" | "admin",
+																	)
+																}
+															>
+																<SelectTrigger />
+																<SelectContent>
+																	<SelectItem id="member">Member</SelectItem>
+																	<SelectItem id="admin">Admin</SelectItem>
+																</SelectContent>
+															</Select>
+														)}
+													</form.Field>
+												</div>
+												{field.state.value.length > 1 && index > 0 && (
+													<Button
+														intent="plain"
+														size="sq-md"
+														onPress={() => field.removeValue(index)}
+														aria-label="Remove invite"
+														type="button"
+													>
+														<IconClose data-slot="icon" />
+													</Button>
+												)}
+											</div>
+										))}
+										<Button
+											intent="plain"
+											size="md"
+											onPress={() =>
+												field.pushValue({ email: "", role: "member" })
 											}
-										/>
-									</InputGroup>
-								</div>
-								<div className="w-28 space-y-1.5">
-									{index === 0 && <Label>Role</Label>}
-									<Select
-										selectedKey={invite.role}
-										onSelectionChange={(key) =>
-											updateInviteEntry(invite.id, "role", key as string)
-										}
-									>
-										<SelectTrigger />
-										<SelectContent>
-											<SelectItem id="member">Member</SelectItem>
-											<SelectItem id="admin">Admin</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-								{invites.length > 1 && index > 0 && (
-									<Button
-										intent="plain"
-										size="sq-md"
-										onPress={() => removeInviteEntry(invite.id)}
-										aria-label="Remove invite"
-									>
-										<IconClose data-slot="icon" />
-									</Button>
+											isDisabled={field.state.value.length >= 10}
+											type="button"
+										>
+											<IconPlus data-slot="icon" />
+											Add another
+										</Button>
+									</>
 								)}
-							</div>
-						))}
-						<Button
-							intent="plain"
-							size="md"
-							onPress={addInviteEntry}
-							isDisabled={invites.length >= 10}
-						>
-							<IconPlus data-slot="icon" />
-							Add another
-						</Button>
-					</DialogBody>
+							</form.Field>
+						</DialogBody>
 
-					<DialogFooter>
-						<Button intent="secondary" onPress={() => onOpenChange(false)}>
-							Cancel
-						</Button>
-						<Button
-							intent="primary"
-							onPress={handleSubmit}
-							isDisabled={invites.every((i) => !i.email)}
-						>
-							Send invite{validInvitesCount > 1 ? "s" : ""}
-						</Button>
-					</DialogFooter>
+						<DialogFooter>
+							<Button intent="secondary" onPress={() => onOpenChange(false)} type="button">
+								Cancel
+							</Button>
+							<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+								{([canSubmit, isSubmitting]) => {
+									const validInvitesCount = form.state.values.invites.filter(
+										(i) => i.email.trim() !== "",
+									).length
+
+									return (
+										<Button
+											intent="primary"
+											type="submit"
+											isDisabled={!canSubmit || isSubmitting}
+										>
+											{isSubmitting
+												? "Sending..."
+												: `Send invite${validInvitesCount > 1 ? "s" : ""}`}
+										</Button>
+									)
+								}}
+							</form.Subscribe>
+						</DialogFooter>
+					</form>
 				</Dialog>
 			</ModalContent>
 		</Modal>

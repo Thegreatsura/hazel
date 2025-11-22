@@ -1,4 +1,5 @@
 # Today
+- Invitation flow (how to even accept an visition /login make work)
 - Electric Proxy Table Queries for Bots 
 
 Deploy production

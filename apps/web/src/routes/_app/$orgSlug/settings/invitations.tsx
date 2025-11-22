@@ -23,6 +23,8 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/invitations")({
 
 function InvitationsSettings() {
 	const [showInviteModal, setShowInviteModal] = useState(false)
+	const [resendingId, setResendingId] = useState<InvitationId | null>(null)
+	const [revokingId, setRevokingId] = useState<InvitationId | null>(null)
 
 	const { organizationId } = useOrganization()
 
@@ -81,33 +83,43 @@ function InvitationsSettings() {
 	}
 
 	const handleResendInvitation = async (invitationId: InvitationId) => {
-		await toastExit(
-			resendInvitation({
-				payload: {
-					invitationId,
+		setResendingId(invitationId)
+		try {
+			await toastExit(
+				resendInvitation({
+					payload: {
+						invitationId,
+					},
+				}),
+				{
+					loading: "Resending invitation...",
+					success: "Invitation resent successfully",
+					error: "Failed to resend invitation",
 				},
-			}),
-			{
-				loading: "Resending invitation...",
-				success: "Invitation resent successfully",
-				error: "Failed to resend invitation",
-			},
-		)
+			)
+		} finally {
+			setResendingId(null)
+		}
 	}
 
 	const handleRevokeInvitation = async (invitationId: InvitationId) => {
-		await toastExit(
-			revokeInvitation({
-				payload: {
-					invitationId,
+		setRevokingId(invitationId)
+		try {
+			await toastExit(
+				revokeInvitation({
+					payload: {
+						invitationId,
+					},
+				}),
+				{
+					loading: "Revoking invitation...",
+					success: "Invitation revoked successfully",
+					error: "Failed to revoke invitation",
 				},
-			}),
-			{
-				loading: "Revoking invitation...",
-				success: "Invitation revoked successfully",
-				error: "Failed to revoke invitation",
-			},
-		)
+			)
+		} finally {
+			setRevokingId(null)
+		}
 	}
 
 	return (
@@ -194,7 +206,18 @@ function InvitationsSettings() {
 											</td>
 											<td className="px-4 py-4">
 												<Menu>
-													<Button intent="plain" size="sq-xs">
+													<Button
+														intent="plain"
+														size="sq-xs"
+														isPending={
+															resendingId === invitation.id ||
+															revokingId === invitation.id
+														}
+														isDisabled={
+															resendingId === invitation.id ||
+															revokingId === invitation.id
+														}
+													>
 														<IconDots />
 													</Button>
 													<MenuContent placement="bottom end">
@@ -204,6 +227,10 @@ function InvitationsSettings() {
 																	invitation.invitationUrl,
 																)
 															}
+															isDisabled={
+																resendingId === invitation.id ||
+																revokingId === invitation.id
+															}
 														>
 															<IconCopy className="mr-2 size-4" />
 															Copy Invitation URL
@@ -212,18 +239,30 @@ function InvitationsSettings() {
 															onAction={() =>
 																handleResendInvitation(invitation.id)
 															}
+															isDisabled={
+																resendingId === invitation.id ||
+																revokingId === invitation.id
+															}
 														>
 															<ArrowPathIcon className="mr-2 size-4" />
-															Resend Invitation
+															{resendingId === invitation.id
+																? "Resending..."
+																: "Resend Invitation"}
 														</MenuItem>
 														<MenuItem
 															onAction={() =>
 																handleRevokeInvitation(invitation.id)
 															}
 															intent="danger"
+															isDisabled={
+																resendingId === invitation.id ||
+																revokingId === invitation.id
+															}
 														>
 															<IconClose className="mr-2 size-4" />
-															Revoke Invitation
+															{revokingId === invitation.id
+																? "Revoking..."
+																: "Revoke Invitation"}
 														</MenuItem>
 													</MenuContent>
 												</Menu>
