@@ -449,6 +449,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 							invitationRepo
 								.upsertByWorkosId({
 									workosInvitationId: workosInvitation.id,
+									invitationUrl: workosInvitation.acceptInvitationUrl,
 									organizationId: organizationId,
 									email: workosInvitation.email,
 									invitedBy: invitedBy,
