@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, useSearch } from "@tanstack/react-router"
+import { type } from "arktype"
 import { Match, Option } from "effect"
 import { Loader } from "~/components/loader"
 import { Button } from "~/components/ui/button"
@@ -8,11 +9,6 @@ import { useAuth } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
-	validateSearch: (search: Record<string, unknown>) => {
-		return {
-			loginRetry: search.loginRetry as string | undefined,
-		}
-	},
 	loader: async () => {
 		await organizationCollection.preload()
 		await organizationMemberCollection.preload()
@@ -23,7 +19,10 @@ export const Route = createFileRoute("/_app")({
 
 function RouteComponent() {
 	const { user, error, isLoading } = useAuth()
-	const search = useSearch({ from: "/_app" })
+	const search = useSearch({ from: "/_app" }) as {
+		loginRetry?: string
+	}
+
 	const loginRetry = Number(search.loginRetry) || 0
 
 	// Show loader while loading
@@ -36,12 +35,10 @@ function RouteComponent() {
 		return (
 			<div className="flex h-screen flex-col items-center justify-center gap-6">
 				<div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-					<h1 className="font-bold font-mono text-2xl text-danger">
-						Too Many Login Attempts
-					</h1>
+					<h1 className="font-bold font-mono text-2xl text-danger">Too Many Login Attempts</h1>
 					<Text>
-						We've attempted to log you in multiple times without success. This might indicate
-						a problem with the authentication service or your session.
+						We've attempted to log you in multiple times without success. This might indicate a
+						problem with the authentication service or your session.
 					</Text>
 					<div className="flex gap-3">
 						<Button
