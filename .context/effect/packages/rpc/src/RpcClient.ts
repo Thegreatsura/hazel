@@ -100,7 +100,7 @@ export declare namespace RpcClient {
       const Discard = false
     >(
       input: Rpc.PayloadConstructor<Current>,
-      options?: Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R> ? {
+      options?: [Rpc.SuccessSchema<Current>] extends [RpcSchema.Stream<infer _A, infer _E>] ? {
           readonly asMailbox?: AsMailbox | undefined
           readonly streamBufferSize?: number | undefined
           readonly headers?: Headers.Input | undefined
@@ -934,6 +934,7 @@ export const layerProtocolHttp = (options: {
  */
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Effect.Effect<
   Protocol["Type"],
   never,
@@ -1016,7 +1017,7 @@ export const makeProtocolSocket = (options?: {
           error: currentError
         })
       }),
-      Effect.retry(Schedule.spaced(1000)),
+      Effect.retry(options?.retrySchedule ?? defaultRetrySchedule),
       Effect.annotateLogs({
         module: "RpcClient",
         method: "makeProtocolSocket"
@@ -1038,6 +1039,10 @@ export const makeProtocolSocket = (options?: {
       supportsTransferables: false
     }
   }))
+
+const defaultRetrySchedule = Schedule.exponential(500, 1.5).pipe(
+  Schedule.union(Schedule.spaced(5000))
+)
 
 const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
   let recievedPong = true
@@ -1239,6 +1244,7 @@ export const layerProtocolWorker = (
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Layer.Layer<
   Protocol,
   never,

@@ -1,5 +1,24 @@
 # @effect/platform-node
 
+## 0.101.1
+
+### Patch Changes
+
+- [#5783](https://github.com/Effect-TS/effect/pull/5783) [`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8) Thanks @tim-smart! - add EntityResource.makeK8sPod
+
+- Updated dependencies [[`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8)]:
+  - @effect/cluster@0.53.4
+
+## 0.101.0
+
+### Patch Changes
+
+- Updated dependencies [[`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea), [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42)]:
+  - @effect/rpc@0.72.2
+  - effect@3.19.5
+  - @effect/cluster@0.53.0
+  - @effect/platform-node-shared@0.54.0
+
 ## 0.100.0
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # effect
 
+## 3.19.6
+
+### Patch Changes
+
+- [#5778](https://github.com/Effect-TS/effect/pull/5778) [`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb) Thanks @tim-smart! - add RcRef.invalidate api
+
+## 3.19.5
+
+### Patch Changes
+
+- [#5772](https://github.com/Effect-TS/effect/pull/5772) [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea) Thanks @tim-smart! - backport Effect.gen optimization
+
 ## 3.19.4
 
 ### Patch Changes
