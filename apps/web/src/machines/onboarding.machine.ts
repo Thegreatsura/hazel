@@ -194,11 +194,18 @@ export const onboardingMachine = setup({
 			error: undefined,
 		}),
 		setCompletionSlug: assign({
-			orgSlug: ({ event }) => {
-				if (event.type === "COMPLETION_SUCCESS") {
-					return event.data.slug
+			orgSlug: ({ context, event }) => {
+				// Handle invoke done event - extract slug from output
+				if (
+					"output" in event &&
+					event.output &&
+					typeof event.output === "object" &&
+					"slug" in event.output
+				) {
+					return event.output.slug as string
 				}
-				return undefined
+				// Preserve existing orgSlug as fallback
+				return context.orgSlug
 			},
 		}),
 	},

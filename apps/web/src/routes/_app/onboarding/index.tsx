@@ -77,6 +77,9 @@ function RouteComponent() {
 								to: "/$orgSlug",
 								params: { orgSlug: slug },
 							})
+						} else {
+							// Fallback: navigate to root which will redirect appropriately
+							navigate({ to: "/" })
 						}
 					},
 				},
