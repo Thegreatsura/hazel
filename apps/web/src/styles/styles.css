@@ -232,7 +232,7 @@ If you want to use the typography plugin, uncomment the line below.
 
   --primary: var(--color-brand-600);
   --primary-fg: oklch(1 0 0);
-  --primary-subtle: rgb(from var(--color-brand-500) r g b / 10%);
+  --primary-subtle: rgb(from var(--color-brand-500) r g b / 15%);
   --primary-subtle-fg: var(--color-brand-300);
 
   --secondary: var(--color-zinc-800);
@@ -273,7 +273,7 @@ If you want to use the typography plugin, uncomment the line below.
 
   --sidebar: oklch(0.180 0.006 285.885);
   --sidebar-fg: oklch(0.985 0 0);
-  --sidebar-primary: rgb(from var(--color-brand-500) r g b / 10%);
+  --sidebar-primary: rgb(from var(--color-brand-500) r g b / 20%);
   --sidebar-primary-fg: var(--color-brand-300);
   --sidebar-accent: oklch(0.274 0.006 286.033);
   --sidebar-accent-fg: oklch(0.985 0 0);

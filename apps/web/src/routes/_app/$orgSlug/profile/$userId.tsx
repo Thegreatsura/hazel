@@ -67,14 +67,14 @@ function ProfilePage() {
 	const getStatusColor = (status?: string) => {
 		switch (status) {
 			case "online":
-				return "text-success bg-success/10"
+				return "text-success bg-success"
 			case "away":
 			case "busy":
-				return "text-warning bg-warning/10"
+				return "text-warning bg-warning"
 			case "dnd":
-				return "text-danger bg-danger/10"
+				return "text-danger bg-danger"
 			default:
-				return "text-muted-fg bg-muted/10"
+				return "text-muted-fg bg-muted"
 		}
 	}
 
