@@ -48,6 +48,14 @@ export const ProxyConfigLive = Layer.effect(
 			Effect.map(Option.getOrUndefined),
 		)
 
+		// Debug: Log what we're actually reading (lengths only for security)
+		console.log("[Config Debug]", {
+			electricSourceIdLength: electricSourceId?.length ?? 0,
+			electricSourceSecretLength: electricSourceSecret?.length ?? 0,
+			electricSourceIdValue: electricSourceId ? "SET" : "NOT_SET",
+			electricSourceSecretValue: electricSourceSecret ? "SET" : "NOT_SET",
+		})
+
 		return {
 			electricUrl,
 			electricSourceId,
