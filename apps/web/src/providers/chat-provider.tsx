@@ -22,7 +22,7 @@ import {
 	uploadingFilesAtomFamily,
 } from "~/atoms/chat-atoms"
 import { channelByIdAtomFamily } from "~/atoms/chat-query-atoms"
-import { sendMessageEffect as sendMessageAction, toggleReactionEffect } from "~/db/actions"
+import { sendMessageAction, toggleReactionAction } from "~/db/actions"
 import {
 	channelCollection,
 	messageCollection,
@@ -81,7 +81,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const { user } = useAuth()
 
 	const sendMessageMutation = useAtomSet(sendMessageAction, { mode: "promiseExit" })
-	const toggleReactionMutation = useAtomSet(toggleReactionEffect, { mode: "promiseExit" })
+	const toggleReactionMutation = useAtomSet(toggleReactionAction, { mode: "promiseExit" })
 
 	const replyToMessageId = useAtomValue(replyToMessageAtomFamily(channelId))
 	const setReplyToMessageId = useAtomSet(replyToMessageAtomFamily(channelId))

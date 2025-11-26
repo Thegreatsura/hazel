@@ -1,8 +1,9 @@
 import type { Row } from "@electric-sql/client"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
-import type { CollectionConfig } from "@tanstack/db"
+import type { Collection, CollectionConfig } from "@tanstack/db"
 import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collection"
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
+import { createCollection as tanstackCreateCollection } from "@tanstack/react-db"
 import { Effect, type ManagedRuntime } from "effect"
 import { InvalidTxIdError, TxIdTimeoutError } from "./errors"
 import { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
@@ -146,4 +147,50 @@ export function effectElectricCollectionOptions(
 			awaitTxIdEffect,
 		},
 	}
+}
+
+/**
+ * A collection created with Effect-native utilities.
+ * Extends the base Collection with awaitTxIdEffect on utils.
+ */
+export type EffectCollection<
+	T extends Row<unknown>,
+	TKey extends string | number = string | number,
+> = Collection<T, TKey> & {
+	utils: EffectElectricCollectionUtils
+}
+
+/**
+ * Creates a collection with Effect-native utilities.
+ * Combines createCollection + effectElectricCollectionOptions with proper typing.
+ *
+ * @example
+ * ```typescript
+ * const messageCollection = createEffectCollection({
+ *   id: "messages",
+ *   runtime: runtime,
+ *   shapeOptions: { url: electricUrl, params: { table: "messages" } },
+ *   schema: Schema.standardSchemaV1(Message.Model.json),
+ *   getKey: (item) => item.id,
+ *   onInsert: ({ transaction }) => Effect.gen(function* () { ... }),
+ * })
+ *
+ * // messageCollection.utils.awaitTxIdEffect is properly typed!
+ * ```
+ */
+export function createEffectCollection<T extends StandardSchemaV1, R>(
+	config: EffectElectricCollectionConfig<
+		InferSchemaOutput<T>,
+		string | number,
+		T,
+		Record<string, never>,
+		R
+	> & {
+		schema: T
+		runtime: ManagedRuntime.ManagedRuntime<R, unknown>
+	},
+): EffectCollection<InferSchemaOutput<T>> {
+	const options = effectElectricCollectionOptions(config)
+	const collection = tanstackCreateCollection(options as any)
+	return collection as unknown as EffectCollection<InferSchemaOutput<T>>
 }

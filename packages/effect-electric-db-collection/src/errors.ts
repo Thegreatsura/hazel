@@ -81,3 +81,14 @@ export class OptimisticActionError extends Schema.TaggedError<OptimisticActionEr
 		cause: Schema.optional(Schema.Unknown),
 	},
 ) {}
+
+/**
+ * Error thrown when collection sync fails during optimistic action
+ */
+export class SyncError extends Schema.TaggedError<SyncError>()("SyncError", {
+	message: Schema.String,
+	txid: Schema.optional(Schema.Number),
+	collectionName: Schema.optional(Schema.String),
+	timeout: Schema.optional(Schema.Number),
+	cause: Schema.optional(Schema.Unknown),
+}) {}

@@ -1,4 +1,4 @@
-import { createEffectOptimisticAction } from "@hazel/effect-electric-db-collection"
+import { optimisticAction } from "@hazel/effect-electric-db-collection"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -19,7 +19,10 @@ import {
 	organizationCollection,
 } from "./collections"
 
-export const sendMessageEffect = createEffectOptimisticAction({
+export const sendMessageAction = optimisticAction({
+	collections: [messageCollection],
+	runtime: runtime,
+
 	onMutate: (props: {
 		channelId: ChannelId
 		authorId: UserId
@@ -44,17 +47,8 @@ export const sendMessageEffect = createEffectOptimisticAction({
 
 		return { messageId }
 	},
-	mutationFn: (
-		props: {
-			channelId: ChannelId
-			authorId: UserId
-			content: string
-			replyToMessageId?: MessageId | null
-			threadChannelId?: ChannelId | null
-			attachmentIds?: AttachmentId[]
-		},
-		_params,
-	) =>
+
+	mutate: (props, _ctx) =>
 		Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 
@@ -69,15 +63,19 @@ export const sendMessageEffect = createEffectOptimisticAction({
 				deletedAt: null,
 				authorId: props.authorId,
 			})
-			// Wait for the transaction to sync
-			yield* Effect.promise(() => messageCollection.utils.awaitTxId(result.transactionId))
 
-			return result
+			// No manual sync needed - automatic sync on messageCollection!
+			return { data: result, transactionId: result.transactionId }
 		}),
-	runtime: runtime,
 })
 
-export const createDmChannel = createEffectOptimisticAction({
+export const createDmChannelAction = optimisticAction({
+	collections: {
+		channel: channelCollection,
+		members: channelMemberCollection,
+	},
+	runtime: runtime,
+
 	onMutate: (props: {
 		organizationId: OrganizationId
 		participantIds: UserId[]
@@ -139,16 +137,8 @@ export const createDmChannel = createEffectOptimisticAction({
 
 		return { channelId }
 	},
-	mutationFn: (
-		props: {
-			organizationId: OrganizationId
-			participantIds: UserId[]
-			type: "single" | "direct"
-			name?: string
-			currentUserId: UserId
-		},
-		_params,
-	) =>
+
+	mutate: (props, _ctx) =>
 		Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 
@@ -159,18 +149,18 @@ export const createDmChannel = createEffectOptimisticAction({
 				name: props.name,
 			})
 
-			// Wait for all collections to sync
-			yield* Effect.all([
-				Effect.promise(() => channelCollection.utils.awaitTxId(result.transactionId)),
-				Effect.promise(() => channelMemberCollection.utils.awaitTxId(result.transactionId)),
-			])
-
-			return { transactionId: result.transactionId, channelId: result.data.id }
+			// No manual sync needed - automatic sync on BOTH channel AND members collections!
+			return {
+				data: { channelId: result.data.id },
+				transactionId: result.transactionId,
+			}
 		}),
-	runtime: runtime,
 })
 
-export const createOrganization = createEffectOptimisticAction({
+export const createOrganizationAction = optimisticAction({
+	collections: [organizationCollection],
+	runtime: runtime,
+
 	onMutate: (props: { name: string; slug: string; logoUrl?: string | null }) => {
 		const organizationId = OrganizationId.make(crypto.randomUUID())
 		const now = new Date()
@@ -190,14 +180,8 @@ export const createOrganization = createEffectOptimisticAction({
 
 		return { organizationId, slug: props.slug }
 	},
-	mutationFn: (
-		props: {
-			name: string
-			slug: string
-			logoUrl?: string | null
-		},
-		_params,
-	) =>
+
+	mutate: (props, _ctx) =>
 		Effect.gen(function* () {
 			// Backend will create org in WorkOS and return real WorkOS ID
 			const client = yield* HazelRpcClient
@@ -208,19 +192,21 @@ export const createOrganization = createEffectOptimisticAction({
 				settings: null,
 			})
 
-			// Wait for the organization collection to sync
-			yield* Effect.promise(() => organizationCollection.utils.awaitTxId(result.transactionId))
-
+			// No manual sync needed - automatic sync on organizationCollection!
 			return {
+				data: {
+					organizationId: result.data.id,
+					slug: result.data.slug,
+				},
 				transactionId: result.transactionId,
-				organizationId: result.data.id,
-				slug: result.data.slug,
 			}
 		}),
-	runtime: runtime,
 })
 
-export const toggleReactionEffect = createEffectOptimisticAction({
+export const toggleReactionAction = optimisticAction({
+	collections: [messageReactionCollection],
+	runtime: runtime,
+
 	onMutate: (props: { messageId: MessageId; channelId: ChannelId; emoji: string; userId: UserId }) => {
 		// Check if reaction already exists in the collection
 		const reactionsMap = messageReactionCollection.state
@@ -247,7 +233,8 @@ export const toggleReactionEffect = createEffectOptimisticAction({
 
 		return { wasCreated: true, reactionId }
 	},
-	mutationFn: (props: { messageId: MessageId; channelId: ChannelId; emoji: string; userId: UserId }, _params) =>
+
+	mutate: (props, _ctx) =>
 		Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 
@@ -258,10 +245,7 @@ export const toggleReactionEffect = createEffectOptimisticAction({
 				emoji: props.emoji,
 			})
 
-			// Wait for the transaction to sync
-			yield* Effect.promise(() => messageReactionCollection.utils.awaitTxId(result.transactionId))
-
-			return result
+			// No manual sync needed - automatic sync on messageReactionCollection!
+			return { data: result, transactionId: result.transactionId }
 		}),
-	runtime: runtime,
 })
