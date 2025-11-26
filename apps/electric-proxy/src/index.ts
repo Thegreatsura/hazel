@@ -76,13 +76,10 @@ const handleUserRequest = (request: Request) =>
 		const originUrl = yield* prepareElectricUrl(request.url)
 		originUrl.searchParams.set("table", tableValidation.table!)
 
-		// Generate WHERE clause with type-safe Drizzle operators
 		const whereResult = yield* getWhereClauseForTable(tableValidation.table!, user)
-		yield* Effect.log("Generated WHERE clause", {
-			table: tableValidation.table,
-			whereClause: whereResult.whereClause,
-			paramCount: whereResult.params.length,
-		})
+
+		yield* Effect.annotateCurrentSpan("where", whereResult.whereClause)
+		yield* Effect.annotateCurrentSpan("whereType", whereResult.params)
 		applyWhereToElectricUrl(originUrl, whereResult)
 
 		// Proxy request to Electric
@@ -213,11 +210,6 @@ const handleBotRequest = (request: Request) =>
 
 		// Generate WHERE clause with type-safe Drizzle operators
 		const whereResult = yield* getBotWhereClauseForTable(tableValidation.table!, bot)
-		yield* Effect.log("Generated bot WHERE clause", {
-			table: tableValidation.table,
-			whereClause: whereResult.whereClause,
-			paramCount: whereResult.params.length,
-		})
 		applyWhereToElectricUrl(originUrl, whereResult)
 
 		// Proxy request to Electric
@@ -323,6 +315,7 @@ const main = Effect.gen(function* () {
 		port: config.port,
 		electricUrl: config.electricUrl,
 		allowedOrigin: config.allowedOrigin,
+		electricAuthConfigured: !!(config.electricSourceId && config.electricSourceSecret),
 	})
 
 	// Create Effect runtime for request handlers

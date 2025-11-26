@@ -32,6 +32,12 @@ export const prepareElectricUrl = (requestUrl: string) =>
 		if (config.electricSourceId && config.electricSourceSecret) {
 			originUrl.searchParams.set("source_id", config.electricSourceId)
 			originUrl.searchParams.set("secret", config.electricSourceSecret)
+		} else {
+			// Log warning if auth is not configured - this helps debug "missing source id" errors
+			yield* Effect.logWarning("Electric auth not configured", {
+				hasSourceId: !!config.electricSourceId,
+				hasSecret: !!config.electricSourceSecret,
+			})
 		}
 
 		return originUrl
@@ -46,8 +52,6 @@ export const prepareElectricUrl = (requestUrl: string) =>
  */
 export const proxyElectricRequest = (originUrl: URL) =>
 	Effect.gen(function* () {
-		yield* Effect.log("Proxying to Electric", { url: originUrl.toString() })
-
 		const response = yield* Effect.tryPromise({
 			try: () => fetch(originUrl),
 			catch: (error) =>
@@ -62,11 +66,6 @@ export const proxyElectricRequest = (originUrl: URL) =>
 		headers.delete("content-encoding")
 		headers.delete("content-length")
 		headers.set("vary", "cookie")
-
-		yield* Effect.log("Electric response received", {
-			status: response.status,
-			contentType: response.headers.get("content-type"),
-		})
 
 		// Return response with body stream - zero-copy passthrough
 		return new Response(response.body, {

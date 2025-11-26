@@ -180,13 +180,11 @@ const getCachedAccessContext = (internalUserId: UserId) =>
 		const cached = cachedAccessContextMap.get(internalUserId)
 
 		if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-			yield* Effect.log("Using cached access context", { userId: internalUserId })
 			return cached.context
 		}
 
 		const context = yield* getAccessContextImpl(internalUserId)
 		cachedAccessContextMap.set(internalUserId, { context, timestamp: now })
-		yield* Effect.log("Cached new access context", { userId: internalUserId })
 
 		return context
 	})
@@ -253,12 +251,6 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		},
 	})
 
-	yield* Effect.logInfo("Session authenticate result", {
-		authenticated: session.authenticated,
-		hasAccessToken: !!session.accessToken,
-		reason: session.reason,
-	})
-
 	// Step 4: Handle not authenticated - try refresh
 	let accessToken = session.accessToken
 	if (!session.authenticated || !accessToken) {
@@ -273,8 +265,6 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		}
 
 		// Attempt to refresh the session
-		yield* Effect.logInfo("Session not authenticated, attempting refresh", { reason: session.reason })
-
 		const refreshedSession: any = yield* Effect.tryPromise({
 			try: async () => sealedSession.refresh(),
 			catch: (error) => {
