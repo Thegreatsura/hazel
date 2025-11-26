@@ -1,4 +1,4 @@
-import type { ChannelId } from "@hazel/schema"
+import { type ChannelId, ChannelMemberId } from "@hazel/schema"
 import { eq, inArray, not, or, useLiveQuery } from "@tanstack/react-db"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -63,7 +63,7 @@ export function JoinChannelModal({ isOpen, onOpenChange }: JoinChannelModalProps
 			}
 
 			await channelMemberCollection.insert({
-				id: crypto.randomUUID(),
+				id: ChannelMemberId.make(crypto.randomUUID()),
 				channelId,
 				userId: user.id,
 				isHidden: false,
