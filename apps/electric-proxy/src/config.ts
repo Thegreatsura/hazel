@@ -41,7 +41,7 @@ export const ProxyConfigLive = Layer.effect(
 			Config.withDefault("http://localhost:3000"),
 		)
 		const databaseUrl = yield* Config.redacted("DATABASE_URL")
-		const isDev = yield* Config.boolean("IS_DEV").pipe(Config.withDefault(true))
+		const isDev = yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false))
 		const port = yield* Config.number("PORT").pipe(Config.withDefault(8184))
 		const otlpEndpoint = yield* Config.string("OTLP_ENDPOINT").pipe(
 			Config.option,
