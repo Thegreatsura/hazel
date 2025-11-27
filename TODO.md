@@ -1,8 +1,9 @@
 # Today
-- Invitation flow (how to even accept an visition /login make work)
-- Electric Proxy Table Queries for Bots 
 - rpc client for bot
 - add helper for status color for badge and dot
+- fix channel creation not actually appearing in the channel list
+- fix reacting not working for people with member role in dm channel
+- notification sound not working?
 
 Deploy production
 
