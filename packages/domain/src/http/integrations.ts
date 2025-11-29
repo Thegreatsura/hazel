@@ -94,7 +94,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	)
 	// Get connection status
 	.add(
-		HttpApiEndpoint.get("getConnectionStatus")`/:provider/status`
+		HttpApiEndpoint.get("getConnectionStatus", `/:provider/status`)
 			.addSuccess(ConnectionStatusResponse)
 			.addError(UnsupportedProviderError)
 			.addError(UnauthorizedError)
@@ -114,7 +114,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	)
 	// Disconnect integration
 	.add(
-		HttpApiEndpoint.del("disconnect")`/:provider`
+		HttpApiEndpoint.del("disconnect", `/:provider`)
 			.addSuccess(Schema.Void)
 			.addError(IntegrationNotConnectedError)
 			.addError(UnsupportedProviderError)
