@@ -95,14 +95,6 @@ export function CommandPalette(
 					pageHistory: [],
 					inputValue: "",
 				})
-
-				// Ensure search input gets focus when modal opens
-				setTimeout(() => {
-					const searchInput = document.querySelector('[role="dialog"] input') as HTMLInputElement
-					if (searchInput) {
-						searchInput.focus()
-					}
-				}, 100)
 			}
 			props.onOpenChange?.(open)
 		},

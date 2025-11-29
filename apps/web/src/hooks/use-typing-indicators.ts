@@ -1,7 +1,6 @@
 import type { ChannelMember, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { useEffect, useMemo, useReducer } from "react"
 import { channelMemberCollection, typingIndicatorCollection, userCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
 
@@ -48,12 +47,14 @@ export function useTypingIndicators({ channelId, staleThreshold = 5000 }: UseTyp
 		[],
 	)
 
-	const currentChannelMember = useMemo(() => {
+	// Calculate during render - React Compiler handles memoization
+	const currentChannelMember = (() => {
 		if (!currentUser?.id || !channelMembersData) return null
 		return channelMembersData.find((m) => m.userId === currentUser.id)
-	}, [currentUser?.id, channelMembersData])
+	})()
 
-	const typingUsers: TypingUsers = useMemo(() => {
+	// Calculate during render - data updates trigger re-renders via live queries
+	const typingUsers: TypingUsers = (() => {
 		if (!typingIndicatorsData || !channelMembersData || !usersData) return []
 
 		const threshold = Date.now() - staleThreshold
@@ -74,15 +75,7 @@ export function useTypingIndicators({ channelId, staleThreshold = 5000 }: UseTyp
 				return { member, user }
 			})
 			.filter((tu): tu is TypingUser => tu !== null)
-	}, [typingIndicatorsData, channelMembersData, usersData, currentChannelMember, staleThreshold])
-
-	// Periodically re-render to update staleness calculations
-	// Using useReducer to force re-renders is more semantic than updating dummy state
-	const [, forceUpdate] = useReducer((x: number) => x + 1, 0)
-	useEffect(() => {
-		const interval = setInterval(forceUpdate, 2000)
-		return () => clearInterval(interval)
-	}, [])
+	})()
 
 	return {
 		typingUsers,
