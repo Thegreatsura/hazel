@@ -28,7 +28,8 @@
 		"GITHUB_CLIENT_ID",
 		"GITHUB_CLIENT_SECRET",
 		"API_BASE_URL",
-		"FRONTEND_URL"
+		"FRONTEND_URL",
+		"REDIS_URL"
 	],
 	"tasks": {
 		"build": {
