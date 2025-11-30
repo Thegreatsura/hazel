@@ -34,6 +34,15 @@ export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>
 	organizationId: Schema.UUID,
 }) {}
 
+/**
+ * Request schema for creating channels.
+ * Extends jsonCreate but allows optional id for optimistic updates.
+ */
+export const CreateChannelRequest = Schema.Struct({
+	id: Schema.optional(ChannelId),
+	...Channel.Model.jsonCreate.fields,
+})
+
 export class ChannelRpcs extends RpcGroup.make(
 	/**
 	 * ChannelCreate
@@ -42,13 +51,13 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * The current user is automatically added as a member of the channel.
 	 * Requires permission to create channels in the organization.
 	 *
-	 * @param payload - Channel data (name, type, organizationId, etc.)
+	 * @param payload - Channel data (name, type, organizationId, etc.) with optional id for optimistic updates
 	 * @returns Channel data and transaction ID
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("channel.create", {
-		payload: Channel.Model.jsonCreate,
+		payload: CreateChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),

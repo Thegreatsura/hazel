@@ -69,6 +69,66 @@ export const sendMessageAction = optimisticAction({
 		}),
 })
 
+export const createChannelAction = optimisticAction({
+	collections: {
+		channel: channelCollection,
+		members: channelMemberCollection,
+	},
+	runtime: runtime,
+	onMutate: (props: {
+		organizationId: OrganizationId
+		name: string
+		type: "public" | "private"
+		parentChannelId: ChannelId | null
+		currentUserId: UserId
+	}) => {
+		const channelId = ChannelId.make(crypto.randomUUID())
+		const now = new Date()
+
+		// Optimistically insert the channel
+		channelCollection.insert({
+			id: channelId,
+			name: props.name,
+			type: props.type,
+			organizationId: props.organizationId,
+			parentChannelId: props.parentChannelId,
+			createdAt: now,
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		// Add creator as member
+		channelMemberCollection.insert({
+			id: ChannelMemberId.make(crypto.randomUUID()),
+			channelId: channelId,
+			userId: props.currentUserId,
+			isHidden: false,
+			isMuted: false,
+			isFavorite: false,
+			lastSeenMessageId: null,
+			notificationCount: 0,
+			joinedAt: now,
+			createdAt: now,
+			deletedAt: null,
+		})
+
+		return { channelId }
+	},
+
+	mutate: (props, ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channel.create", {
+				id: ctx.mutateResult.channelId,
+				name: props.name,
+				type: props.type,
+				organizationId: props.organizationId,
+				parentChannelId: props.parentChannelId,
+			})
+			return { data: { channelId: result.data.id }, transactionId: result.transactionId }
+		}),
+})
+
 export const createDmChannelAction = optimisticAction({
 	collections: {
 		channel: channelCollection,

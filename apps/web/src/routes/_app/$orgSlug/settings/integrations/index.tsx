@@ -96,6 +96,48 @@ function IntegrationCard({
 	connected: boolean
 	onClick: () => void
 }) {
+	const comingSoon = integration.comingSoon
+
+	const logoSrc =
+		integration.logoSrc ??
+		getBrandfetchIcon(integration.logoDomain, { type: integration.logoType })
+
+	if (comingSoon) {
+		return (
+			<div className="relative flex flex-col overflow-hidden rounded-xl border border-border bg-bg opacity-70">
+				<div className="flex flex-1 flex-col gap-4 p-5">
+					<div className="flex items-start justify-between gap-3">
+						<div className="flex items-center gap-3">
+							<div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/8">
+								<img
+									src={logoSrc}
+									alt={`${integration.name} logo`}
+									className="size-10 object-contain"
+								/>
+							</div>
+							<div className="flex flex-col gap-0.5">
+								<h3 className="font-semibold text-fg text-sm">{integration.name}</h3>
+								<ConnectionStatus connected={false} comingSoon />
+							</div>
+						</div>
+					</div>
+					<p className="text-muted-fg text-sm leading-relaxed">{integration.description}</p>
+				</div>
+				<div className="flex items-center justify-end border-border border-t bg-bg-muted/50 px-5 py-3">
+					<svg
+						className="size-4 text-muted-fg/50"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						strokeWidth={2}
+					>
+						<path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+					</svg>
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<button
 			type="button"
@@ -107,9 +149,7 @@ function IntegrationCard({
 					<div className="flex items-center gap-3">
 						<div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/8">
 							<img
-								src={getBrandfetchIcon(integration.logoDomain, {
-									type: integration.logoType,
-								})}
+								src={logoSrc}
 								alt={`${integration.name} logo`}
 								className="size-10 object-contain"
 							/>
@@ -140,7 +180,19 @@ function IntegrationCard({
 	)
 }
 
-function ConnectionStatus({ connected }: { connected: boolean }) {
+function ConnectionStatus({
+	connected,
+	comingSoon,
+}: { connected: boolean; comingSoon?: boolean }) {
+	if (comingSoon) {
+		return (
+			<div className="flex items-center gap-1.5">
+				<div className="size-1.5 rounded-full bg-amber-500" />
+				<span className="text-amber-600 text-xs dark:text-amber-400">Coming soon</span>
+			</div>
+		)
+	}
+
 	return (
 		<div className="flex items-center gap-1.5">
 			<div

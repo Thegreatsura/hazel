@@ -13,10 +13,12 @@ export type Integration = {
 	fullDescription: string
 	logoDomain: string
 	logoType?: "symbol" | "icon"
+	logoSrc?: string
 	brandColor: string
 	category: string
 	features: string[]
 	configOptions: ConfigOption[]
+	comingSoon?: boolean
 }
 
 // Helper to generate Brandfetch CDN URLs
@@ -128,6 +130,7 @@ export const integrations: Integration[] = [
 				type: "toggle",
 			},
 		],
+		comingSoon: true,
 	},
 	{
 		id: "notion",
@@ -166,6 +169,34 @@ export const integrations: Integration[] = [
 				placeholder: "Select workspace...",
 			},
 		],
+		comingSoon: true,
+	},
+	{
+		id: "openstatus",
+		name: "OpenStatus",
+		description: "Monitor your API and website to detect and resolve performance issues.",
+		fullDescription:
+			"Connect OpenStatus to monitor your services and share real-time status updates with your team. Get instant alerts on incidents and keep everyone informed about system health.",
+		logoDomain: "openstatus.dev",
+		logoSrc: "/brands/openstatus.svg",
+		brandColor: "#10B981",
+		category: "developer-tools",
+		features: ["Real-time status updates", "Incident alerts", "Uptime monitoring", "Status page embeds"],
+		configOptions: [
+			{
+				id: "auto-alerts",
+				label: "Incident alerts",
+				description: "Automatically post alerts when incidents are detected",
+				type: "toggle",
+			},
+			{
+				id: "status-updates",
+				label: "Status updates",
+				description: "Share status changes in conversations",
+				type: "toggle",
+			},
+		],
+		comingSoon: true,
 	},
 ]
 

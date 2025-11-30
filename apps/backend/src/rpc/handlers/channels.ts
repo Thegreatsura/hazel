@@ -22,16 +22,20 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 		const db = yield* Database.Database
 
 		return {
-			"channel.create": (payload) =>
+			"channel.create": ({ id, ...payload }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							const createdChannel = yield* ChannelRepo.insert({
-								...payload,
-								deletedAt: null,
-							}).pipe(
+							// Use client-provided id for optimistic updates, or let DB generate one
+							const insertData = id
+								? { id, ...payload, deletedAt: null }
+								: { ...payload, deletedAt: null }
+
+							const createdChannel = yield* ChannelRepo.insert(
+								insertData as typeof payload & { deletedAt: null },
+							).pipe(
 								Effect.map((res) => res[0]!),
 								policyUse(ChannelPolicy.canCreate(payload.organizationId)),
 							)

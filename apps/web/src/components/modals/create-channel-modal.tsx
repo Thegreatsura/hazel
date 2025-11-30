@@ -1,7 +1,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
-import { createChannelMutation } from "~/atoms/channel-atoms"
+import { createChannelAction } from "~/db/actions"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import { Button } from "~/components/ui/button"
 import { Description, FieldError, Label } from "~/components/ui/field"
@@ -31,7 +31,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 	const { organizationId, slug } = useOrganization()
 	const navigate = useNavigate()
 
-	const createChannel = useAtomSet(createChannelMutation, {
+	const createChannel = useAtomSet(createChannelAction, {
 		mode: "promiseExit",
 	})
 
@@ -48,22 +48,21 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 
 			const exit = await toastExit(
 				createChannel({
-					payload: {
-						name: value.name,
-						type: value.type,
-						organizationId,
-						parentChannelId: null,
-					},
+					name: value.name,
+					type: value.type,
+					organizationId,
+					parentChannelId: null,
+					currentUserId: user.id,
 				}),
 				{
 					loading: "Creating channel...",
-					success: (_result) => {
-						// Navigate back to org page
-						// TODO: Navigate to channel when route exists (rework to use optimsitcAction)
+					success: (result) => {
+						// Navigate to the new channel
 						navigate({
-							to: "/$orgSlug",
+							to: "/$orgSlug/chat/$id",
 							params: {
 								orgSlug: slug,
+								id: result.mutateResult.channelId,
 							},
 						})
 
