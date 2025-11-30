@@ -44,7 +44,16 @@ function RouteComponent() {
 	}
 
 	if (userOrganizations && userOrganizations.length === 1) {
-		return <Navigate to="/" />
+		// If user already has org context in session, redirect directly
+		if (user?.organizationId) {
+			return <Navigate to="/" />
+		}
+		// Otherwise, get org-scoped session first
+		const singleOrg = userOrganizations[0]
+		if (singleOrg) {
+			login({ organizationId: singleOrg.org.id, returnTo: "/" })
+			return <Loader />
+		}
 	}
 
 	// If user has no organizations, redirect to onboarding
