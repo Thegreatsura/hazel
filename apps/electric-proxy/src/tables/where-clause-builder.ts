@@ -68,6 +68,31 @@ export function buildEqClause<T>(column: PgColumn, value: T, paramIndex = 1): Wh
 }
 
 /**
+ * Build simple deletedAt IS NULL check using unqualified column name.
+ *
+ * @param deletedAtColumn - The deletedAt column to check for NULL
+ * @returns WhereClauseResult with no parameters
+ */
+export function buildDeletedAtNullClause(deletedAtColumn: PgColumn): WhereClauseResult {
+	return {
+		whereClause: `"${deletedAtColumn.name}" IS NULL`,
+		params: [],
+	}
+}
+
+/**
+ * Build a "no filter" clause that matches all rows.
+ *
+ * @returns WhereClauseResult that matches all rows
+ */
+export function buildNoFilterClause(): WhereClauseResult {
+	return {
+		whereClause: "true",
+		params: [],
+	}
+}
+
+/**
  * Apply WHERE clause result to Electric URL with params.
  * Sets the "where" parameter and individual "params[N]" parameters.
  *

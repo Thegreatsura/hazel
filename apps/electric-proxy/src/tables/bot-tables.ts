@@ -85,26 +85,6 @@ export function getBotWhereClauseForTable(
 			),
 		),
 
-		// Future tables can be added here:
-		// Match.when("channels", () =>
-		// 	Effect.succeed(
-		// 		buildInClauseWithDeletedAt(
-		// 			schema.channelsTable.id,
-		// 			bot.accessContext.channelIds,
-		// 			schema.channelsTable.deletedAt,
-		// 		),
-		// 	),
-		// ),
-		// Match.when("attachments", () =>
-		// 	Effect.succeed(
-		// 		buildInClauseWithDeletedAt(
-		// 			schema.attachmentsTable.channelId,
-		// 			bot.accessContext.channelIds,
-		// 			schema.attachmentsTable.deletedAt,
-		// 		),
-		// 	),
-		// ),
-
 		Match.orElse((table) =>
 			Effect.fail(
 				new BotTableAccessError({

@@ -1,7 +1,12 @@
 import { schema } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
 import type { AuthenticatedUserWithContext } from "../auth/user-auth"
-import { buildInClause, buildInClauseWithDeletedAt, type WhereClauseResult } from "./where-clause-builder"
+import {
+	buildDeletedAtNullClause,
+	buildInClause,
+	buildNoFilterClause,
+	type WhereClauseResult,
+} from "./where-clause-builder"
 
 /**
  * Error thrown when table access is denied or where clause cannot be generated
@@ -88,7 +93,11 @@ export function validateTable(table: string | null): {
 
 /**
  * Get the WHERE clause for a table based on the authenticated user.
- * This ensures users can only access data they have permission to see.
+ *
+ * NOTE: Array-based IN filters (channelIds, organizationIds, etc.) were removed
+ * because the cached access context caused slow updates when users were added
+ * to new channels/organizations. Electric now streams all non-deleted data,
+ * and access control is handled at the application layer.
  *
  * Uses unqualified column names (via column.name) for Electric SQL compatibility.
  * All WHERE clauses are parameterized for security.
@@ -106,68 +115,28 @@ export function getWhereClauseForTable(
 		// User tables
 		// ===========================================
 
-		Match.when("users", () => {
-			// Users can always see themselves and other users who are members of their organizations
-			const coOrgIds = [...user.accessContext.coOrgUserIds].sort()
-			const { id, deletedAt } = schema.usersTable
+		Match.when("users", () =>
+			// All non-deleted users visible
+			Effect.succeed(buildDeletedAtNullClause(schema.usersTable.deletedAt)),
+		),
 
-			if (coOrgIds.length === 0) {
-				return Effect.succeed({
-					whereClause: `"${id.name}" = $1 AND "${deletedAt.name}" IS NULL`,
-					params: [user.internalUserId],
-				} satisfies WhereClauseResult)
-			}
-
-			const placeholders = coOrgIds.map((_, i) => `$${i + 2}`).join(", ")
-			return Effect.succeed({
-				whereClause: `("${id.name}" = $1 OR "${id.name}" IN (${placeholders})) AND "${deletedAt.name}" IS NULL`,
-				params: [user.internalUserId, ...coOrgIds],
-			} satisfies WhereClauseResult)
-		}),
-
-		Match.when("user_presence_status", () => {
-			// Users can always see their own presence and presence of users in the same organizations
-			const coOrgIds = [...user.accessContext.coOrgUserIds].sort()
-			const { userId } = schema.userPresenceStatusTable
-
-			if (coOrgIds.length === 0) {
-				return Effect.succeed({
-					whereClause: `"${userId.name}" = $1`,
-					params: [user.internalUserId],
-				} satisfies WhereClauseResult)
-			}
-
-			const placeholders = coOrgIds.map((_, i) => `$${i + 2}`).join(", ")
-			return Effect.succeed({
-				whereClause: `"${userId.name}" = $1 OR "${userId.name}" IN (${placeholders})`,
-				params: [user.internalUserId, ...coOrgIds],
-			} satisfies WhereClauseResult)
-		}),
+		Match.when("user_presence_status", () =>
+			// All presence status visible
+			Effect.succeed(buildNoFilterClause()),
+		),
 
 		// ===========================================
 		// Organization tables
 		// ===========================================
 
 		Match.when("organizations", () =>
-			// Show only organizations where the user is a member
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.organizationsTable.id,
-					user.accessContext.organizationIds,
-					schema.organizationsTable.deletedAt,
-				),
-			),
+			// All non-deleted organizations visible
+			Effect.succeed(buildDeletedAtNullClause(schema.organizationsTable.deletedAt)),
 		),
 
 		Match.when("organization_members", () =>
-			// Show members from organizations where the user is a member
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.organizationMembersTable.organizationId,
-					user.accessContext.organizationIds,
-					schema.organizationMembersTable.deletedAt,
-				),
-			),
+			// All non-deleted organization members visible
+			Effect.succeed(buildDeletedAtNullClause(schema.organizationMembersTable.deletedAt)),
 		),
 
 		// ===========================================
@@ -175,25 +144,13 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("channels", () =>
-			// Users can only see channels they're members of
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.channelsTable.id,
-					user.accessContext.channelIds,
-					schema.channelsTable.deletedAt,
-				),
-			),
+			// All non-deleted channels visible
+			Effect.succeed(buildDeletedAtNullClause(schema.channelsTable.deletedAt)),
 		),
 
 		Match.when("channel_members", () =>
-			// See all members of channels the user belongs to
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.channelMembersTable.channelId,
-					user.accessContext.channelIds,
-					schema.channelMembersTable.deletedAt,
-				),
-			),
+			// All non-deleted channel members visible
+			Effect.succeed(buildDeletedAtNullClause(schema.channelMembersTable.deletedAt)),
 		),
 
 		// ===========================================
@@ -201,32 +158,18 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("messages", () =>
-			// Messages only from channels the user is a member of
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.messagesTable.channelId,
-					user.accessContext.channelIds,
-					schema.messagesTable.deletedAt,
-				),
-			),
+			// All non-deleted messages visible
+			Effect.succeed(buildDeletedAtNullClause(schema.messagesTable.deletedAt)),
 		),
 
 		Match.when("message_reactions", () =>
-			// Reactions from accessible channels (channelId is denormalized on the table)
-			Effect.succeed(
-				buildInClause(schema.messageReactionsTable.channelId, user.accessContext.channelIds),
-			),
+			// All message reactions visible
+			Effect.succeed(buildNoFilterClause()),
 		),
 
 		Match.when("attachments", () =>
-			// Attachments from accessible channels only
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.attachmentsTable.channelId,
-					user.accessContext.channelIds,
-					schema.attachmentsTable.deletedAt,
-				),
-			),
+			// All non-deleted attachments visible
+			Effect.succeed(buildDeletedAtNullClause(schema.attachmentsTable.deletedAt)),
 		),
 
 		// ===========================================
@@ -235,14 +178,13 @@ export function getWhereClauseForTable(
 
 		Match.when("notifications", () =>
 			// Users can only see their own notifications (via their member IDs)
+			// This filter is kept as notifications are user-specific and memberIds rarely change mid-session
 			Effect.succeed(buildInClause(schema.notificationsTable.memberId, user.accessContext.memberIds)),
 		),
 
 		Match.when("pinned_messages", () =>
-			// Pinned messages from accessible channels
-			Effect.succeed(
-				buildInClause(schema.pinnedMessagesTable.channelId, user.accessContext.channelIds),
-			),
+			// All pinned messages visible
+			Effect.succeed(buildNoFilterClause()),
 		),
 
 		// ===========================================
@@ -250,17 +192,13 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("typing_indicators", () =>
-			// Typing indicators from accessible channels
-			Effect.succeed(
-				buildInClause(schema.typingIndicatorsTable.channelId, user.accessContext.channelIds),
-			),
+			// All typing indicators visible
+			Effect.succeed(buildNoFilterClause()),
 		),
 
 		Match.when("invitations", () =>
-			// Invitations for organizations the user belongs to
-			Effect.succeed(
-				buildInClause(schema.invitationsTable.organizationId, user.accessContext.organizationIds),
-			),
+			// All invitations visible
+			Effect.succeed(buildNoFilterClause()),
 		),
 
 		// ===========================================
@@ -268,21 +206,11 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("bots", () => {
-			// Public bots, bots created by user, or bots belonging to users in the same orgs
-			const coOrgIds = [...user.accessContext.coOrgUserIds].sort()
-			const { isPublic, createdBy, userId, deletedAt } = schema.botsTable
-
-			if (coOrgIds.length === 0) {
-				return Effect.succeed({
-					whereClause: `("${isPublic.name}" = $1 OR "${createdBy.name}" = $2) AND "${deletedAt.name}" IS NULL`,
-					params: [true, user.internalUserId],
-				} satisfies WhereClauseResult)
-			}
-
-			const placeholders = coOrgIds.map((_, i) => `$${i + 3}`).join(", ")
+			// Public bots or bots created by user
+			const { isPublic, createdBy, deletedAt } = schema.botsTable
 			return Effect.succeed({
-				whereClause: `("${isPublic.name}" = $1 OR "${createdBy.name}" = $2 OR "${userId.name}" IN (${placeholders})) AND "${deletedAt.name}" IS NULL`,
-				params: [true, user.internalUserId, ...coOrgIds],
+				whereClause: `("${isPublic.name}" = $1 OR "${createdBy.name}" = $2) AND "${deletedAt.name}" IS NULL`,
+				params: [true, user.internalUserId],
 			} satisfies WhereClauseResult)
 		}),
 
@@ -291,14 +219,8 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("integration_connections", () =>
-			// Integration connections for organizations the user belongs to
-			Effect.succeed(
-				buildInClauseWithDeletedAt(
-					schema.integrationConnectionsTable.organizationId,
-					user.accessContext.organizationIds,
-					schema.integrationConnectionsTable.deletedAt,
-				),
-			),
+			// All non-deleted integration connections visible
+			Effect.succeed(buildDeletedAtNullClause(schema.integrationConnectionsTable.deletedAt)),
 		),
 
 		// ===========================================
