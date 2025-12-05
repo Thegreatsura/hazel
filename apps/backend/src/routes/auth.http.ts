@@ -129,20 +129,31 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				const { user: workosUser } = authResponse
 
-				// Upsert the user
-				yield* userRepo
-					.upsertByExternalId({
-						externalId: workosUser.id,
-						email: workosUser.email,
-						firstName: workosUser.firstName || "",
-						lastName: workosUser.lastName || "",
-						avatarUrl: workosUser.profilePictureUrl || `https://avatar.vercel.sh/${workosUser.id}.svg`,
-						userType: "user",
-						settings: null,
-						isOnboarded: false,
-						deletedAt: null,
-					})
+				// Find existing user or create if first login
+				// Using find-or-create pattern to avoid overwriting data set by webhooks
+				const userOption = yield* userRepo
+					.findByExternalId(workosUser.id)
 					.pipe(Effect.orDie, withSystemActor)
+
+				yield* Option.match(userOption, {
+					onNone: () =>
+						userRepo
+							.upsertByExternalId({
+								externalId: workosUser.id,
+								email: workosUser.email,
+								firstName: workosUser.firstName || "",
+								lastName: workosUser.lastName || "",
+								avatarUrl:
+									workosUser.profilePictureUrl ||
+									`https://avatar.vercel.sh/${workosUser.id}.svg`,
+								userType: "user",
+								settings: null,
+								isOnboarded: false,
+								deletedAt: null,
+							})
+							.pipe(Effect.orDie, withSystemActor),
+					onSome: (user) => Effect.succeed(user),
+				})
 
 				// If auth response includes an organization context, ensure membership exists
 				// This handles cases where webhooks are slow to create the membership
