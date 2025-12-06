@@ -1,13 +1,21 @@
+import type { OrganizationId } from "@hazel/schema"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { Button } from "~/components/ui/button"
 import { useAuth } from "../../lib/auth"
 
 export const Route = createFileRoute("/auth/login")({
 	component: LoginPage,
-	validateSearch: (search: Record<string, unknown>) => {
+	validateSearch: (
+		search: Record<string, unknown>,
+	): {
+		returnTo?: string
+		organizationId?: string
+		invitationToken?: string
+	} => {
 		return {
 			returnTo: search.returnTo as string | undefined,
+			organizationId: search.organizationId as string | undefined,
+			invitationToken: search.invitationToken as string | undefined,
 		}
 	},
 })
@@ -15,29 +23,26 @@ export const Route = createFileRoute("/auth/login")({
 function LoginPage() {
 	const { user, login, isLoading } = useAuth()
 	const search = Route.useSearch()
-	const [error, setError] = useState<string | null>(null)
 	const [isRedirecting, setIsRedirecting] = useState(false)
 
 	useEffect(() => {
-		// Cleanup flag to prevent race conditions
-		let isCleanedUp = false
-
-		if (!user && !isLoading && !isRedirecting && !error) {
-			// Attempt to login
+		if (!user && !isLoading && !isRedirecting) {
 			setIsRedirecting(true)
-			login({ returnTo: `${location.origin}${search.returnTo}` || location.href }).catch((err) => {
-				// Only update state if component is still mounted
-				if (!isCleanedUp) {
-					setError(err.message || "Failed to initiate login")
-					setIsRedirecting(false)
-				}
+			login({
+				returnTo: search.returnTo ? `${location.origin}${search.returnTo}` : `${location.origin}/`,
+				organizationId: search.organizationId as OrganizationId | undefined,
+				invitationToken: search.invitationToken,
 			})
 		}
-
-		return () => {
-			isCleanedUp = true
-		}
-	}, [user, isLoading, login, search.returnTo, isRedirecting, error])
+	}, [
+		user,
+		isLoading,
+		login,
+		search.returnTo,
+		search.organizationId,
+		search.invitationToken,
+		isRedirecting,
+	])
 
 	if (isLoading) {
 		return (
@@ -49,25 +54,6 @@ function LoginPage() {
 
 	if (user) {
 		return <Navigate to={search.returnTo || "/"} />
-	}
-
-	if (error) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="max-w-md text-center">
-					<h1 className="mb-4 font-semibold text-2xl text-danger">Login Failed</h1>
-					<p className="mb-6 text-muted-fg">{error}</p>
-					<Button
-						onClick={() => {
-							setError(null)
-							setIsRedirecting(false)
-						}}
-					>
-						Try Again
-					</Button>
-				</div>
-			</div>
-		)
 	}
 
 	return (
