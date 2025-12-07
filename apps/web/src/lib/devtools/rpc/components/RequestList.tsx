@@ -31,11 +31,14 @@ export function RequestList({ requests, selectedId, onSelect }: RequestListProps
 					{requests.map((request) => (
 						<tr
 							key={request.captureId}
-							onClick={() => onSelect(selectedId === request.captureId ? null : request.captureId)}
+							onClick={() =>
+								onSelect(selectedId === request.captureId ? null : request.captureId)
+							}
 							className={`cursor-pointer border-gray-700 border-b transition-colors hover:bg-gray-700/50 ${selectedId === request.captureId ? "bg-gray-700" : ""}`}
 						>
 							<td className="px-3 py-2">
 								<code className="text-blue-400">{request.method}</code>
+								<MethodTypeBadge method={request.method} />
 							</td>
 							<td className="px-3 py-2">
 								<StatusBadge request={request} />
@@ -79,6 +82,29 @@ function StatusBadge({ request }: { request: CapturedRequest }) {
 		<span className="inline-flex items-center gap-1 rounded bg-red-500/20 px-2 py-0.5 font-medium text-red-400 text-xs">
 			<span className="h-1.5 w-1.5 rounded-full bg-red-400" />
 			error
+		</span>
+	)
+}
+
+function getMethodType(method: string): "mutation" | "query" {
+	const mutationVerbs = ["create", "update", "delete", "remove", "post", "put", "patch"]
+	const methodParts = method.split(".")
+	const action = methodParts[methodParts.length - 1]
+	return mutationVerbs.includes(action!) ? "mutation" : "query"
+}
+
+function MethodTypeBadge({ method }: { method: string }) {
+	const type = getMethodType(method)
+	if (type === "mutation") {
+		return (
+			<span className="ml-2 rounded bg-purple-500/20 px-1.5 py-0.5 font-medium text-[10px] text-purple-400">
+				mutation
+			</span>
+		)
+	}
+	return (
+		<span className="ml-2 rounded bg-cyan-500/20 px-1.5 py-0.5 font-medium text-[10px] text-cyan-400">
+			query
 		</span>
 	)
 }

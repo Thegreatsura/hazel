@@ -4,6 +4,15 @@ import { clearRequestTracking } from "./protocol-interceptor"
 import type { CapturedRequest } from "./types"
 
 /**
+ * Global key to prevent double initialization during HMR
+ */
+const STORE_INITIALIZED_KEY = "__EFFECT_RPC_DEVTOOLS_STORE_INITIALIZED__" as const
+
+declare global {
+	var __EFFECT_RPC_DEVTOOLS_STORE_INITIALIZED__: boolean | undefined
+}
+
+/**
  * Maximum number of requests to keep in history
  */
 const MAX_REQUESTS = 500
@@ -43,8 +52,10 @@ const getSnapshot = (): CapturedRequest[] => requests
  */
 const getServerSnapshot = (): CapturedRequest[] => []
 
-// Initialize event subscriptions in development mode
-if (import.meta.env.DEV) {
+// Initialize event subscriptions only once (survives HMR)
+if (import.meta.env.DEV && !globalThis[STORE_INITIALIZED_KEY]) {
+	globalThis[STORE_INITIALIZED_KEY] = true
+
 	// Listen for request events
 	rpcEventClient.on("request", (event) => {
 		const { payload } = event
