@@ -20,6 +20,7 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelWebhookPolicy } from "../../policies/channel-webhook-policy"
 import { ChannelRepo } from "../../repositories/channel-repo"
 import { ChannelWebhookRepo } from "../../repositories/channel-webhook-repo"
+import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
 import { WebhookBotService } from "../../services/webhook-bot-service"
 
 // Generate a secure token and return both the plain token and its hash
@@ -54,7 +55,8 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 							const channelRepo = yield* ChannelRepo
 							const webhookRepo = yield* ChannelWebhookRepo
-							const botService = yield* WebhookBotService
+							const webhookBotService = yield* WebhookBotService
+							const integrationBotService = yield* IntegrationBotService
 
 							// Get channel to get organization ID
 							const channelOption = yield* channelRepo
@@ -70,15 +72,24 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							// Generate token
 							const { token, tokenHash, tokenSuffix } = generateToken()
 
-							// Generate a stable ID for the bot's external ID reference
-							const botReferenceId = crypto.randomUUID() as ChannelWebhookId
-
-							// Create bot user for this webhook
-							const botUser = yield* botService.createWebhookBot(
-								botReferenceId,
-								payload.name,
-								payload.avatarUrl ?? null,
-								channel.organizationId,
+							// Get or create bot user based on whether this is an integration webhook
+							const botUser = yield* Option.fromNullable(payload.integrationProvider).pipe(
+								Option.match({
+									onNone: () => {
+										const botReferenceId = crypto.randomUUID() as ChannelWebhookId
+										return webhookBotService.createWebhookBot(
+											botReferenceId,
+											payload.name,
+											payload.avatarUrl ?? null,
+											channel.organizationId,
+										)
+									},
+									onSome: (provider) =>
+										integrationBotService.getOrCreateWebhookBotUser(
+											provider,
+											channel.organizationId,
+										),
+								}),
 							)
 
 							// Create webhook

@@ -56,6 +56,7 @@ export function OpenStatusSection({ channelId, webhook, onWebhookChange, onDone 
 				name: OPENSTATUS_NAME,
 				description: "OpenStatus monitor alerts",
 				avatarUrl: OPENSTATUS_AVATAR,
+				integrationProvider: "openstatus",
 			},
 		})
 

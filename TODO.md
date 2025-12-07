@@ -1,9 +1,13 @@
 # Today
 - add cache layer for integration data (linear issues etc.)
 - test and actually build stuff for githib integration
-- linear throwing 500's on issue in prod
 - setup signoz or any other logging/monitoring solution
 - setup sequin locally with config as code
+
+
+# Bugs 
+- linear throwing 500's on issue in prod
+- bots showing up in members lists
 
 
 # FE stuff
