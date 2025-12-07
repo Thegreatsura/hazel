@@ -92,14 +92,14 @@ function RouteComponent() {
 		messageListRef.current?.scrollToBottom()
 	}, [])
 
-	// Clear notifications when entering the channel using Effect Atom
+	// Clear notifications when entering the channel
+	// Note: Runs twice in dev due to StrictMode - this is expected and harmless
 	const clearNotifications = useAtomSet(clearChannelNotificationsMutation, { mode: "promiseExit" })
 
 	useEffect(() => {
-		clearNotifications({
-			payload: { channelId: id as ChannelId },
-		})
-	}, [id, clearNotifications])
+		clearNotifications({ payload: { channelId: id as ChannelId } })
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- clearNotifications is stable
+	}, [id])
 
 	return (
 		<ChatProvider

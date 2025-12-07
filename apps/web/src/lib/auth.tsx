@@ -36,31 +36,30 @@ const currentUserQueryAtom = HazelRpcClient.query("user.me", void 0, {
 })
 
 /**
- * Derived atom that returns the current user
- * Returns null if on a public route or if the query failed
+ * Combined auth state atom - reads currentUserQueryAtom only once
+ * to avoid triggering duplicate RPC calls
  */
-export const userAtom = Atom.make((get) => {
+const authStateAtom = Atom.make((get) => {
 	const isPublicRoute = get(isPublicRouteAtom)
 	if (isPublicRoute) {
-		return Result.success(null)
+		return {
+			user: Result.success(null),
+			isLoading: false,
+		}
 	}
 
 	const result = get(currentUserQueryAtom)
-	return result
+	return {
+		user: result,
+		isLoading: result._tag === "Initial" || result.waiting,
+	}
 })
 
 /**
- * Derived atom that returns whether the auth state is loading
+ * Derived atom that returns the current user
+ * Returns null if on a public route or if the query failed
  */
-const isLoadingAtom = Atom.make((get) => {
-	const isPublicRoute = get(isPublicRouteAtom)
-	if (isPublicRoute) {
-		return false
-	}
-
-	const result = get(currentUserQueryAtom)
-	return result._tag === "Initial" || result.waiting
-})
+export const userAtom = Atom.make((get) => get(authStateAtom).user)
 
 /**
  * Logout function atom
@@ -75,8 +74,7 @@ const logoutAtom = Atom.fn(
 )
 
 export function useAuth() {
-	const userResult = useAtomValue(userAtom)
-	const isLoading = useAtomValue(isLoadingAtom)
+	const { user: userResult, isLoading } = useAtomValue(authStateAtom)
 	const logoutFn = useAtomSet(logoutAtom)
 
 	const login = (options?: LoginOptions) => {
