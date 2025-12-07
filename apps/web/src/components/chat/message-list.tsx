@@ -47,7 +47,7 @@ const MessageVirtualList = memo(
 				estimatedItemSize={80}
 				keyExtractor={(it) => it.id}
 				initialScrollIndex={messageRows.length - 1}
-				stickyIndices={stickyIndices}
+				stickyHeaderIndices={stickyIndices}
 				renderItem={(props) =>
 					props.item.type === "header" ? (
 						<div className="sticky top-0 z-0 my-4 flex items-center justify-center">

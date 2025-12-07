@@ -80,7 +80,7 @@ export const createChannelAction = optimisticAction({
 	onMutate: (props: {
 		organizationId: OrganizationId
 		name: string
-		type: "public" | "private"
+		type: "public" | "private" | "thread"
 		parentChannelId: ChannelId | null
 		currentUserId: UserId
 	}) => {

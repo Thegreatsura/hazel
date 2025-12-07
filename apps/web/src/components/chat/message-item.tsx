@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect-atom/atom-react"
 import type { PinnedMessageId } from "@hazel/schema"
 import { format } from "date-fns"
-import { useRef } from "react"
+import { memo, useRef } from "react"
 import { useHover } from "react-aria"
 import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
@@ -42,7 +42,7 @@ interface MessageItemProps {
 	onHoverChange?: (messageId: string | null, ref: HTMLDivElement | null) => void
 }
 
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
 	message,
 	isGroupStart = false,
 	isGroupEnd = false,
@@ -225,7 +225,7 @@ export function MessageItem({
 			</div>
 		</div>
 	)
-}
+})
 
 // Export handlers for use by MessageList's shared toolbar
 export function useMessageHandlers(message: MessageWithPinned | null) {
