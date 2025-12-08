@@ -26,12 +26,13 @@ function MessageEmbedCard({ embed }: { embed: MessageEmbedType }) {
 
 	return (
 		<Embed accentColor={accentColor} url={embed.url}>
-			{/* Author row */}
+			{/* Author row with optional badge */}
 			{embed.author && (
 				<Embed.Author
 					iconUrl={embed.author.iconUrl}
 					name={embed.author.name}
 					url={embed.author.url}
+					badge={embed.badge}
 				/>
 			)}
 

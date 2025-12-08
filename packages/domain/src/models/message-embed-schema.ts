@@ -23,6 +23,13 @@ export const MessageEmbedField = Schema.Struct({
 })
 export type MessageEmbedField = Schema.Schema.Type<typeof MessageEmbedField>
 
+// Embed badge (for status indicators)
+export const MessageEmbedBadge = Schema.Struct({
+	text: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(64)),
+	color: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 16777215))), // 0x000000 to 0xFFFFFF
+})
+export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
+
 // Full embed schema (Discord-style)
 export const MessageEmbed = Schema.Struct({
 	title: Schema.optional(Schema.String.pipe(Schema.maxLength(256))),
@@ -35,6 +42,7 @@ export const MessageEmbed = Schema.Struct({
 	thumbnail: Schema.optional(Schema.Struct({ url: Schema.String.pipe(Schema.maxLength(2048)) })),
 	fields: Schema.optional(Schema.Array(MessageEmbedField).pipe(Schema.maxItems(25))),
 	timestamp: Schema.optional(Schema.String), // ISO 8601 timestamp
+	badge: Schema.optional(MessageEmbedBadge), // Status badge (e.g., "Deployed", "Failed")
 })
 export type MessageEmbed = Schema.Schema.Type<typeof MessageEmbed>
 

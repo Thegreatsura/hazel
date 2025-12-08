@@ -19,6 +19,11 @@ export interface MessageEmbedField {
 	inline?: boolean
 }
 
+export interface MessageEmbedBadge {
+	text: string
+	color?: number // Hex color as integer
+}
+
 export interface MessageEmbed {
 	title?: string
 	description?: string
@@ -30,6 +35,7 @@ export interface MessageEmbed {
 	thumbnail?: { url: string }
 	fields?: MessageEmbedField[]
 	timestamp?: string // ISO 8601 timestamp
+	badge?: MessageEmbedBadge // Status badge (e.g., "Deployed", "Failed")
 }
 
 // Messages table
