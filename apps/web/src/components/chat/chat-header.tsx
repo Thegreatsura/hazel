@@ -1,10 +1,11 @@
 import type { UserId } from "@hazel/schema"
 import { ChannelIcon } from "~/components/channel-icon"
 import { Avatar } from "~/components/ui/avatar"
+import { useSidebar } from "~/components/ui/sidebar"
 import { useChannel } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
-import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
+import { IconMenu } from "../icons/icon-menu"
 import { PinnedMessagesModal } from "./pinned-messages-modal"
 
 interface OtherMemberAvatarProps {
@@ -19,8 +20,6 @@ interface OtherMemberAvatarProps {
 }
 
 function OtherMemberAvatar({ member }: OtherMemberAvatarProps) {
-	const { isOnline } = useUserPresence(member.userId)
-
 	const initials = `${member.user.firstName.charAt(0)}${member.user.lastName.charAt(0)}`
 
 	return (
@@ -37,10 +36,20 @@ export function ChatHeader() {
 	const { channelId } = useChat()
 	const { user } = useAuth()
 	const { channel } = useChannel(channelId)
+	const { isMobile, setIsOpenOnMobile } = useSidebar()
 
 	if (!channel) {
 		return (
 			<div className="flex h-14 flex-shrink-0 items-center border-border border-b px-4">
+				{isMobile && (
+					<button
+						type="button"
+						onClick={() => setIsOpenOnMobile(true)}
+						className="-ml-1 mr-3 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+					>
+						<IconMenu className="size-5" />
+					</button>
+				)}
 				<div className="h-4 w-32 animate-pulse rounded bg-secondary" />
 			</div>
 		)
@@ -52,6 +61,15 @@ export function ChatHeader() {
 	return (
 		<div className="flex h-14 flex-shrink-0 items-center justify-between border-border border-b bg-bg px-4">
 			<div className="flex items-center gap-3">
+				{isMobile && (
+					<button
+						type="button"
+						onClick={() => setIsOpenOnMobile(true)}
+						className="-ml-1 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+					>
+						<IconMenu className="size-5" />
+					</button>
+				)}
 				{isDirectMessage ? (
 					<>
 						{otherMembers && otherMembers.length > 0 && otherMembers[0] && (

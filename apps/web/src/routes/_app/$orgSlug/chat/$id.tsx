@@ -55,7 +55,7 @@ function ChatContent({ messageListRef }: { messageListRef: React.RefObject<Messa
 	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId } = useChat()
 
 	return (
-		<div className="flex h-dvh overflow-hidden">
+		<div className="flex h-[calc(100dvh-4rem)] overflow-hidden md:h-dvh">
 			{/* Main Chat Area */}
 			<div className="flex min-h-0 flex-1 flex-col">
 				<ChatHeader />

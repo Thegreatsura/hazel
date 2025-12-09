@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
 import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
 import { CommandPalette } from "~/components/command-palette"
+import { MobileNav } from "~/components/mobile-nav"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
@@ -49,8 +50,9 @@ function RouteComponent() {
 			<PresenceProvider>
 				<NotificationSoundProvider>
 					<AppSidebar openChannelsBrowser={openChannelsBrowser} />
-					<SidebarInset>
+					<SidebarInset className="pb-16 md:pb-0">
 						<Outlet />
+						<MobileNav />
 						<CommandPalette
 							isOpen={openCmd}
 							onOpenChange={setOpenCmd}
