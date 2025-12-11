@@ -202,11 +202,7 @@ export function effectElectricCollectionOptions(
 	const modifiedShapeOptions = backoffEnabled
 		? {
 				...config.shapeOptions,
-				onError: createBackoffOnError(
-					config.id,
-					backoffConfig,
-					config.shapeOptions.onError,
-				),
+				onError: createBackoffOnError(config.id, backoffConfig, config.shapeOptions.onError),
 			}
 		: config.shapeOptions
 

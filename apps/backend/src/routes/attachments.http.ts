@@ -43,7 +43,10 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 							})
 						}),
 					)
-					.pipe(withRemapDbErrors("AttachmentRepo", "create"), policyUse(AttachmentPolicy.canCreate()))
+					.pipe(
+						withRemapDbErrors("AttachmentRepo", "create"),
+						policyUse(AttachmentPolicy.canCreate()),
+					)
 
 				// Generate presigned URL
 				const uploadUrl = yield* S3.putObject(

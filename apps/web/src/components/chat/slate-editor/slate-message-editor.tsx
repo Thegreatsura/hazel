@@ -276,7 +276,15 @@ const shouldHidePlaceholder = (value: CustomDescendant[]): boolean => {
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
 	(
-		{ placeholder = "Type a message...", className, orgId, channelId, onSubmit, onUpdate, isUploading = false },
+		{
+			placeholder = "Type a message...",
+			className,
+			orgId,
+			channelId,
+			onSubmit,
+			onUpdate,
+			isUploading = false,
+		},
 		ref,
 	) => {
 		const containerRef = useRef<HTMLDivElement>(null)

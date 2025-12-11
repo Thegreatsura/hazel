@@ -157,10 +157,7 @@ const MainLive = Layer.mergeAll(
 	CommandRegistry.Default,
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
-).pipe(
-	Layer.provide(S3Live),
-	Layer.provideMerge(FetchHttpClient.layer),
-)
+).pipe(Layer.provide(S3Live), Layer.provideMerge(FetchHttpClient.layer))
 
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(

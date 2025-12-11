@@ -6,7 +6,7 @@ import {
 	type MessageId,
 	type MessageReactionId,
 	type OrganizationId,
-	PinnedMessageId,
+	type PinnedMessageId,
 	UserId,
 } from "@hazel/schema"
 import { Cause, Exit } from "effect"
@@ -251,12 +251,9 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 	// Note: removeReaction is deprecated - use addReaction which toggles reactions
 	// Keeping for interface compatibility but this is a no-op since toggleReaction handles removal
-	const removeReaction = useCallback(
-		(_reactionId: MessageReactionId) => {
-			console.warn("removeReaction is deprecated - use addReaction to toggle reactions")
-		},
-		[],
-	)
+	const removeReaction = useCallback((_reactionId: MessageReactionId) => {
+		console.warn("removeReaction is deprecated - use addReaction to toggle reactions")
+	}, [])
 
 	const pinMessage = useCallback(
 		async (messageId: MessageId) => {

@@ -24,7 +24,7 @@
 		"@hazel/schema": "workspace:*",
 		"drizzle-orm": "^0.45.0",
 		"effect": "catalog:effect",
-		"effect-rpc-tanstack-devtools": "^0.1.0"
+		"effect-rpc-tanstack-devtools": "0.1.1"
 	},
 	"devDependencies": {
 		"@effect/language-service": "catalog:effect",

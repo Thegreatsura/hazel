@@ -28,9 +28,7 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 				const registry = yield* CommandRegistry
 
 				// Get all connections for this org
-				const connections = yield* connectionRepo
-					.findAllForOrg(orgId)
-					.pipe(withSystemActor)
+				const connections = yield* connectionRepo.findAllForOrg(orgId).pipe(withSystemActor)
 
 				// Filter to only active connections
 				const activeProviders = connections

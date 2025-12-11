@@ -97,7 +97,9 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 		})
 		Exit.match(exit, {
 			onSuccess: () => {
-				toast.success(channel.currentUser.isFavorite ? "Removed from favorites" : "Added to favorites")
+				toast.success(
+					channel.currentUser.isFavorite ? "Removed from favorites" : "Added to favorites",
+				)
 			},
 			onFailure: (cause) => {
 				toast.error("Failed to update channel", { description: Cause.pretty(cause) })

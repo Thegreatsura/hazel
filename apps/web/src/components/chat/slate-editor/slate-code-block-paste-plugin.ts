@@ -1,5 +1,5 @@
-import { Editor, Element as SlateElement, Transforms } from "slate"
 import type { BaseEditor } from "slate"
+import { Editor, Element as SlateElement, Transforms } from "slate"
 import type { HistoryEditor } from "slate-history"
 import type { ReactEditor } from "slate-react"
 import { isCodeBlockElement } from "./types"

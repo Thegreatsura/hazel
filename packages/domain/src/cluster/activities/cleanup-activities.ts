@@ -28,12 +28,18 @@ export const MarkUploadsFailedResult = Schema.Struct({
 export type MarkUploadsFailedResult = typeof MarkUploadsFailedResult.Type
 
 // Error types for cleanup activities
-export class FindStaleUploadsError extends Schema.TaggedError<FindStaleUploadsError>()("FindStaleUploadsError", {
-	message: Schema.String,
-	cause: Schema.Unknown.pipe(Schema.optional),
-}) {}
+export class FindStaleUploadsError extends Schema.TaggedError<FindStaleUploadsError>()(
+	"FindStaleUploadsError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown.pipe(Schema.optional),
+	},
+) {}
 
-export class MarkUploadsFailedError extends Schema.TaggedError<MarkUploadsFailedError>()("MarkUploadsFailedError", {
-	message: Schema.String,
-	cause: Schema.Unknown.pipe(Schema.optional),
-}) {}
+export class MarkUploadsFailedError extends Schema.TaggedError<MarkUploadsFailedError>()(
+	"MarkUploadsFailedError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown.pipe(Schema.optional),
+	},
+) {}

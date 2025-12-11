@@ -178,7 +178,11 @@ export const MessageItem = memo(function MessageItem({
 								{linearUrls.map((url) => {
 									const issueKey = extractLinearIssueKey(url)
 									return issueKey && currentUser?.organizationId ? (
-										<LinearIssueEmbed key={url} url={url} orgId={currentUser.organizationId} />
+										<LinearIssueEmbed
+											key={url}
+											url={url}
+											orgId={currentUser.organizationId}
+										/>
 									) : null
 								})}
 								{/* Render last other URL as link preview */}

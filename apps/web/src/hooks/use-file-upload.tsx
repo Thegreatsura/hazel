@@ -137,7 +137,10 @@ export function useFileUpload({
 					if (uploadResult.errorType !== "aborted") {
 						// Mark attachment as failed in the database
 						await failUploadMutation({
-							payload: { id: attachmentId, reason: `R2 upload failed: ${uploadResult.errorType}` },
+							payload: {
+								id: attachmentId,
+								reason: `R2 upload failed: ${uploadResult.errorType}`,
+							},
 						})
 						const errorMessages = {
 							network: "Network error. Check your connection and try again.",
@@ -149,7 +152,9 @@ export function useFileUpload({
 						})
 					} else {
 						// Still mark as failed for aborted uploads
-						await failUploadMutation({ payload: { id: attachmentId, reason: "Upload cancelled" } })
+						await failUploadMutation({
+							payload: { id: attachmentId, reason: "Upload cancelled" },
+						})
 					}
 					return null
 				}
@@ -159,7 +164,9 @@ export function useFileUpload({
 
 				if (!Exit.isSuccess(completeRes)) {
 					// Mark attachment as failed in the database
-					await failUploadMutation({ payload: { id: attachmentId, reason: "Failed to finalize upload" } })
+					await failUploadMutation({
+						payload: { id: attachmentId, reason: "Failed to finalize upload" },
+					})
 					toast.error("Upload failed", {
 						description: "Failed to finalize upload. Please try again.",
 					})

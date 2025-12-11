@@ -1,7 +1,7 @@
 import { HttpApi, OpenApi } from "@effect/platform"
 import { AttachmentGroup } from "./attachments"
-import { AvatarGroup } from "./avatars"
 import { AuthGroup } from "./auth"
+import { AvatarGroup } from "./avatars"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
 import { IntegrationResourceGroup } from "./integration-resources"

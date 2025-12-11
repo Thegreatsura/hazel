@@ -44,7 +44,9 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* Effect.log(`Marking attachment ${id} as failed${reason ? `: ${reason}` : ""}`)
+							yield* Effect.log(
+								`Marking attachment ${id} as failed${reason ? `: ${reason}` : ""}`,
+							)
 
 							yield* AttachmentRepo.update({ id, status: "failed" }).pipe(
 								policyUse(AttachmentPolicy.canUpdate(id)),
