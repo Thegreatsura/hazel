@@ -95,7 +95,7 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.mutation("message.update", {
 		payload: Schema.Struct({
 			id: MessageId,
-		}).pipe(Schema.extend(Schema.partial(Message.Model.jsonUpdate))),
+		}).pipe(Schema.extend(Message.JsonUpdate)),
 		success: MessageResponse,
 		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),

@@ -184,17 +184,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 				/**
 				 * Update a message
-				 * @param message - The message to update (requires full message object)
+				 * @param message - The message to update (requires id)
 				 * @param content - New content
 				 */
 				update: (message: MessageType, content: string) =>
 					rpc.message
 						.update({
 							id: message.id,
-							channelId: message.channelId,
-							replyToMessageId: message.replyToMessageId,
-							threadChannelId: message.threadChannelId,
-							embeds: message.embeds,
 							content,
 						})
 						.pipe(Effect.map((r) => r.data)),
