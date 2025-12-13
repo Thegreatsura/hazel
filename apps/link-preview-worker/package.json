@@ -26,7 +26,7 @@
 		"metascraper-publisher": "^5.49.5",
 		"metascraper-title": "^5.49.5",
 		"metascraper-url": "^5.49.5",
-		"react-tweet": "^3.2.2"
+		"react-tweet": "^3.3.0"
 	},
 	"type": "module",
 	"main": "src/api.ts"

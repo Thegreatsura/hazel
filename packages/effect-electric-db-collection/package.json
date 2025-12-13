@@ -17,11 +17,11 @@
 	},
 	"dependencies": {
 		"@effect-atom/atom": "catalog:effect",
-		"@electric-sql/client": "^1.2.1",
+		"@electric-sql/client": "^1.2.2",
 		"@standard-schema/spec": "^1.0.0",
-		"@tanstack/db": "0.5.11",
-		"@tanstack/electric-db-collection": "0.2.12",
-		"@tanstack/react-db": "0.1.55",
+		"@tanstack/db": "0.5.12",
+		"@tanstack/electric-db-collection": "0.2.13",
+		"@tanstack/react-db": "0.1.56",
 		"@tanstack/store": "^0.8.0",
 		"effect": "catalog:effect"
 	},

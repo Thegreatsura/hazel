@@ -1,4 +1,4 @@
-import { getBrandfetchIcon } from "~/routes/_app/$orgSlug/settings/integrations/_data"
+import { getBrandfetchIcon } from "~/routes/_app/$orgSlug/settings/integrations/__data"
 
 export type EmbedProvider = "linear" | "github" | "figma" | "notion" | "openstatus" | "railway"
 

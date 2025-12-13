@@ -21,7 +21,7 @@ import {
 	getIntegrationById,
 	type Integration,
 	validIntegrationIds,
-} from "./_data"
+} from "./__data"
 
 type IntegrationProvider = IntegrationConnection.IntegrationProvider
 
