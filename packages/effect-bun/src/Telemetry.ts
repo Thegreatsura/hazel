@@ -86,8 +86,10 @@ export const createTracingLayer = (otelServiceName: string) =>
 				return DevTools.layerWebSocket().pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
 			}
 
+			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY")
+
 			return Otlp.layer({
-				baseUrl: "https://signoz.superwall.dev",
+				baseUrl: "https://ingest.eu.signoz.cloud:443/v1/traces",
 				resource: {
 					serviceName: otelServiceName,
 					serviceVersion: commitSha,
@@ -95,6 +97,9 @@ export const createTracingLayer = (otelServiceName: string) =>
 						"deployment.environment": environment,
 						"deployment.commit_sha": commitSha,
 					},
+				},
+				headers: {
+					"signoz-ingestion-key": ingestionKey,
 				},
 			}).pipe(Layer.provide(FetchHttpClient.layer))
 		}),
