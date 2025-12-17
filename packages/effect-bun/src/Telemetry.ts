@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
+import * as Otlp from "@effect/opentelemetry/Otlp"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import { BunSocket } from "@effect/platform-bun"
-import * as Otlp from "@hazel/effect-otel/Otlp"
 import { Config, Effect, Layer } from "effect"
 
 /**
@@ -11,22 +11,16 @@ import { Config, Effect, Layer } from "effect"
  * - OTEL_SERVICE_NAME (required): Service name for telemetry
  * - OTEL_ENVIRONMENT (default: "local"): Environment (local/staging/production)
  * - COMMIT_SHA (default: "unknown"): Git commit SHA for service version
- * - OTEL_SAMPLE_RATE (default: 1.0): Trace sampling rate (0.0 to 1.0)
  *
  * Behavior:
  * - local environment: Uses Effect DevTools WebSocket (ws://localhost:34437)
  * - other environments: Uses OTLP to SignOZ (https://signoz.superwall.dev)
  *
- * Sampling:
- * - Only affects traces (logs and metrics are always 100%)
- * - Root spans are sampled probabilistically based on OTEL_SAMPLE_RATE
- * - Child spans inherit sampling decision from parent
- *
  * @example
  * ```typescript
  * import { TracingLive } from "@hazel/effect-bun/Telemetry"
  *
- * // Set OTEL_SERVICE_NAME=my-service OTEL_SAMPLE_RATE=0.1
+ * // Set OTEL_SERVICE_NAME=my-service
  * Layer.launch(ServerLayer.pipe(Layer.provide(TracingLive)))
  * ```
  */
@@ -41,11 +35,9 @@ export const TracingLive = Layer.unwrapEffect(
 
 		const otelServiceName = yield* Config.string("OTEL_SERVICE_NAME")
 		const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY")
-		const sampleRate = yield* Config.number("OTEL_SAMPLE_RATE").pipe(Config.withDefault(1.0))
 
 		return Otlp.layer({
 			baseUrl: "https://ingest.eu.signoz.cloud",
-			sampleRate,
 			resource: {
 				serviceName: otelServiceName,
 				serviceVersion: commitSha,
@@ -67,16 +59,10 @@ export const TracingLive = Layer.unwrapEffect(
  * Environment variables:
  * - OTEL_ENVIRONMENT (default: "local"): Environment (local/staging/production)
  * - COMMIT_SHA (default: "unknown"): Git commit SHA for service version
- * - OTEL_SAMPLE_RATE (default: 1.0): Trace sampling rate (0.0 to 1.0)
  *
  * Behavior:
  * - local environment: Uses Effect DevTools WebSocket (ws://localhost:34437)
  * - other environments: Uses OTLP to SignOZ (https://signoz.superwall.dev)
- *
- * Sampling:
- * - Only affects traces (logs and metrics are always 100%)
- * - Root spans are sampled probabilistically based on OTEL_SAMPLE_RATE
- * - Child spans inherit sampling decision from parent
  *
  * @param otelServiceName - The service name to use for telemetry
  * @returns A Layer that provides tracing, metrics, and logging
@@ -85,7 +71,6 @@ export const TracingLive = Layer.unwrapEffect(
  * ```typescript
  * import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
  *
- * // Set OTEL_SAMPLE_RATE=0.1 for 10% sampling
  * const TracerLive = createTracingLayer("hazel-backend")
  *
  * Layer.launch(ServerLayer.pipe(Layer.provide(TracerLive)))
@@ -102,11 +87,9 @@ export const createTracingLayer = (otelServiceName: string) =>
 			}
 
 			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY")
-			const sampleRate = yield* Config.number("OTEL_SAMPLE_RATE").pipe(Config.withDefault(1.0))
 
 			return Otlp.layer({
-				baseUrl: "https://ingest.eu.signoz.cloud",
-				sampleRate,
+				baseUrl: "https://ingest.eu.signoz.cloud:443",
 				resource: {
 					serviceName: otelServiceName,
 					serviceVersion: commitSha,
