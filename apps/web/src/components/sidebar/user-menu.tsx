@@ -81,13 +81,13 @@ export function UserMenu() {
 					<MenuLabel>Profile</MenuLabel>
 				</MenuItemLink>
 				<MenuItemLink
-					to="/$orgSlug/settings"
+					to="/$orgSlug/my-settings"
 					params={{
 						orgSlug: orgSlug,
 					}}
 				>
 					<IconGear />
-					<MenuLabel>Settings</MenuLabel>
+					<MenuLabel>My Settings</MenuLabel>
 				</MenuItemLink>
 
 				<MenuSeparator />

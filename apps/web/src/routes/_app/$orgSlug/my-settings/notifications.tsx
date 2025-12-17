@@ -13,7 +13,7 @@ import { TextField } from "~/components/ui/text-field"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { cn } from "~/lib/utils"
 
-export const Route = createFileRoute("/_app/$orgSlug/settings/notifications")({
+export const Route = createFileRoute("/_app/$orgSlug/my-settings/notifications")({
 	component: NotificationSettings,
 })
 

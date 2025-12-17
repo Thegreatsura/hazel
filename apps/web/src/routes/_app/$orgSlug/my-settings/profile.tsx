@@ -16,7 +16,7 @@ import { updateUserAction } from "~/db/actions"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/lib/auth"
 
-export const Route = createFileRoute("/_app/$orgSlug/settings/profile")({
+export const Route = createFileRoute("/_app/$orgSlug/my-settings/profile")({
 	component: ProfileSettings,
 })
 

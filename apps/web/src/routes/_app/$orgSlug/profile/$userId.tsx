@@ -54,7 +54,7 @@ function ProfilePage() {
 					</div>
 					{isOwnProfile && (
 						<Link
-							to="/$orgSlug/settings/profile"
+							to="/$orgSlug/my-settings/profile"
 							params={{ orgSlug }}
 							className={buttonStyles({ intent: "secondary" })}
 						>
