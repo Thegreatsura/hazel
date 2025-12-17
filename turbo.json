@@ -31,8 +31,13 @@
 		"GITHUB_APP_ID",
 		"GITHUB_APP_PRIVATE_KEY",
 		"GITHUB_APP_SLUG",
-		"GITHUB_WEBHOOK_SECRET"
+		"GITHUB_WEBHOOK_SECRET",
+		"OTEL_ENVIRONMENT",
+		"SIGNOZ_INGESTION_KEY",
+		"OTEL_SERVICE_NAME",
+		"RAILWAY_COMMIT_SHA"
 	],
+	"ui": "tui",
 	"tasks": {
 		"build": {
 			"outputs": [
