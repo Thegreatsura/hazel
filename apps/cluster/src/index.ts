@@ -90,7 +90,6 @@ const ServerLayer = HttpApiBuilder.serve(
 	Layer.provide(WorkflowApiLive),
 	Layer.provide(AllWorkflows),
 	Layer.provide(AllCronJobs),
-	Layer.provide(TracerLive),
 	Layer.provide(Logger.pretty),
 	Layer.provide(
 		BunHttpServer.layerConfig(
@@ -103,4 +102,6 @@ const ServerLayer = HttpApiBuilder.serve(
 	),
 )
 
-Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer))).pipe(BunRuntime.runMain)
+Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer), Layer.provide(TracerLive))).pipe(
+	BunRuntime.runMain,
+)
