@@ -212,7 +212,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							// 1. Find the message and get its channelId
-							const message = yield* MessageRepo.findById(messageId)
+							const message = yield* MessageRepo.findById(messageId).pipe(withSystemActor)
 
 							if (Option.isNone(message)) {
 								return yield* Effect.fail(new MessageNotFoundError({ messageId }))
