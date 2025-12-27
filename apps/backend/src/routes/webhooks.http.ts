@@ -137,7 +137,10 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							const channelResult = yield* db
 								.execute((client) =>
 									client
-										.select({ type: schema.channelsTable.type, name: schema.channelsTable.name })
+										.select({
+											type: schema.channelsTable.type,
+											name: schema.channelsTable.name,
+										})
 										.from(schema.channelsTable)
 										.where(eq(schema.channelsTable.id, event.record.channelId))
 										.limit(1),
@@ -220,7 +223,10 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											.from(schema.messagesTable)
 											.where(
 												and(
-													eq(schema.messagesTable.channelId, event.record.channelId),
+													eq(
+														schema.messagesTable.channelId,
+														event.record.channelId,
+													),
 													isNull(schema.messagesTable.deletedAt),
 												),
 											),
@@ -240,7 +246,10 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 												.select({ id: schema.messagesTable.id })
 												.from(schema.messagesTable)
 												.where(
-													eq(schema.messagesTable.threadChannelId, event.record.channelId),
+													eq(
+														schema.messagesTable.threadChannelId,
+														event.record.channelId,
+													),
 												)
 												.limit(1),
 										)
@@ -260,10 +269,13 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											})
 											.pipe(
 												Effect.tapError((err) =>
-													Effect.logError("Failed to execute thread naming workflow", {
-														error: err.message,
-														threadChannelId: event.record.channelId,
-													}),
+													Effect.logError(
+														"Failed to execute thread naming workflow",
+														{
+															error: err.message,
+															threadChannelId: event.record.channelId,
+														},
+													),
 												),
 												Effect.catchAll(() => Effect.void), // Don't fail the main flow
 											)

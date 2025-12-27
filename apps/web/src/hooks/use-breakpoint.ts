@@ -1,4 +1,4 @@
-import { useMediaQuery } from "./use-media-query";
+import { useMediaQuery } from "./use-media-query"
 
 const screens = {
 	sm: "640px",
@@ -6,7 +6,7 @@ const screens = {
 	lg: "1024px",
 	xl: "1280px",
 	"2xl": "1536px",
-};
+}
 
 /**
  * Checks whether a particular Tailwind CSS viewport size applies.
@@ -17,5 +17,5 @@ const screens = {
  * @returns A boolean indicating whether the viewport size applies.
  */
 export const useBreakpoint = (size: "sm" | "md" | "lg" | "xl" | "2xl") => {
-	return useMediaQuery(`(min-width: ${screens[size]})`);
-};
+	return useMediaQuery(`(min-width: ${screens[size]})`)
+}

@@ -134,7 +134,7 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 								),
 							)
 							.orderBy(schema.messagesTable.createdAt)
-							.limit(10), 
+							.limit(10),
 					)
 					.pipe(
 						Effect.catchTags({

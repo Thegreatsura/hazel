@@ -174,6 +174,11 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.mutation("channel.generateName", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ success: Schema.Boolean }),
-		error: Schema.Union(ChannelNotFoundError, MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(
+			ChannelNotFoundError,
+			MessageNotFoundError,
+			UnauthorizedError,
+			InternalServerError,
+		),
 	}).middleware(AuthMiddleware),
 ) {}

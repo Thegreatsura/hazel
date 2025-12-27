@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react";
+import { Atom } from "@effect-atom/atom-react"
 
 /**
  * Supported modal types in the application
@@ -13,17 +13,17 @@ const MODAL_TYPES = [
 	"email-invite",
 	"create-organization",
 	"command-palette",
-] as const;
+] as const
 
-export type ModalType = (typeof MODAL_TYPES)[number];
+export type ModalType = (typeof MODAL_TYPES)[number]
 
 /**
  * Modal state interface
  */
 interface ModalState {
-	type: ModalType;
-	isOpen: boolean;
-	metadata?: Record<string, unknown>;
+	type: ModalType
+	isOpen: boolean
+	metadata?: Record<string, unknown>
 }
 
 /**
@@ -36,7 +36,7 @@ export const modalAtomFamily = Atom.family((type: ModalType) =>
 		isOpen: false,
 		metadata: undefined,
 	}).pipe(Atom.keepAlive),
-);
+)
 
 /**
  * Derived atom that tracks all open modals
@@ -45,24 +45,21 @@ export const modalAtomFamily = Atom.family((type: ModalType) =>
 export const openModalsAtom = Atom.make((get) => {
 	return MODAL_TYPES.map((type) => get(modalAtomFamily(type)))
 		.filter((modal) => modal.isOpen)
-		.map((modal) => modal.type);
-}).pipe(Atom.keepAlive);
+		.map((modal) => modal.type)
+}).pipe(Atom.keepAlive)
 
 /**
  * Helper function to open a modal imperatively
  */
-export const openModal = (
-	type: ModalType,
-	metadata?: Record<string, unknown>,
-) => {
+export const openModal = (type: ModalType, metadata?: Record<string, unknown>) => {
 	Atom.batch(() => {
 		return Atom.update(modalAtomFamily(type), (state) => ({
 			...state,
 			isOpen: true,
 			metadata,
-		}));
-	});
-};
+		}))
+	})
+}
 
 /**
  * Helper function to close a modal imperatively
@@ -73,9 +70,9 @@ export const closeModal = (type: ModalType) => {
 			...state,
 			isOpen: false,
 			metadata: undefined,
-		}));
-	});
-};
+		}))
+	})
+}
 
 /**
  * Helper function to close all modals
@@ -87,7 +84,7 @@ export const closeAllModals = () => {
 				...state,
 				isOpen: false,
 				metadata: undefined,
-			}));
+			}))
 		}
-	});
-};
+	})
+}

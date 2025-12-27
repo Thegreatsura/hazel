@@ -1,53 +1,50 @@
-import { useAtomSet } from "@effect-atom/atom-react";
-import type { Channel, ChannelMember } from "@hazel/db/schema";
-import type { ChannelId } from "@hazel/schema";
-import { Link } from "@tanstack/react-router";
-import { Exit } from "effect";
-import { useState } from "react";
-import { toast } from "sonner";
-import { generateThreadNameMutation } from "~/atoms/channel-atoms";
-import IconBranch from "~/components/icons/icon-branch";
-import IconDots from "~/components/icons/icon-dots";
-import IconEdit from "~/components/icons/icon-edit";
-import IconLeave from "~/components/icons/icon-leave";
-import IconPenSparkle from "~/components/icons/icon-pen-sparkle";
-import IconVolume from "~/components/icons/icon-volume";
-import IconVolumeMute from "~/components/icons/icon-volume-mute";
-import { RenameThreadModal } from "~/components/modals/rename-thread-modal";
-import { Button } from "~/components/ui/button";
-import { Menu, MenuContent, MenuItem, MenuLabel } from "~/components/ui/menu";
-import { useChannelMemberActions } from "~/hooks/use-channel-member-actions";
-import { useOrganization } from "~/hooks/use-organization";
+import { useAtomSet } from "@effect-atom/atom-react"
+import type { Channel, ChannelMember } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
+import { Link } from "@tanstack/react-router"
+import { Exit } from "effect"
+import { useState } from "react"
+import { toast } from "sonner"
+import { generateThreadNameMutation } from "~/atoms/channel-atoms"
+import IconBranch from "~/components/icons/icon-branch"
+import IconDots from "~/components/icons/icon-dots"
+import IconEdit from "~/components/icons/icon-edit"
+import IconLeave from "~/components/icons/icon-leave"
+import IconPenSparkle from "~/components/icons/icon-pen-sparkle"
+import IconVolume from "~/components/icons/icon-volume"
+import IconVolumeMute from "~/components/icons/icon-volume-mute"
+import { RenameThreadModal } from "~/components/modals/rename-thread-modal"
+import { Button } from "~/components/ui/button"
+import { Menu, MenuContent, MenuItem, MenuLabel } from "~/components/ui/menu"
+import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
+import { useOrganization } from "~/hooks/use-organization"
 
 interface ThreadItemProps {
-	thread: Omit<Channel, "updatedAt"> & { updatedAt: Date | null };
-	member: ChannelMember;
+	thread: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
+	member: ChannelMember
 }
 
 export function ThreadItem({ thread, member }: ThreadItemProps) {
-	const { slug } = useOrganization();
-	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
-	const [isGenerating, setIsGenerating] = useState(false);
+	const { slug } = useOrganization()
+	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+	const [isGenerating, setIsGenerating] = useState(false)
 
-	const { handleToggleMute, handleLeave } = useChannelMemberActions(
-		member,
-		"thread",
-	);
+	const { handleToggleMute, handleLeave } = useChannelMemberActions(member, "thread")
 	const generateName = useAtomSet(generateThreadNameMutation, {
 		mode: "promiseExit",
-	});
+	})
 
 	const handleGenerateName = async () => {
-		setIsGenerating(true);
+		setIsGenerating(true)
 		const exit = await generateName({
 			payload: { channelId: thread.id as ChannelId },
-		});
-		setIsGenerating(false);
+		})
+		setIsGenerating(false)
 
 		if (Exit.isFailure(exit)) {
-			toast.error("Failed to generate thread name");
+			toast.error("Failed to generate thread name")
 		}
-	};
+	}
 
 	return (
 		<div className="group/thread-item relative col-span-full grid grid-cols-[auto_1fr] items-center gap-2 pl-2">
@@ -80,9 +77,7 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 					</MenuItem>
 					<MenuItem onAction={handleGenerateName} isDisabled={isGenerating}>
 						<IconPenSparkle className="size-4" />
-						<MenuLabel>
-							{isGenerating ? "Generating..." : "Generate name"}
-						</MenuLabel>
+						<MenuLabel>{isGenerating ? "Generating..." : "Generate name"}</MenuLabel>
 					</MenuItem>
 					<MenuItem onAction={() => setIsRenameModalOpen(true)}>
 						<IconEdit className="size-4" />
@@ -100,5 +95,5 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 				onOpenChange={setIsRenameModalOpen}
 			/>
 		</div>
-	);
+	)
 }
