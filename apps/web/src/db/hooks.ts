@@ -68,6 +68,28 @@ export const useChannel = (channelId: ChannelId) => {
 	}
 }
 
+/**
+ * Hook to fetch a parent channel by ID (used for thread breadcrumbs)
+ * Only fetches the channel itself, not members
+ */
+export const useParentChannel = (parentChannelId: ChannelId | null) => {
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			parentChannelId
+				? q
+						.from({ channel: channelCollection })
+						.where((t) => eq(t.channel.id, parentChannelId))
+						.findOne()
+				: null,
+		[parentChannelId],
+	)
+
+	return {
+		parentChannel: data ?? null,
+		...rest,
+	}
+}
+
 export const useChannelWithCurrentUser = (channelId: ChannelId) => {
 	const { user } = useAuth()
 

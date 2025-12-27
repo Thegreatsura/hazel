@@ -1,10 +1,14 @@
 import type { UserId } from "@hazel/schema"
+import { ChevronRightIcon } from "@heroicons/react/20/solid"
+import { Link } from "@tanstack/react-router"
 import { ChannelIcon } from "~/components/channel-icon"
 import { Avatar } from "~/components/ui/avatar"
 import { useSidebar } from "~/components/ui/sidebar"
-import { useChannel } from "~/db/hooks"
+import { useChannel, useParentChannel } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
+import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
+import IconThread from "../icons/icon-thread"
 import { IconMenu } from "../icons/icon-menu"
 import { PinnedMessagesModal } from "./pinned-messages-modal"
 
@@ -37,6 +41,11 @@ export function ChatHeader() {
 	const { user } = useAuth()
 	const { channel } = useChannel(channelId)
 	const { isMobile, setIsOpenOnMobile } = useSidebar()
+	const { slug } = useOrganization()
+
+	// Determine if this is a thread and fetch parent channel data
+	const isThread = channel?.type === "thread"
+	const { parentChannel } = useParentChannel(isThread ? channel.parentChannelId : null)
 
 	if (!channel) {
 		return (
@@ -70,7 +79,30 @@ export function ChatHeader() {
 						<IconMenu className="size-5" />
 					</button>
 				)}
-				{isDirectMessage ? (
+				{isThread ? (
+					<div className="flex items-center gap-2">
+						{/* Parent channel link */}
+						{parentChannel && channel.parentChannelId && (
+							<Link
+								to="/$orgSlug/chat/$id"
+								params={{ orgSlug: slug, id: channel.parentChannelId }}
+								className="flex items-center gap-1.5 text-muted-fg transition-colors hover:text-fg"
+							>
+								<ChannelIcon icon={parentChannel.icon} className="size-4" />
+								<span className="text-sm">{parentChannel.name}</span>
+							</Link>
+						)}
+
+						{/* Breadcrumb separator */}
+						<ChevronRightIcon className="size-4 shrink-0 text-muted-fg" />
+
+						{/* Thread indicator with name */}
+						<div className="flex items-center gap-1.5">
+							<IconThread className="size-4 shrink-0 text-muted-fg" />
+							<h2 className="truncate font-semibold text-fg text-sm">{channel.name}</h2>
+						</div>
+					</div>
+				) : isDirectMessage ? (
 					<>
 						{otherMembers && otherMembers.length > 0 && otherMembers[0] && (
 							<OtherMemberAvatar member={otherMembers[0]} />
