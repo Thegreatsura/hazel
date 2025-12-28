@@ -4,7 +4,8 @@ import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo } from "react"
+import { ColorSwatch } from "react-aria-components"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { type CommandPalettePage, commandPaletteAtom } from "~/atoms/command-palette-atoms"
 import { useModal } from "~/atoms/modal-atoms"
@@ -31,7 +32,9 @@ import { usePresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
+import { cn } from "~/lib/utils"
 import { ChannelIcon } from "./channel-icon"
+import { type Theme, useTheme } from "./theme-provider"
 import IconBell from "./icons/icon-bell"
 import IconCircleDottedUser from "./icons/icon-circle-dotted-user"
 import IconDashboard from "./icons/icon-dashboard"
@@ -43,7 +46,7 @@ import { IconServers } from "./icons/icon-servers"
 import IconUsersPlus from "./icons/icon-users-plus"
 import { Avatar } from "./ui/avatar"
 
-type Page = "home" | "channels" | "members" | "status"
+type Page = "home" | "channels" | "members" | "status" | "appearance"
 
 export function CommandPalette(
 	props: Pick<CommandMenuProps, "isOpen" | "onOpenChange"> & { initialPage?: CommandPalettePage },
@@ -129,6 +132,8 @@ export function CommandPalette(
 				return "Search members..."
 			case "status":
 				return "Set your status..."
+			case "appearance":
+				return "Change appearance..."
 			default:
 				return "Where would you like to go?"
 		}
@@ -151,6 +156,7 @@ export function CommandPalette(
 				{currentPage === "channels" && <ChannelsView onClose={closePalette} />}
 				{currentPage === "members" && <MembersView onClose={closePalette} />}
 				{currentPage === "status" && <StatusView onClose={closePalette} />}
+				{currentPage === "appearance" && <AppearanceView onClose={closePalette} />}
 			</CommandMenuList>
 		</CommandMenu>
 	)
@@ -387,11 +393,18 @@ function HomeView({
 				</CommandMenuItem>
 			</CommandMenuSection>
 
-			{/* Status */}
-			<CommandMenuSection label="Status">
+			{/* Preferences */}
+			<CommandMenuSection label="Preferences">
 				<CommandMenuItem onAction={() => navigateToPage("status")} textValue="set status presence">
 					<IconCircleDottedUser />
 					<CommandMenuLabel>Set status...</CommandMenuLabel>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => navigateToPage("appearance")}
+					textValue="appearance theme dark light mode"
+				>
+					<IconGear />
+					<CommandMenuLabel>Change appearance...</CommandMenuLabel>
 				</CommandMenuItem>
 			</CommandMenuSection>
 		</>
@@ -552,21 +565,18 @@ function MembersView({ onClose }: { onClose: () => void }) {
 
 type PresenceStatus = "online" | "away" | "busy" | "dnd"
 
-const STATUS_OPTIONS: { value: PresenceStatus; label: string; icon: string; description: string }[] = [
-	{ value: "online", label: "Online", icon: "🟢", description: "Available and active" },
-	{ value: "away", label: "Away", icon: "🟡", description: "Stepped away temporarily" },
-	{ value: "busy", label: "Busy", icon: "🔴", description: "Focused, limit interruptions" },
-	{ value: "dnd", label: "Do Not Disturb", icon: "⛔", description: "No notifications" },
+const STATUS_OPTIONS: { value: PresenceStatus; label: string; color: string; description: string }[] = [
+	{ value: "online", label: "Online", color: "bg-success", description: "Available and active" },
+	{ value: "away", label: "Away", color: "bg-warning", description: "Stepped away temporarily" },
+	{ value: "busy", label: "Busy", color: "bg-warning", description: "Focused, limit interruptions" },
+	{ value: "dnd", label: "Do Not Disturb", color: "bg-danger", description: "No notifications" },
 ]
 
 function StatusView({ onClose }: { onClose: () => void }) {
-	const { status, setStatus, customMessage } = usePresence()
-	const [selectedStatus, setSelectedStatus] = useState<PresenceStatus | null>(null)
-	const [message, setMessage] = useState(customMessage || "")
+	const { status, setStatus } = usePresence()
 
 	const handleStatusSelect = async (newStatus: PresenceStatus) => {
-		setSelectedStatus(newStatus)
-		await setStatus(newStatus, message || undefined)
+		await setStatus(newStatus)
 		onClose()
 	}
 
@@ -578,7 +588,7 @@ function StatusView({ onClose }: { onClose: () => void }) {
 					textValue={`${option.label} ${option.description}`}
 					onAction={() => handleStatusSelect(option.value)}
 				>
-					<span className="text-base">{option.icon}</span>
+					<span className={cn("size-3 shrink-0 rounded-full", option.color)} data-slot="icon" />
 					<CommandMenuLabel>
 						{option.label}
 						{status === option.value && (
@@ -588,5 +598,93 @@ function StatusView({ onClose }: { onClose: () => void }) {
 				</CommandMenuItem>
 			))}
 		</CommandMenuSection>
+	)
+}
+
+const THEME_OPTIONS: { value: Theme; label: string; icon: React.ReactNode }[] = [
+	{
+		value: "system",
+		label: "System",
+		icon: (
+			<div className="flex size-4 overflow-hidden rounded-sm" data-slot="icon">
+				<div className="w-1/2 bg-white" />
+				<div className="w-1/2 bg-zinc-900" />
+			</div>
+		),
+	},
+	{
+		value: "light",
+		label: "Light",
+		icon: <div className="size-4 rounded-sm border border-zinc-200 bg-white" data-slot="icon" />,
+	},
+	{
+		value: "dark",
+		label: "Dark",
+		icon: <div className="size-4 rounded-sm border border-zinc-700 bg-zinc-900" data-slot="icon" />,
+	},
+]
+
+const COLOR_SWATCHES = [
+	{ hex: "#535862", name: "gray" },
+	{ hex: "#099250", name: "green" },
+	{ hex: "#1570EF", name: "blue" },
+	{ hex: "#444CE7", name: "indigo" },
+	{ hex: "#6938EF", name: "purple" },
+	{ hex: "#BA24D5", name: "fuchsia" },
+	{ hex: "#DD2590", name: "pink" },
+	{ hex: "#E04F16", name: "orange" },
+]
+
+function AppearanceView({ onClose }: { onClose: () => void }) {
+	const { theme, setTheme, brandColor, setBrandColor } = useTheme()
+
+	const handleThemeSelect = (newTheme: Theme) => {
+		setTheme(newTheme)
+		onClose()
+	}
+
+	const handleColorSelect = (hex: string) => {
+		setBrandColor(hex)
+		onClose()
+	}
+
+	return (
+		<>
+			<CommandMenuSection label="Theme">
+				{THEME_OPTIONS.map((option) => (
+					<CommandMenuItem
+						key={option.value}
+						textValue={`${option.label} theme mode`}
+						onAction={() => handleThemeSelect(option.value)}
+					>
+						{option.icon}
+						<CommandMenuLabel>
+							{option.label}
+							{theme === option.value && (
+								<span className="ml-2 text-muted-fg text-xs">(current)</span>
+							)}
+						</CommandMenuLabel>
+					</CommandMenuItem>
+				))}
+			</CommandMenuSection>
+
+			<CommandMenuSection label="Accent Color">
+				<div className="col-span-full flex gap-2 px-2 py-1.5">
+					{COLOR_SWATCHES.map((swatch) => (
+						<button
+							key={swatch.hex}
+							type="button"
+							onClick={() => handleColorSelect(swatch.hex)}
+							className={cn(
+								"size-6 cursor-pointer rounded-full outline-1 outline-black/10 -outline-offset-1 transition-all hover:scale-110",
+								brandColor === swatch.hex && "ring-2 ring-ring ring-offset-2 ring-offset-bg",
+							)}
+						>
+							<ColorSwatch color={swatch.hex} className="size-full rounded-full" />
+						</button>
+					))}
+				</div>
+			</CommandMenuSection>
+		</>
 	)
 }

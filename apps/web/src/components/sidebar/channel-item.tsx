@@ -6,7 +6,7 @@ import { ChannelIcon } from "~/components/channel-icon"
 import IconDots from "~/components/icons/icon-dots"
 import IconGear from "~/components/icons/icon-gear"
 import IconLeave from "~/components/icons/icon-leave"
-import IconStar from "~/components/icons/icon-star"
+import { IconStar } from "~/components/icons/icon-star"
 import IconTrash from "~/components/icons/icon-trash"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
@@ -86,7 +86,11 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
 						</MenuItem>
 						<MenuItem onAction={handleToggleFavorite}>
-							<IconStar className={member.isFavorite ? "size-4 text-favorite" : "size-4"} />
+							<IconStar
+								className={
+									member.isFavorite ? "size-4 text-favorite" : "size-4 text-muted-fg"
+								}
+							/>
 							<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />

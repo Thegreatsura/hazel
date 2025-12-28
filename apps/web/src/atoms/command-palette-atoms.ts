@@ -3,7 +3,7 @@ import { Atom } from "@effect-atom/atom-react"
 /**
  * Available pages in the command palette
  */
-export type CommandPalettePage = "home" | "channels" | "members" | "status"
+export type CommandPalettePage = "home" | "channels" | "members" | "status" | "appearance"
 
 /**
  * Command palette navigation state interface
