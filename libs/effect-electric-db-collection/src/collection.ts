@@ -229,7 +229,7 @@ export function effectElectricCollectionOptions(
 		return Effect.tryPromise({
 			try: () => standardConfig.utils.awaitTxId(txid, timeout),
 			catch: (error) => {
-				if (error instanceof Error && error.message.includes("timeout")) {
+				if (error instanceof Error && error.message.toLowerCase().includes("timeout")) {
 					return new TxIdTimeoutError({
 						message: `Timeout waiting for txid ${txid}`,
 						txid,

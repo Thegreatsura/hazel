@@ -27,9 +27,10 @@ interface ThreadPanelProps {
 	originalMessageId: MessageId
 	organizationId: OrganizationId
 	onClose: () => void
+	isCreating?: boolean
 }
 
-function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPanelProps) {
+function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating }: ThreadPanelProps) {
 	const { data: originalMessage } = useMessage(originalMessageId)
 	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
 	const [isGenerating, setIsGenerating] = useState(false)
@@ -136,8 +137,17 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 
 			{/* Thread Composer */}
 			<div className="border-border border-t bg-bg px-4 py-3">
-				<SlateMessageComposer placeholder="Reply in thread..." />
-				<TypingIndicator />
+				{isCreating ? (
+					<div className="flex items-center justify-center gap-2 py-3 text-muted-fg text-sm">
+						<Loader className="size-4" />
+						Creating thread...
+					</div>
+				) : (
+					<>
+						<SlateMessageComposer placeholder="Reply in thread..." />
+						<TypingIndicator />
+					</>
+				)}
 			</div>
 
 			<RenameThreadModal
@@ -154,6 +164,7 @@ export function ThreadPanel({
 	originalMessageId,
 	onClose,
 	organizationId,
+	isCreating,
 }: ThreadPanelProps) {
 	return (
 		<ChatProvider channelId={threadChannelId} organizationId={organizationId}>
@@ -162,6 +173,7 @@ export function ThreadPanel({
 				threadChannelId={threadChannelId}
 				originalMessageId={originalMessageId}
 				onClose={onClose}
+				isCreating={isCreating}
 			/>
 		</ChatProvider>
 	)

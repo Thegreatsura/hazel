@@ -7,7 +7,7 @@ export const ChannelType = Schema.Literal("public", "private", "thread", "direct
 export type ChannelType = Schema.Schema.Type<typeof ChannelType>
 
 export class Model extends M.Class<Model>("Channel")({
-	id: M.Generated(ChannelId),
+	id: M.GeneratedOptional(ChannelId),
 	name: Schema.String,
 	icon: Schema.NullOr(ChannelIcon),
 	type: ChannelType,

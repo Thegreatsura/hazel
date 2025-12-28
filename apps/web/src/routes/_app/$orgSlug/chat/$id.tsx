@@ -54,7 +54,8 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 })
 
 function ChatLayout() {
-	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId } = useChat()
+	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId, isThreadCreating } =
+		useChat()
 	const { orgSlug } = Route.useParams()
 
 	// Get persisted panel width via hook
@@ -93,6 +94,7 @@ function ChatLayout() {
 						threadChannelId={activeThreadChannelId}
 						originalMessageId={activeThreadMessageId}
 						onClose={closeThread}
+						isCreating={isThreadCreating}
 					/>
 				)}
 			</SplitPanel>

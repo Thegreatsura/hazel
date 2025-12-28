@@ -11,7 +11,7 @@ import {
 } from "@hazel/schema"
 import { Exit } from "effect"
 import { toast } from "sonner"
-import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react"
 import {
 	activeThreadChannelIdAtom,
 	activeThreadMessageIdAtom,
@@ -50,6 +50,7 @@ interface ChatContextValue {
 	closeThread: () => void
 	activeThreadChannelId: ChannelId | null
 	activeThreadMessageId: MessageId | null
+	isThreadCreating: boolean
 	replyToMessageId: MessageId | null
 	setReplyToMessageId: (messageId: MessageId | null) => void
 	attachmentIds: AttachmentId[]
@@ -111,6 +112,10 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 	const channelResult = useAtomValue(channelByIdAtomFamily(channelId))
 	const channel = Result.getOrElse(channelResult, () => undefined)
+
+	// Track pending thread creation to disable composer until thread is created
+	const [pendingThreadChannelId, setPendingThreadChannelId] = useState<ChannelId | null>(null)
+	const isThreadCreating = pendingThreadChannelId === activeThreadChannelId && pendingThreadChannelId !== null
 
 	const addAttachment = useCallback(
 		(attachmentId: AttachmentId) => {
@@ -337,6 +342,9 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				setActiveThreadChannelId(threadChannelId)
 				setActiveThreadMessageId(messageId)
 
+				// Track that this thread is being created (disables composer)
+				setPendingThreadChannelId(threadChannelId)
+
 				// Create thread in background
 				const exit = await createThreadMutation({
 					threadChannelId,
@@ -345,6 +353,9 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 					organizationId,
 					currentUserId: UserId.make(user.id),
 				})
+
+				// Clear pending state
+				setPendingThreadChannelId(null)
 
 				toastExitOnError(exit, {
 					error: "Failed to create thread",
@@ -410,6 +421,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			closeThread,
 			activeThreadChannelId,
 			activeThreadMessageId,
+			isThreadCreating,
 			replyToMessageId,
 			setReplyToMessageId,
 			attachmentIds,
@@ -439,6 +451,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			closeThread,
 			activeThreadChannelId,
 			activeThreadMessageId,
+			isThreadCreating,
 			replyToMessageId,
 			setReplyToMessageId,
 			attachmentIds,

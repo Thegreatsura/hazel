@@ -88,6 +88,30 @@ export const Generated = <S extends Schema.Schema.All | Schema.PropertySignature
 		json: schema,
 	})
 
+export interface GeneratedOptional<S extends Schema.Schema.All>
+	extends VariantSchema.Field<{
+		readonly select: S
+		readonly insert: Schema.optionalWith<S, { exact: true }>
+		readonly update: S
+		readonly json: S
+		readonly jsonCreate: Schema.optionalWith<S, { exact: true }>
+	}> {}
+
+/**
+ * A field for database-generated columns that can optionally be overridden on insert.
+ * Useful for supporting optimistic updates where the client generates the ID upfront.
+ * - Required for select, update, and json
+ * - Optional for insert and jsonCreate (if not provided, DB generates the value)
+ */
+export const GeneratedOptional = <S extends Schema.Schema.All>(schema: S): GeneratedOptional<S> =>
+	Field({
+		select: schema,
+		insert: Schema.optionalWith(schema, { exact: true }),
+		update: schema,
+		json: schema,
+		jsonCreate: Schema.optionalWith(schema, { exact: true }),
+	})
+
 export interface GeneratedByApp<
 	S extends Schema.Schema.All | Schema.PropertySignature.All,
 > extends VariantSchema.Field<{

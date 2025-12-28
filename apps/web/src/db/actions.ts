@@ -321,10 +321,11 @@ export const toggleReactionAction = optimisticAction({
 })
 
 export const createThreadAction = optimisticAction({
+	// Only sync on channel and member collections
+	// The message UPDATE (threadChannelId) will sync eventually but doesn't need to block
 	collections: {
 		channel: channelCollection,
 		members: channelMemberCollection,
-		messages: messageCollection,
 	},
 	runtime: runtime,
 
@@ -406,7 +407,6 @@ export const updateUserAction = optimisticAction({
 		avatarUrl?: string
 		timezone?: string | null
 	}) => {
-		console.log("user", userCollection.state.get(props.userId))
 		userCollection.update(props.userId, (draft) => {
 			if (props.firstName !== undefined) draft.firstName = props.firstName
 			if (props.lastName !== undefined) draft.lastName = props.lastName
