@@ -493,10 +493,8 @@ export function optimisticAction<
 				},
 			})
 
-			console.log("Optimistic action result:", result)
-
 			return {
-				data: result as TSuccess,
+				data: mutationResult.data,
 				mutateResult,
 				transactionId: mutationResult.transactionId,
 			}

@@ -66,7 +66,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 							to: "/$orgSlug/chat/$id",
 							params: {
 								orgSlug: slug,
-								id: result.mutateResult.channelId,
+								id: result.data.channelId,
 							},
 						})
 

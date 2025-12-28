@@ -1,9 +1,10 @@
 # Today
 
 - test github subscribe to channel stuff
+ - connection not working reliably
+- fix icons to all be outline or fill
 - setup sequin locally with config as code
 - fix tabs active state not working in my settings
-- enhance cmdk and make it more useful
 
 # Bugs
 

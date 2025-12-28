@@ -3,7 +3,22 @@ import { Atom } from "@effect-atom/atom-react"
 /**
  * Available pages in the command palette
  */
-export type CommandPalettePage = "home" | "channels" | "members" | "status" | "appearance"
+export type CommandPalettePage =
+	| "home"
+	| "channels"
+	| "members"
+	| "status"
+	| "appearance"
+	| "create-channel"
+	| "join-channel"
+
+/**
+ * Check if a page is a form page (vs a list page)
+ * Form pages don't use the Autocomplete search input and render outside CommandMenuList
+ */
+export const isFormPage = (page: CommandPalettePage): boolean => {
+	return page === "create-channel" || page === "join-channel"
+}
 
 /**
  * Command palette navigation state interface

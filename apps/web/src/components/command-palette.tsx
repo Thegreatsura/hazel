@@ -754,9 +754,6 @@ function CreateChannelView({ onClose, onBack }: { onClose: () => void; onBack: (
 			{
 				loading: "Creating channel...",
 				success: (result) => {
-					console.log("Channel create result:", result)
-					console.log("result.data:", result.data)
-					console.log("result.mutateResult:", result.mutateResult)
 					navigate({
 						to: "/$orgSlug/chat/$id",
 						params: {

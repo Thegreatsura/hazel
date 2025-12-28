@@ -37,6 +37,7 @@ import { MenuDescription, MenuItem, MenuLabel, type MenuSectionProps, MenuSepara
 interface CommandMenuProviderProps {
 	isPending?: boolean
 	escapeButton?: boolean
+	isFormPage?: boolean
 }
 
 const CommandMenuContext = createContext<CommandMenuProviderProps | undefined>(undefined)
@@ -68,6 +69,8 @@ interface CommandMenuProps extends AutocompleteProps, MenuTriggerProps, CommandM
 	isBlurred?: boolean
 	className?: string
 	size?: keyof typeof sizes
+	/** When true, renders children directly without Autocomplete wrapper (for form pages) */
+	isFormPage?: boolean
 }
 
 const CommandMenu = ({
@@ -79,6 +82,7 @@ const CommandMenu = ({
 	size = "lg",
 	isBlurred,
 	shortcut,
+	isFormPage = false,
 	...props
 }: CommandMenuProps) => {
 	const { contains } = useFilter({ sensitivity: "base" })
@@ -92,7 +96,7 @@ const CommandMenu = ({
 	})
 
 	return (
-		<CommandMenuContext value={{ isPending: isPending, escapeButton: escapeButton }}>
+		<CommandMenuContext value={{ isPending: isPending, escapeButton: escapeButton, isFormPage }}>
 			<ModalContext value={{ isOpen: props.isOpen, onOpenChange: onOpenChange }}>
 				<ModalOverlay
 					isDismissable={isDismissable}
@@ -120,7 +124,13 @@ const CommandMenu = ({
 							aria-label={props["aria-label"] ?? "Command Menu"}
 							className="flex max-h-[inherit] flex-col overflow-hidden outline-hidden"
 						>
-							<Autocomplete filter={filter} {...props} />
+							{isFormPage ? (
+								// For form pages, render children directly without Autocomplete wrapper
+								props.children
+							) : (
+								// For list pages, use Autocomplete for search/filter functionality
+								<Autocomplete filter={filter} {...props} />
+							)}
 						</Dialog>
 					</Modal>
 				</ModalOverlay>
