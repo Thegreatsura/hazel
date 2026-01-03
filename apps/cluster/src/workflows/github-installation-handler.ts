@@ -61,7 +61,9 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 					)
 
 				if (connections.length === 0) {
-					yield* Effect.logDebug(`No connection found for installation ID ${payload.installationId}`)
+					yield* Effect.logDebug(
+						`No connection found for installation ID ${payload.installationId}`,
+					)
 					return { found: false, connection: null }
 				}
 

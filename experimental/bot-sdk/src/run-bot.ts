@@ -103,7 +103,9 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 		// Compose additional layers if provided
 		const additionalLayers =
 			options.layers && options.layers.length > 0
-				? Layer.mergeAll(...(options.layers as [Layer.Layer<any, any, any>, ...Layer.Layer<any, any, any>[]]))
+				? Layer.mergeAll(
+						...(options.layers as [Layer.Layer<any, any, any>, ...Layer.Layer<any, any, any>[]]),
+					)
 				: Layer.empty
 
 		// Create the bot program

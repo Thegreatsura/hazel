@@ -17,9 +17,7 @@ import { Config } from "effect"
  * - REDIS_URL (optional) - Redis URL for command delivery
  */
 export const BotEnvConfig = Config.all({
-	botToken: Config.redacted("BOT_TOKEN").pipe(
-		Config.withDescription("Bot authentication token"),
-	),
+	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
 	electricUrl: Config.string("ELECTRIC_URL").pipe(
 		Config.withDefault("http://localhost:8787/v1/shape"),
 		Config.withDescription("Electric SQL proxy URL"),

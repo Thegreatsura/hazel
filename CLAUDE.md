@@ -139,6 +139,86 @@ Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src
     - Cluster entity and workflow definitions (importable by both frontend and cluster service)
     - Shared error types and data models
 
+## Effect-TS Best Practices
+
+### Always Use `Effect.Service` Instead of `Context.Tag`
+
+**ALWAYS** prefer `Effect.Service` over `Context.Tag` for defining services. Effect.Service provides built-in `Default` layer, automatic accessors, and proper dependency declaration.
+
+```typescript
+// ✅ CORRECT - Use Effect.Service
+export class MyService extends Effect.Service<MyService>()("MyService", {
+    accessors: true,
+    effect: Effect.gen(function* () {
+        // ... implementation
+        return { /* methods */ }
+    }),
+}) {}
+
+// Usage: MyService.Default, yield* MyService
+```
+
+```typescript
+// ❌ WRONG - Don't use Context.Tag for services
+export class MyService extends Context.Tag("MyService")<
+    MyService,
+    { /* shape */ }
+>() {
+    static Default = Layer.effect(this, Effect.gen(function* () { /* ... */ }))
+}
+```
+
+**When Context.Tag is acceptable:**
+
+- Infrastructure layers with runtime injection (e.g., Cloudflare KV namespace, worker bindings)
+- Factory patterns where the resource is provided externally at runtime
+
+### Use `dependencies` Array in Effect.Service
+
+**ALWAYS** declare service dependencies in the `dependencies` array when using `Effect.Service`. This ensures proper layer composition and avoids "leaked dependencies" that require manual `Layer.provide` calls at the usage site.
+
+```typescript
+// ✅ CORRECT - Dependencies declared in the service
+export class MyService extends Effect.Service<MyService>()("MyService", {
+    accessors: true,
+    dependencies: [DatabaseService.Default, CacheService.Default],
+    effect: Effect.gen(function* () {
+        const db = yield* DatabaseService
+        const cache = yield* CacheService
+        // ... implementation
+    }),
+}) {}
+
+// Usage is simple - MyService.Default includes all dependencies
+const MainLive = Layer.mergeAll(MyService.Default, OtherService.Default)
+```
+
+```typescript
+// ❌ WRONG - Dependencies leaked to usage site
+export class MyService extends Effect.Service<MyService>()("MyService", {
+    accessors: true,
+    effect: Effect.gen(function* () {
+        const db = yield* DatabaseService
+        const cache = yield* CacheService
+        // ... implementation
+    }),
+}) {}
+
+// Now every usage site must manually wire dependencies
+const MainLive = Layer.mergeAll(
+    MyService.Default.pipe(
+        Layer.provide(DatabaseService.Default),
+        Layer.provide(CacheService.Default),
+    ),
+    OtherService.Default,
+)
+```
+
+**When it's acceptable to omit dependencies:**
+
+- Infrastructure layers that are globally provided (e.g., Redis, Database) may be intentionally "leaked" to be provided once at the application root
+- When a dependency is explicitly meant to be provided by the consumer
+
 ## Brand Icons
 
 Use Brandfetch CDN for integration brand logos/icons. See `apps/web/src/routes/_app/$orgSlug/settings/integrations/_data.ts` for the helper function.

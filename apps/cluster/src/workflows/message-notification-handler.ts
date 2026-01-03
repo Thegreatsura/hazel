@@ -81,7 +81,9 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 							}),
 						)
 
-					yield* Effect.logDebug(`Found ${channelMembers.length} members to notify (all members mode)`)
+					yield* Effect.logDebug(
+						`Found ${channelMembers.length} members to notify (all members mode)`,
+					)
 
 					return {
 						members: channelMembers,
@@ -314,7 +316,9 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 							}),
 						)
 
-					yield* Effect.logDebug(`Created notification ${notificationId} for member ${member.userId}`)
+					yield* Effect.logDebug(
+						`Created notification ${notificationId} for member ${member.userId}`,
+					)
 				}
 
 				return {
