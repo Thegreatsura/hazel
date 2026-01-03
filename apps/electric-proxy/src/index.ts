@@ -1,9 +1,14 @@
+import { BunRuntime } from "@effect/platform-bun"
 import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
 import { Effect, Layer, Logger, Runtime } from "effect"
 import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
 import { type AuthenticationError, validateSession } from "./auth/user-auth"
-import { type AccessContextCacheService, AccessContextCacheService as AccessContextCache, RedisPersistenceLive } from "./cache"
+import {
+	type AccessContextCacheService,
+	AccessContextCacheService as AccessContextCache,
+	RedisPersistenceLive,
+} from "./cache"
 import { ProxyConfigService } from "./config"
 import { TracerLive } from "./observability/tracer"
 import { type ElectricProxyError, prepareElectricUrl, proxyElectricRequest } from "./proxy/electric-client"
@@ -329,46 +334,48 @@ const MainLive = DatabaseLive.pipe(
 )
 
 // =============================================================================
-// MAIN
+// SERVER
 // =============================================================================
 
-const main = Effect.gen(function* () {
-	const config = yield* ProxyConfigService
+const ServerLive = Layer.scopedDiscard(
+	Effect.gen(function* () {
+		const config = yield* ProxyConfigService
 
-	yield* Effect.log("Starting Electric Proxy (Bun)", {
-		port: config.port,
-		electricUrl: config.electricUrl,
-		allowedOrigin: config.allowedOrigin,
-	})
+		yield* Effect.log("Starting Electric Proxy (Bun)", {
+			port: config.port,
+			electricUrl: config.electricUrl,
+			allowedOrigin: config.allowedOrigin,
+		})
 
-	// Create Effect runtime for request handlers
-	const runtime = yield* Effect.runtime<
-		ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth
-	>()
+		const runtime = yield* Effect.runtime<
+			ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth
+		>()
 
-	// Start Bun server with declarative routes
-	const server = Bun.serve({
-		port: config.port,
-		hostname: "::",
-		idleTimeout: 120,
-		routes: {
-			"/health": new Response("OK"), // Static response - zero allocation
-			"/v1/shape": (req) => Runtime.runPromise(runtime)(handleUserRequest(req)),
-			"/bot/v1/shape": (req) => Runtime.runPromise(runtime)(handleBotRequest(req)),
-		},
-		fetch() {
-			return new Response("Not Found", { status: 404 })
-		},
-	})
+		yield* Effect.acquireRelease(
+			Effect.sync(() =>
+				Bun.serve({
+					port: config.port,
+					hostname: "::",
+					idleTimeout: 120,
+					routes: {
+						"/health": new Response("OK"), // Static response - zero allocation
+						"/v1/shape": (req) => Runtime.runPromise(runtime)(handleUserRequest(req)),
+						"/bot/v1/shape": (req) => Runtime.runPromise(runtime)(handleBotRequest(req)),
+					},
+					fetch() {
+						return new Response("Not Found", { status: 404 })
+					},
+				}),
+			),
+			(server) =>
+				Effect.gen(function* () {
+					yield* Effect.log("Shutting down server...")
+					server.stop(true)
+				}),
+		)
 
-	yield* Effect.log(`Server listening on http://localhost:${server.port}`)
+		yield* Effect.log(`Server listening on port ${config.port}`)
+	}),
+)
 
-	// Keep the server running
-	yield* Effect.never
-})
-
-// Run with layers
-Effect.runPromise(main.pipe(Effect.provide(MainLive))).catch((error) => {
-	console.error("Failed to start server:", error)
-	process.exit(1)
-})
+Layer.launch(ServerLive.pipe(Layer.provide(MainLive))).pipe(BunRuntime.runMain)
