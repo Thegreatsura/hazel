@@ -98,6 +98,16 @@ const handleUserRequest = (request: Request) =>
 			headers.set(key, value)
 		}
 
+		// If session was refreshed, set the new cookie
+		if (user.refreshedSession) {
+			yield* Effect.logDebug("Setting refreshed session cookie in response")
+			const secure = !config.isDev
+			headers.set(
+				"Set-Cookie",
+				`workos-session=${user.refreshedSession}; Domain=${config.workosCookieDomain}; Path=/; ${secure ? "Secure; " : ""}SameSite=None; HttpOnly`,
+			)
+		}
+
 		return new Response(response.body, {
 			status: response.status,
 			statusText: response.statusText,

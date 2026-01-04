@@ -15,6 +15,8 @@ export interface AuthenticatedUser {
 	email: string
 	organizationId?: string
 	role?: string
+	/** New sealed session cookie if the session was refreshed */
+	refreshedSession?: string
 }
 
 /**
@@ -112,6 +114,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		email: authContext.email,
 		organizationId: authContext.organizationId,
 		role: authContext.role,
+		refreshedSession: authContext.refreshedSession,
 		accessContext,
 	} satisfies AuthenticatedUserWithContext
 })

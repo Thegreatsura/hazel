@@ -26,7 +26,7 @@ export class ProxyAuthenticationError extends Error {
  *
  * Key differences from BackendAuth:
  * - Does NOT upsert users to database (validates only)
- * - Does NOT handle session refresh (proxy can't set cookies)
+ * - Handles session refresh and returns new cookie if refreshed
  * - Rejects if user doesn't exist in database
  *
  * Note: Database.Database is intentionally NOT included in dependencies
@@ -92,12 +92,13 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 
 		/**
 		 * Validate a session cookie and return user context.
-		 * Uses cached session validation - does NOT attempt refresh.
+		 * Uses cached session validation with automatic refresh.
 		 * Rejects if user is not found in database.
+		 * Returns refreshedSession if the session was refreshed (caller should set cookie).
 		 */
 		const validateSession = Effect.fn("ProxyAuth.validateSession")(function* (sessionCookie: string) {
-			// Validate session (uses Redis cache)
-			const session = yield* validator.validateSession(sessionCookie)
+			// Validate session with automatic refresh (uses Redis cache)
+			const { session, newSealedSession } = yield* validator.validateAndRefresh(sessionCookie)
 
 			// Lookup user (uses cache, falls back to database)
 			const userIdOption = yield* lookupUser(session.workosUserId).pipe(
@@ -119,12 +120,18 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			yield* Effect.annotateCurrentSpan("user.found", true)
 			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
 
+			if (newSealedSession) {
+				yield* Effect.annotateCurrentSpan("session.refreshed", true)
+				yield* Effect.logDebug("Session was refreshed, returning new sealed session")
+			}
+
 			return {
 				workosUserId: session.workosUserId,
 				internalUserId: userIdOption.value as UserId,
 				email: session.email,
 				organizationId: session.internalOrganizationId as OrganizationId | undefined,
 				role: session.role ?? undefined,
+				refreshedSession: newSealedSession,
 			} satisfies AuthenticatedUserContext
 		})
 

@@ -10,6 +10,7 @@ export interface ProxyConfig {
 	readonly workosApiKey: string
 	readonly workosClientId: string
 	readonly workosPasswordCookie: Redacted.Redacted<string>
+	readonly workosCookieDomain: string
 	readonly allowedOrigin: string
 	readonly databaseUrl: Redacted.Redacted<string>
 	readonly isDev: boolean
@@ -37,6 +38,7 @@ export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("Pr
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
 		const workosPasswordCookie = yield* Config.redacted("WORKOS_COOKIE_PASSWORD")
+		const workosCookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Config.withDefault("localhost"))
 		const allowedOrigin = yield* Config.string("ALLOWED_ORIGIN").pipe(Config.withDefault("http://localhost:3000"))
 		const databaseUrl = yield* Config.redacted("DATABASE_URL")
 		const isDev = yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false))
@@ -56,6 +58,7 @@ export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("Pr
 			workosApiKey,
 			workosClientId,
 			workosPasswordCookie,
+			workosCookieDomain,
 			allowedOrigin,
 			databaseUrl,
 			isDev,

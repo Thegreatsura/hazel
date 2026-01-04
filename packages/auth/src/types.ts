@@ -66,6 +66,8 @@ export interface AuthenticatedUserContext {
 	organizationId?: OrganizationId
 	/** User role within the organization */
 	role?: string
+	/** New sealed session cookie if the session was refreshed (caller should set cookie) */
+	refreshedSession?: string
 }
 
 /**
