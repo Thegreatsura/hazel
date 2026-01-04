@@ -1,3 +1,4 @@
+import { buildRailwayEmbed, testPayloads } from "@hazel/integrations/railway/browser"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { MessageEmbeds } from "~/components/chat/message-embeds"
 
@@ -5,297 +6,34 @@ export const Route = createFileRoute("/dev/embeds/railway")({
 	component: RouteComponent,
 })
 
-const RAILWAY_AVATAR = "https://cdn.brandfetch.io/railway.com/w/64/h/64/theme/dark/icon"
-
-// Railway event colors (matching backend)
-const RAILWAY_COLORS = {
-	deployed: 0x10b981,
-	crashed: 0xef4444,
-	building: 0x3b82f6,
-	queued: 0x6366f1,
-	needsApproval: 0xf59e0b,
-	removed: 0x6b7280,
-	triggered: 0xf59e0b,
-	resolved: 0x10b981,
-} as const
-
-// Mock Railway embeds
-const railwayEmbeds = {
+// Generate embeds from real builders using test fixtures
+// This ensures demos stay in sync with production embed output
+const mockEmbeds = {
 	// Deployment success states
-	deployed: {
-		title: "api-service in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.deployed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{
-				name: "Commit",
-				value: "`a3f2d1e` - feat: add webhook support",
-				inline: false,
-			},
-			{ name: "Author", value: "johndoe", inline: true },
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Deployed", color: RAILWAY_COLORS.deployed },
-	},
-
-	redeployed: {
-		title: "web-frontend in hazel-app",
-		description: "Environment: **staging**",
-		color: RAILWAY_COLORS.deployed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "develop", inline: true },
-			{
-				name: "Commit",
-				value: "`b4c5e8f` - fix: resolve CSS issues",
-				inline: false,
-			},
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Redeployed", color: RAILWAY_COLORS.deployed },
-	},
+	deployed: buildRailwayEmbed(testPayloads.deployed),
+	redeployed: buildRailwayEmbed(testPayloads.redeployed),
 
 	// Deployment error states
-	crashed: {
-		title: "worker-service in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.crashed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{
-				name: "Commit",
-				value: "`c7d9a2b` - refactor: update dependencies",
-				inline: false,
-			},
-			{ name: "Severity", value: "ERROR", inline: true },
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Crashed", color: RAILWAY_COLORS.crashed },
-	},
-
-	oomKilled: {
-		title: "data-processor in analytics",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.crashed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Analytics Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{ name: "Severity", value: "CRITICAL", inline: true },
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "OOM Killed", color: RAILWAY_COLORS.crashed },
-	},
-
-	failed: {
-		title: "backend-api in hazel-app",
-		description: "Environment: **staging**",
-		color: RAILWAY_COLORS.crashed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "feature/new-api", inline: true },
-			{
-				name: "Commit",
-				value: "`e1f2g3h` - WIP: new endpoint",
-				inline: false,
-			},
-			{ name: "Severity", value: "ERROR", inline: true },
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Failed", color: RAILWAY_COLORS.crashed },
-	},
+	crashed: buildRailwayEmbed(testPayloads.crashed),
+	oom_killed: buildRailwayEmbed(testPayloads.oom_killed),
+	failed: buildRailwayEmbed(testPayloads.failed),
 
 	// Deployment progress states
-	building: {
-		title: "web-app in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.building,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{
-				name: "Commit",
-				value: "`d8e9f0a` - chore: update build config",
-				inline: false,
-			},
-			{ name: "Source", value: "Manual Deploy", inline: true },
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Building", color: RAILWAY_COLORS.building },
-	},
-
-	deploying: {
-		title: "api-gateway in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.building,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{
-				name: "Commit",
-				value: "`f1a2b3c` - feat: add rate limiting",
-				inline: false,
-			},
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Deploying", color: RAILWAY_COLORS.building },
-	},
-
-	restarted: {
-		title: "cache-service in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.building,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [{ name: "Branch", value: "main", inline: true }],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Restarted", color: RAILWAY_COLORS.building },
-	},
+	building: buildRailwayEmbed(testPayloads.building),
+	deploying: buildRailwayEmbed(testPayloads.deploying),
+	restarted: buildRailwayEmbed(testPayloads.restarted),
 
 	// Deployment pending states
-	queued: {
-		title: "batch-processor in hazel-app",
-		description: "Environment: **staging**",
-		color: RAILWAY_COLORS.queued,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "develop", inline: true },
-			{
-				name: "Commit",
-				value: "`g4h5i6j` - feat: add batch support",
-				inline: false,
-			},
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Queued", color: RAILWAY_COLORS.queued },
-	},
-
-	needsApproval: {
-		title: "database-migrator in hazel-app",
-		description: "Environment: **production**",
-		color: RAILWAY_COLORS.needsApproval,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [
-			{ name: "Branch", value: "main", inline: true },
-			{
-				name: "Commit",
-				value: "`h7i8j9k` - migration: add new tables",
-				inline: false,
-			},
-		],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Needs Approval", color: RAILWAY_COLORS.needsApproval },
-	},
+	queued: buildRailwayEmbed(testPayloads.queued),
+	needs_approval: buildRailwayEmbed(testPayloads.needs_approval),
 
 	// Deployment neutral states
-	removed: {
-		title: "old-service in hazel-app",
-		description: "Environment: **staging**",
-		color: RAILWAY_COLORS.removed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		timestamp: new Date().toISOString(),
-		badge: { text: "Removed", color: RAILWAY_COLORS.removed },
-	},
-
-	slept: {
-		title: "dev-server in hazel-app",
-		description: "Environment: **development**",
-		color: RAILWAY_COLORS.removed,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		timestamp: new Date().toISOString(),
-		badge: { text: "Slept", color: RAILWAY_COLORS.removed },
-	},
+	removed: buildRailwayEmbed(testPayloads.removed),
+	slept: buildRailwayEmbed(testPayloads.slept),
 
 	// Alert states
-	alertTriggered: {
-		title: "api-service in hazel-app",
-		description: "Volume Alert",
-		color: RAILWAY_COLORS.triggered,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		fields: [{ name: "Severity", value: "WARNING", inline: true }],
-		timestamp: new Date().toISOString(),
-		badge: { text: "Triggered", color: RAILWAY_COLORS.triggered },
-	},
-
-	alertResolved: {
-		title: "api-service in hazel-app",
-		description: "Volume Alert",
-		color: RAILWAY_COLORS.resolved,
-		author: {
-			name: "Railway",
-			url: "https://railway.app",
-			iconUrl: RAILWAY_AVATAR,
-		},
-		footer: { text: "Hazel Team" },
-		timestamp: new Date().toISOString(),
-		badge: { text: "Resolved", color: RAILWAY_COLORS.resolved },
-	},
+	alert_triggered: buildRailwayEmbed(testPayloads.alert_triggered),
+	alert_resolved: buildRailwayEmbed(testPayloads.alert_resolved),
 }
 
 function EmbedSection({
@@ -313,7 +51,7 @@ function EmbedSection({
 function EmbedPreview({
 	label,
 	embed,
-}: { label: string; embed: (typeof railwayEmbeds)[keyof typeof railwayEmbeds] }) {
+}: { label: string; embed: (typeof mockEmbeds)[keyof typeof mockEmbeds] }) {
 	return (
 		<div className="space-y-2">
 			<span className="font-mono text-muted-fg text-xs">{label}</span>
@@ -336,40 +74,41 @@ function RouteComponent() {
 					</div>
 					<h1 className="font-bold text-2xl text-fg">Railway Webhook Embeds</h1>
 					<p className="text-muted-fg">
-						Preview of Railway deployment and alert webhook embed cards.
+						Preview of Railway deployment and alert webhook embed cards. Generated from
+						real embed builders to ensure demos stay in sync with production.
 					</p>
 				</div>
 
 				<EmbedSection title="Deployment Success">
-					<EmbedPreview label="Deployment.deployed" embed={railwayEmbeds.deployed} />
-					<EmbedPreview label="Deployment.redeployed" embed={railwayEmbeds.redeployed} />
+					<EmbedPreview label="Deployment.deployed" embed={mockEmbeds.deployed} />
+					<EmbedPreview label="Deployment.redeployed" embed={mockEmbeds.redeployed} />
 				</EmbedSection>
 
 				<EmbedSection title="Deployment Errors">
-					<EmbedPreview label="Deployment.crashed" embed={railwayEmbeds.crashed} />
-					<EmbedPreview label="Deployment.oomKilled" embed={railwayEmbeds.oomKilled} />
-					<EmbedPreview label="Deployment.failed" embed={railwayEmbeds.failed} />
+					<EmbedPreview label="Deployment.crashed" embed={mockEmbeds.crashed} />
+					<EmbedPreview label="Deployment.oomKilled" embed={mockEmbeds.oom_killed} />
+					<EmbedPreview label="Deployment.failed" embed={mockEmbeds.failed} />
 				</EmbedSection>
 
 				<EmbedSection title="Deployment Progress">
-					<EmbedPreview label="Deployment.building" embed={railwayEmbeds.building} />
-					<EmbedPreview label="Deployment.deploying" embed={railwayEmbeds.deploying} />
-					<EmbedPreview label="Deployment.restarted" embed={railwayEmbeds.restarted} />
+					<EmbedPreview label="Deployment.building" embed={mockEmbeds.building} />
+					<EmbedPreview label="Deployment.deploying" embed={mockEmbeds.deploying} />
+					<EmbedPreview label="Deployment.restarted" embed={mockEmbeds.restarted} />
 				</EmbedSection>
 
 				<EmbedSection title="Deployment Pending">
-					<EmbedPreview label="Deployment.queued" embed={railwayEmbeds.queued} />
-					<EmbedPreview label="Deployment.needsApproval" embed={railwayEmbeds.needsApproval} />
+					<EmbedPreview label="Deployment.queued" embed={mockEmbeds.queued} />
+					<EmbedPreview label="Deployment.needsApproval" embed={mockEmbeds.needs_approval} />
 				</EmbedSection>
 
 				<EmbedSection title="Deployment Neutral">
-					<EmbedPreview label="Deployment.removed" embed={railwayEmbeds.removed} />
-					<EmbedPreview label="Deployment.slept" embed={railwayEmbeds.slept} />
+					<EmbedPreview label="Deployment.removed" embed={mockEmbeds.removed} />
+					<EmbedPreview label="Deployment.slept" embed={mockEmbeds.slept} />
 				</EmbedSection>
 
 				<EmbedSection title="Alerts">
-					<EmbedPreview label="Alert.triggered" embed={railwayEmbeds.alertTriggered} />
-					<EmbedPreview label="Alert.resolved" embed={railwayEmbeds.alertResolved} />
+					<EmbedPreview label="VolumeAlert.triggered" embed={mockEmbeds.alert_triggered} />
+					<EmbedPreview label="VolumeAlert.resolved" embed={mockEmbeds.alert_resolved} />
 				</EmbedSection>
 			</div>
 		</div>

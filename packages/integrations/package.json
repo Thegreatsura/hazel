@@ -10,7 +10,9 @@
 		"./github": "./src/github/index.ts",
 		"./github/browser": "./src/github/browser.ts",
 		"./github/schema": "./src/github/schema.ts",
-		"./linear": "./src/linear/index.ts"
+		"./linear": "./src/linear/index.ts",
+		"./railway": "./src/railway/index.ts",
+		"./railway/browser": "./src/railway/browser.ts"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
