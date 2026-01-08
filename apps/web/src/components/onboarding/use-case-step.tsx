@@ -62,7 +62,7 @@ export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCa
 	}
 
 	return (
-		<div className="space-y-6">
+		<div data-testid="onboarding-step-team-size" className="space-y-6">
 			<CardHeader>
 				<CardTitle>How big is your team?</CardTitle>
 				<CardDescription>This helps us optimize Hazel for your team size.</CardDescription>
@@ -85,7 +85,7 @@ export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCa
 					{(item) => {
 						const Icon = item.icon
 						return (
-							<ChoiceBoxItem key={item.id} id={item.id} textValue={item.label}>
+							<ChoiceBoxItem key={item.id} id={item.id} textValue={item.label} data-testid={`team-size-${item.id}`}>
 								<Icon />
 								<ChoiceBoxLabel>{item.label}</ChoiceBoxLabel>
 								<ChoiceBoxDescription>{item.description}</ChoiceBoxDescription>

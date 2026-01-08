@@ -20,13 +20,14 @@ export function OnboardingNavigation({
 	return (
 		<div className="flex justify-between pt-4">
 			{showBack ? (
-				<Button intent="secondary" onPress={onBack} isDisabled={isLoading}>
+				<Button data-testid="onboarding-back-btn" intent="secondary" onPress={onBack} isDisabled={isLoading}>
 					&larr; Back
 				</Button>
 			) : (
 				<div />
 			)}
 			<Button
+				data-testid="onboarding-continue-btn"
 				onPress={onContinue}
 				isDisabled={!canContinue || isLoading}
 				isPending={isLoading}

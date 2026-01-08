@@ -87,7 +87,7 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 	})
 
 	return (
-		<div className="space-y-6">
+		<div data-testid="onboarding-step-org" className="space-y-6">
 			<CardHeader>
 				<CardTitle>Set up your workspace</CardTitle>
 				<CardDescription>
@@ -108,6 +108,7 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 							<TextField isRequired>
 								<Label>Organization name</Label>
 								<Input
+									data-testid="input-org-name"
 									value={field.state.value}
 									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
@@ -133,6 +134,7 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 										<div className="flex items-center gap-2">
 											<span className="text-muted-fg text-sm">hazel.app/</span>
 											<Input
+												data-testid="input-org-slug"
 												value={field.state.value}
 												onChange={(e) =>
 													field.handleChange(sanitizeSlug(e.target.value))

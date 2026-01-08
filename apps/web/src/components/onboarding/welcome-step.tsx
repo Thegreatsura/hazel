@@ -9,7 +9,7 @@ interface WelcomeStepProps {
 
 export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: WelcomeStepProps) {
 	return (
-		<div className="space-y-6">
+		<div data-testid="onboarding-step-welcome" className="space-y-6">
 			<CardHeader className="text-center">
 				<CardTitle className="text-3xl">
 					{isCreatingOrg ? "Welcome to Hazel!" : `Welcome to ${organizationName}!`}

@@ -75,7 +75,7 @@ export function ProfileInfoStep({
 	})
 
 	return (
-		<div className="space-y-6">
+		<div data-testid="onboarding-step-profile" className="space-y-6">
 			<CardHeader>
 				<CardTitle>Set up your profile</CardTitle>
 				<CardDescription>Tell us a bit about yourself to personalize your experience</CardDescription>
@@ -94,6 +94,7 @@ export function ProfileInfoStep({
 							<TextField isRequired>
 								<Label>First name</Label>
 								<Input
+									data-testid="input-first-name"
 									value={field.state.value}
 									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
@@ -115,6 +116,7 @@ export function ProfileInfoStep({
 							<TextField isRequired>
 								<Label>Last name</Label>
 								<Input
+									data-testid="input-last-name"
 									value={field.state.value}
 									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}

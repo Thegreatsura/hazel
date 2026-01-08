@@ -77,7 +77,7 @@ export function ThemeSelectionStep({
 	const color = parseColor(selectedBrandColor)
 
 	return (
-		<div className="space-y-6">
+		<div data-testid="onboarding-step-theme" className="space-y-6">
 			<CardHeader>
 				<CardTitle>Choose your theme</CardTitle>
 				<CardDescription>Customize how Hazel looks and feels for you</CardDescription>
