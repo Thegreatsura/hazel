@@ -77,13 +77,13 @@ export function ThemeSelectionStep({
 	const color = parseColor(selectedBrandColor)
 
 	return (
-		<div data-testid="onboarding-step-theme" className="space-y-6">
+		<div data-testid="onboarding-step-theme" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>Choose your theme</CardTitle>
 				<CardDescription>Customize how Hazel looks and feels for you</CardDescription>
 			</CardHeader>
 
-			<div className="space-y-6">
+			<div className="space-y-4 sm:space-y-6">
 				{/* Brand Color Selection */}
 				<div className="space-y-3">
 					<p className="block font-medium text-sm">Brand color</p>
@@ -97,7 +97,7 @@ export function ThemeSelectionStep({
 						}}
 						className="flex items-center"
 					>
-						<div className="flex gap-2">
+						<div className="flex flex-wrap gap-2">
 							{colorSwatches.map((swatch) => (
 								<Radio
 									key={swatch.hex}
@@ -127,10 +127,10 @@ export function ThemeSelectionStep({
 				<div className="space-y-3">
 					<p className="block font-medium text-sm">Display preference</p>
 					<p className="text-muted-fg text-sm">Switch between light and dark modes</p>
-					<div className="-mx-4 overflow-auto px-4 pt-2">
+					<div className="-mx-3 overflow-x-auto px-3 pt-2 sm:mx-0 sm:overflow-x-visible sm:px-0">
 						<RadioGroup
 							aria-label="Display preference"
-							className="flex gap-5"
+							className="flex gap-4 sm:gap-5"
 							value={selectedTheme}
 							onChange={(value) => handleThemeChange(value as Theme)}
 						>
@@ -139,13 +139,13 @@ export function ThemeSelectionStep({
 									key={themeOption.value}
 									value={themeOption.value}
 									aria-label={themeOption.label}
-									className="flex cursor-pointer flex-col gap-3"
+									className="flex shrink-0 cursor-pointer flex-col gap-2 sm:gap-3"
 								>
 									{({ isSelected, isFocusVisible }) => (
 										<>
 											<section
 												className={cn(
-													"relative h-33 w-50 rounded-[10px] bg-secondary",
+													"relative h-24 w-36 rounded-[10px] bg-secondary sm:h-33 sm:w-50",
 													isSelected && "outline-2 outline-ring outline-offset-2",
 												)}
 											>

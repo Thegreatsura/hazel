@@ -82,7 +82,7 @@ const choiceBoxItemStyles = tv({
 		"group outline-hidden",
 		"[--choice-box-fg:var(--color-primary-subtle-fg)] [--choice-box:var(--color-primary-subtle)]",
 		"[--choice-box-selected-hovered:var(--color-primary-subtle)]/90",
-		"inset-ring inset-ring-border rounded-lg p-(--gutter) **:data-[slot=label]:font-medium",
+		"inset-ring inset-ring-border rounded-lg p-3 sm:p-(--gutter) **:data-[slot=label]:font-medium",
 		"**:data-[slot=avatar]:row-span-2 **:data-[slot=avatar]:mt-0.5 **:data-[slot=avatar]:shrink-0",
 		"**:data-[slot=icon]:row-span-2 **:data-[slot=icon]:h-[1.1lh] **:data-[slot=icon]:w-5 **:data-[slot=icon]:shrink-0",
 		"has-data-[slot=avatar]:grid-cols-[auto_1fr_auto] has-data-[slot=icon]:grid-cols-[auto_1fr_auto]",

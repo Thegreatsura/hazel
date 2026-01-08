@@ -84,7 +84,7 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 	})
 
 	return (
-		<div data-testid="onboarding-step-org" className="space-y-6">
+		<div data-testid="onboarding-step-org" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>Set up your workspace</CardTitle>
 				<CardDescription>
@@ -128,7 +128,7 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 								<TextField isRequired isInvalid={!!field.state.meta.errors?.length}>
 									<Label>Workspace URL</Label>
 									<div className="relative">
-										<div className="flex items-center gap-2">
+										<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
 											<span className="text-muted-fg text-sm">hazel.app/</span>
 											<Input
 												data-testid="input-org-slug"

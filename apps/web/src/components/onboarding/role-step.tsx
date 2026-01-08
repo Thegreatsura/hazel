@@ -85,7 +85,7 @@ export function RoleStep({ onBack, onContinue, defaultSelection }: RoleStepProps
 	}
 
 	return (
-		<div data-testid="onboarding-step-role" className="space-y-6">
+		<div data-testid="onboarding-step-role" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>What's your role?</CardTitle>
 				<CardDescription>

@@ -107,7 +107,7 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 	const hasValidEmails = emails.some((email) => email.trim().length > 0 && validateEmail(email))
 
 	return (
-		<div data-testid="onboarding-step-invite" className="space-y-6">
+		<div data-testid="onboarding-step-invite" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>Invite your team</CardTitle>
 				<CardDescription>

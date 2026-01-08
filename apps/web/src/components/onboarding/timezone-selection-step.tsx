@@ -160,7 +160,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 	}
 
 	return (
-		<div data-testid="onboarding-step-timezone" className="space-y-6">
+		<div data-testid="onboarding-step-timezone" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>Where are you located?</CardTitle>
 				<CardDescription>
@@ -170,7 +170,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 
 			<div className="rounded-2xl overflow-hidden">
 				{/* Globe and Time Ribbon Section */}
-				<div className="relative bg-gradient-to-b from-muted/50 to-transparent p-6 pb-4 rounded-2xl border border-border">
+				<div className="relative bg-gradient-to-b from-muted/50 to-transparent p-4 pb-3 rounded-2xl border border-border sm:p-6 sm:pb-4">
 					<GlobeVisual
 						selectedOffset={selectedCity?.offset ?? null}
 						hoveredOffset={hoveredOffset}
@@ -210,8 +210,8 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 				</div>
 
 				{/* City Cards Grid */}
-				<div className="py-6 @container">
-					<div className="grid grid-cols-1 @xs:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-1 -m-1 pr-2">
+				<div className="py-4 sm:py-6 @container">
+					<div className="grid grid-cols-1 @xs:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4 gap-3 max-h-[250px] sm:max-h-[400px] overflow-y-auto p-1 -m-1 pr-2">
 						{filteredCities.map((city, index) => (
 							<CityCard
 								key={city.timezone}

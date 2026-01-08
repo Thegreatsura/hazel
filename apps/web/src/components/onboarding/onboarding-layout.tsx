@@ -66,7 +66,7 @@ export function OnboardingLayout({
 	}
 
 	return (
-		<main className="relative grid h-dvh grid-cols-1 flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 overflow-hidden">
+		<main className="relative grid h-dvh grid-cols-1 flex-col items-center justify-center overflow-y-auto lg:max-w-none lg:grid-cols-2 lg:overflow-hidden">
 			{/* Left panel - branding and visual */}
 			<div className="relative hidden h-full flex-col p-10 text-white lg:flex">
 				<img
@@ -119,8 +119,8 @@ export function OnboardingLayout({
 			</div>
 
 			{/* Right panel - content */}
-			<div className="flex min-h-dvh items-center justify-center p-4 sm:p-12">
-				<div className="w-full max-w-2xl space-y-6 py-6">{children}</div>
+			<div className="flex min-h-dvh items-start overflow-y-auto p-3 pt-6 sm:items-center sm:p-4 md:p-12">
+				<div className="w-full max-w-2xl space-y-4 py-4 sm:mx-auto sm:space-y-6 sm:py-6">{children}</div>
 			</div>
 		</main>
 	)

@@ -72,7 +72,7 @@ export function ProfileInfoStep({
 	})
 
 	return (
-		<div data-testid="onboarding-step-profile" className="space-y-6">
+		<div data-testid="onboarding-step-profile" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>Set up your profile</CardTitle>
 				<CardDescription>Tell us a bit about yourself to personalize your experience</CardDescription>

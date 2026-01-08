@@ -9,9 +9,9 @@ interface WelcomeStepProps {
 
 export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: WelcomeStepProps) {
 	return (
-		<div data-testid="onboarding-step-welcome" className="space-y-6">
+		<div data-testid="onboarding-step-welcome" className="space-y-4 sm:space-y-6">
 			<CardHeader className="text-center">
-				<CardTitle className="text-3xl">
+				<CardTitle className="text-2xl sm:text-3xl">
 					{isCreatingOrg ? "Welcome to Hazel!" : `Welcome to ${organizationName}!`}
 				</CardTitle>
 				<CardDescription className="text-base">
@@ -21,9 +21,9 @@ export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: Wel
 				</CardDescription>
 			</CardHeader>
 
-			<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
+			<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4 sm:space-y-4 sm:p-6">
 				<h3 className="font-medium text-fg">What's next:</h3>
-				<ul className="space-y-3 text-muted-fg text-sm">
+				<ul className="space-y-2 text-muted-fg text-sm sm:space-y-3">
 					{isCreatingOrg ? (
 						<>
 							<li className="flex items-start gap-2">

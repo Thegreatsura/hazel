@@ -62,7 +62,7 @@ export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCa
 	}
 
 	return (
-		<div data-testid="onboarding-step-team-size" className="space-y-6">
+		<div data-testid="onboarding-step-team-size" className="space-y-4 sm:space-y-6">
 			<CardHeader>
 				<CardTitle>How big is your team?</CardTitle>
 				<CardDescription>This helps us optimize Hazel for your team size.</CardDescription>
