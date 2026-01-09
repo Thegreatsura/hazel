@@ -1,8 +1,7 @@
 import { useAtom, useAtomSet } from "@effect-atom/atom-react"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
-import { useNavigate } from "@tanstack/react-router"
 import { Exit } from "effect"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { createInvitationMutation } from "~/atoms/invitation-atoms"
 import {
 	computeStepNumber,
@@ -12,6 +11,7 @@ import {
 	getPreviousStep,
 	isValidStepForUser,
 	onboardingAtomFamily,
+	type OnboardingData,
 	type OnboardingStep,
 } from "~/atoms/onboarding-atoms"
 import {
@@ -34,7 +34,6 @@ interface UseOnboardingOptions {
 }
 
 export function useOnboarding(options: UseOnboardingOptions) {
-	const navigate = useNavigate()
 	const { user } = useAuth()
 
 	// Use a stable key for the atom (could also use user ID)
@@ -107,49 +106,43 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		[setState],
 	)
 
-	// Step handlers - update data and advance
+	// Factory for creating simple step handlers that update data and advance
+	const createStepHandler = useMemo(
+		() =>
+			<T extends Partial<OnboardingData>>(transform?: (data: T) => Partial<OnboardingData>) =>
+			(data: T) => {
+				setState((prev) => ({
+					...prev,
+					data: { ...prev.data, ...(transform ? transform(data) : data) },
+					currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
+					direction: "forward" as const,
+					error: undefined,
+				}))
+			},
+		[setState],
+	)
+
+	// Simple step handlers using factory
 	const handleWelcomeContinue = useCallback(() => {
 		setState((prev) => ({
 			...prev,
 			currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
 			direction: "forward" as const,
+			error: undefined,
 		}))
 	}, [setState])
 
-	const handleProfileInfoContinue = useCallback(
-		(data: { firstName: string; lastName: string }) => {
-			setState((prev) => ({
-				...prev,
-				data: { ...prev.data, ...data },
-				currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
-				direction: "forward" as const,
-			}))
-		},
-		[setState],
+	const handleProfileInfoContinue = useMemo(
+		() => createStepHandler<{ firstName: string; lastName: string }>(),
+		[createStepHandler],
 	)
-
-	const handleTimezoneContinue = useCallback(
-		(data: { timezone: string }) => {
-			setState((prev) => ({
-				...prev,
-				data: { ...prev.data, ...data },
-				currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
-				direction: "forward" as const,
-			}))
-		},
-		[setState],
+	const handleTimezoneContinue = useMemo(
+		() => createStepHandler<{ timezone: string }>(),
+		[createStepHandler],
 	)
-
-	const handleThemeContinue = useCallback(
-		(data: { theme: "dark" | "light" | "system"; brandColor: string }) => {
-			setState((prev) => ({
-				...prev,
-				data: { ...prev.data, ...data },
-				currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
-				direction: "forward" as const,
-			}))
-		},
-		[setState],
+	const handleThemeContinue = useMemo(
+		() => createStepHandler<{ theme: "dark" | "light" | "system"; brandColor: string }>(),
+		[createStepHandler],
 	)
 
 	// Async org setup handler
@@ -201,6 +194,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		[state.initialOrgId, setOrganizationSlug, setState],
 	)
 
+	// These handlers take raw values, not objects
 	const handleUseCasesContinue = useCallback(
 		(useCases: string[]) => {
 			setState((prev) => ({
@@ -208,6 +202,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				data: { ...prev.data, useCases },
 				currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
 				direction: "forward" as const,
+				error: undefined,
 			}))
 		},
 		[setState],
@@ -220,6 +215,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				data: { ...prev.data, role },
 				currentStep: getNextStep(prev.currentStep, prev.userType) ?? prev.currentStep,
 				direction: "forward" as const,
+				error: undefined,
 			}))
 		},
 		[setState],
@@ -246,65 +242,68 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		}))
 	}, [setState])
 
-	// Finalization handler
+	// Ref to hold finalization context - avoids stale closures and reduces dependencies
+	const finalizationContext = useRef({
+		orgId: state.initialOrgId || state.data.createdOrgId,
+		memberId: options.organizationMemberId,
+		userId: user?.id,
+		metadata: { role: state.data.role, useCases: state.data.useCases },
+		emails: state.data.emails,
+	})
+
+	// Keep ref in sync with state
+	useEffect(() => {
+		finalizationContext.current = {
+			orgId: state.initialOrgId || state.data.createdOrgId,
+			memberId: options.organizationMemberId,
+			userId: user?.id,
+			metadata: { role: state.data.role, useCases: state.data.useCases },
+			emails: state.data.emails,
+		}
+	}, [state.initialOrgId, state.data, options.organizationMemberId, user?.id])
+
+	// Finalization handler - stable callback with minimal dependencies
 	const handleFinalization = useCallback(async () => {
+		const ctx = finalizationContext.current
 		setState((prev) => ({ ...prev, isProcessing: true, error: undefined }))
 
 		try {
-			const orgId = state.initialOrgId || state.data.createdOrgId
-			if (!orgId) {
+			if (!ctx.orgId) {
 				throw new Error("Organization ID is required")
 			}
 
-			// Save member metadata
-			if (options.organizationMemberId && user?.id) {
-				const metadataResult = await updateMemberMetadata({
-					payload: {
-						id: options.organizationMemberId,
-						metadata: {
-							role: state.data.role,
-							useCases: state.data.useCases,
-						},
-					},
-				})
-
-				if (!Exit.isSuccess(metadataResult)) {
-					console.error("Failed to save onboarding metadata:", metadataResult.cause)
-				}
-			}
-
-			// Finalize onboarding
+			// Critical: finalize onboarding first
 			const finalizeResult = await finalizeOnboarding({
 				payload: void 0,
 				reactivityKeys: ["currentUser"],
 			})
 
 			if (!Exit.isSuccess(finalizeResult)) {
-				console.error("Failed to finalize onboarding:", finalizeResult.cause)
+				throw new Error("Failed to finalize onboarding")
 			}
 
-			// Send invitations
-			if (state.data.emails.length > 0) {
-				const inviteResult = await createInvitation({
-					payload: {
-						organizationId: orgId,
-						invites: state.data.emails.map((email) => ({ email, role: "member" })),
-					},
+			// Non-critical: save member metadata (don't fail if this fails)
+			if (ctx.memberId && ctx.userId) {
+				await updateMemberMetadata({
+					payload: { id: ctx.memberId, metadata: ctx.metadata },
+				}).catch(() => {
+					// Silently ignore metadata save failures
 				})
-
-				if (Exit.isSuccess(inviteResult)) {
-					console.log(`Sent ${inviteResult.value.successCount} invitations`)
-				}
 			}
 
-			// Navigate to organization
-			const slug = state.data.orgSlug || state.initialOrganization?.slug
-			if (slug) {
-				navigate({ to: "/$orgSlug", params: { orgSlug: slug } })
-			} else {
-				navigate({ to: "/" })
+			// Non-critical: send invitations
+			if (ctx.emails.length > 0) {
+				await createInvitation({
+					payload: {
+						organizationId: ctx.orgId,
+						invites: ctx.emails.map((email) => ({ email, role: "member" as const })),
+					},
+				}).catch(() => {
+					// Silently ignore invitation failures
+				})
 			}
 
+			// Update state - navigation is handled by component's useEffect
 			setState((prev) => ({
 				...prev,
 				currentStep: "completed" as const,
@@ -315,35 +314,14 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				...prev,
 				isProcessing: false,
 				error: error instanceof Error ? error.message : "Failed to complete onboarding",
-				// Go back to role step on error
-				currentStep: "role" as const,
 			}))
 		}
-	}, [
-		state.initialOrgId,
-		state.data.createdOrgId,
-		state.data.role,
-		state.data.useCases,
-		state.data.emails,
-		state.data.orgSlug,
-		state.initialOrganization?.slug,
-		options.organizationMemberId,
-		user?.id,
-		updateMemberMetadata,
-		finalizeOnboarding,
-		createInvitation,
-		navigate,
-		setState,
-	])
+	}, [finalizeOnboarding, updateMemberMetadata, createInvitation, setState])
 
 	// Auto-trigger finalization when reaching that step
 	const finalizationTriggered = useRef(false)
 	useEffect(() => {
-		if (
-			state.currentStep === "finalization" &&
-			!state.isProcessing &&
-			!finalizationTriggered.current
-		) {
+		if (state.currentStep === "finalization" && !state.isProcessing && !finalizationTriggered.current) {
 			finalizationTriggered.current = true
 			handleFinalization()
 		}
