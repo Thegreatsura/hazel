@@ -4,7 +4,6 @@ import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
-import { trackRecentChannel } from "~/atoms/recent-channels-atom"
 import { usePanelWidth } from "~/atoms/panel-atoms"
 import { ChatHeader } from "~/components/chat/chat-header"
 import { ChatTabBar } from "~/components/chat/chat-tab-bar"
@@ -123,7 +122,6 @@ function RouteComponent() {
 
 	useEffect(() => {
 		clearNotifications({ payload: { channelId: id as ChannelId } })
-		trackRecentChannel(id)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [id])
 

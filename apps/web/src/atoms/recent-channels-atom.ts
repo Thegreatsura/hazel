@@ -1,46 +1,36 @@
+import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom } from "@effect-atom/atom-react"
+import { Schema } from "effect"
 
-const MAX_RECENT_CHANNELS = 8
-const STORAGE_KEY = "recentChannels"
+export const MAX_RECENT_CHANNELS = 8
 
-export interface RecentChannel {
-	channelId: string
-	visitedAt: number
-}
+/**
+ * Schema for a single recent channel entry
+ */
+const RecentChannelSchema = Schema.Struct({
+	channelId: Schema.String,
+	visitedAt: Schema.Number,
+})
 
-const loadFromStorage = (): RecentChannel[] => {
-	try {
-		const stored = localStorage.getItem(STORAGE_KEY)
-		return stored ? JSON.parse(stored) : []
-	} catch {
-		return []
-	}
-}
+export type RecentChannel = typeof RecentChannelSchema.Type
 
-const saveToStorage = (channels: RecentChannel[]) => {
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(channels))
-	} catch {
-		// Ignore storage errors
-	}
-}
+/**
+ * Schema for the array of recent channels
+ */
+const RecentChannelsSchema = Schema.Array(RecentChannelSchema)
 
-export const recentChannelsAtom = Atom.make<RecentChannel[]>(loadFromStorage()).pipe(Atom.keepAlive)
+/**
+ * localStorage runtime for recent channels persistence
+ */
+const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
 
-export const trackRecentChannel = (channelId: string) => {
-	Atom.batch(() => {
-		Atom.update(recentChannelsAtom, (channels) => {
-			const filtered = channels.filter((c) => c.channelId !== channelId)
-			const updated = [{ channelId, visitedAt: Date.now() }, ...filtered].slice(0, MAX_RECENT_CHANNELS)
-			saveToStorage(updated)
-			return updated
-		})
-	})
-}
-
-export const clearRecentChannels = () => {
-	Atom.batch(() => {
-		Atom.set(recentChannelsAtom, [])
-		localStorage.removeItem(STORAGE_KEY)
-	})
-}
+/**
+ * Atom that stores recent channels in localStorage
+ * Automatically persists changes - no manual localStorage calls needed
+ */
+export const recentChannelsAtom = Atom.kvs({
+	runtime: localStorageRuntime,
+	key: "recentChannels",
+	schema: RecentChannelsSchema,
+	defaultValue: () => [] as RecentChannel[],
+})

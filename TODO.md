@@ -1,7 +1,7 @@
 # Today
 
 - replace tanstack form with effect based form
-- replace xsatet with effsate
+- fix recent channels in command palette
 - setup sequin locally with config as code
 
 # Bugs

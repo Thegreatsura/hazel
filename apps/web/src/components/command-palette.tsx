@@ -10,7 +10,7 @@ import { ColorSwatch } from "react-aria-components"
 import { toast } from "sonner"
 import { type CommandPalettePage, commandPaletteAtom, isFormPage } from "~/atoms/command-palette-atoms"
 import { useModal } from "~/atoms/modal-atoms"
-import { recentChannelsAtom } from "~/atoms/recent-channels-atom"
+import { MAX_RECENT_CHANNELS, recentChannelsAtom } from "~/atoms/recent-channels-atom"
 import {
 	CommandMenu,
 	CommandMenuItem,
@@ -193,6 +193,18 @@ function HomeView({
 	const { user } = useAuth()
 	const navigate = useNavigate()
 	const recentChannels = useAtomValue(recentChannelsAtom)
+	const setRecentChannels = useAtomSet(recentChannelsAtom)
+
+	// Track a channel as recently accessed when clicking in command palette
+	const trackChannel = useCallback(
+		(channelId: string) => {
+			setRecentChannels((channels) => {
+				const filtered = channels.filter((c) => c.channelId !== channelId)
+				return [{ channelId, visitedAt: Date.now() }, ...filtered].slice(0, MAX_RECENT_CHANNELS)
+			})
+		},
+		[setRecentChannels],
+	)
 
 	// Modal hooks for quick actions (only for those not inline)
 	const createDmModal = useModal("create-dm")
@@ -217,7 +229,7 @@ function HomeView({
 		return recentChannels
 			.map((rc) => recentChannelData.find((c) => c.id === rc.channelId))
 			.filter((c): c is NonNullable<typeof c> => c !== undefined)
-			.slice(0, 5)
+			.slice(0, 3)
 	}, [recentChannelData, recentChannels])
 
 	// Query all user channels (public/private) for search
@@ -329,22 +341,85 @@ function HomeView({
 			{/* Recent Channels */}
 			{sortedRecentChannels.length > 0 && (
 				<CommandMenuSection label="Recent">
-					{sortedRecentChannels.map((channel) => (
-						<CommandMenuItem
-							key={`recent-${channel.id}`}
-							textValue={channel.name}
-							onAction={() => {
-								navigate({
-									to: "/$orgSlug/chat/$id",
-									params: { orgSlug: orgSlug!, id: channel.id },
-								})
-								onClose()
-							}}
-						>
-							<ChannelIcon icon={channel.icon} />
-							<CommandMenuLabel>{channel.name}</CommandMenuLabel>
-						</CommandMenuItem>
-					))}
+					{sortedRecentChannels.map((channel) => {
+						const isDm = channel.type === "direct" || channel.type === "single"
+						const dmData = isDm ? dmChannels.find((dm) => dm.id === channel.id) : null
+
+						if (isDm && dmData) {
+							const firstMember = dmData.otherMembers[0]
+							const displayName =
+								dmData.type === "single" && dmData.otherMembers.length === 1 && firstMember
+									? `${firstMember.user.firstName} ${firstMember.user.lastName}`
+									: dmData.otherMembers.map((m) => m.user.firstName).join(", ")
+
+							return (
+								<CommandMenuItem
+									key={`recent-${channel.id}`}
+									textValue={displayName}
+									onAction={() => {
+										navigate({
+											to: "/$orgSlug/chat/$id",
+											params: { orgSlug: orgSlug!, id: channel.id },
+										})
+										onClose()
+									}}
+								>
+									{dmData.type === "single" &&
+									dmData.otherMembers.length === 1 &&
+									firstMember ? (
+										<Avatar
+											size="xs"
+											className="mr-1"
+											data-slot="icon"
+											src={firstMember.user.avatarUrl}
+											alt={displayName}
+										/>
+									) : (
+										<div data-slot="icon" className="flex -space-x-2 mr-1">
+											{dmData.otherMembers.slice(0, 2).map((member) => (
+												<Avatar
+													key={member.userId}
+													size="xs"
+													src={member.user.avatarUrl}
+													alt={member.user.firstName}
+													className="ring-[1.5px] ring-overlay"
+												/>
+											))}
+											{dmData.otherMembers.length > 2 && (
+												<Avatar
+													size="xs"
+													className="ring-[1.5px] ring-overlay"
+													placeholder={
+														<span className="flex items-center justify-center font-semibold text-quaternary text-xs">
+															+{dmData.otherMembers.length - 2}
+														</span>
+													}
+												/>
+											)}
+										</div>
+									)}
+									<CommandMenuLabel>{displayName}</CommandMenuLabel>
+								</CommandMenuItem>
+							)
+						}
+
+						return (
+							<CommandMenuItem
+								key={`recent-${channel.id}`}
+								textValue={channel.name}
+								onAction={() => {
+									navigate({
+										to: "/$orgSlug/chat/$id",
+										params: { orgSlug: orgSlug!, id: channel.id },
+									})
+									onClose()
+								}}
+							>
+								<ChannelIcon icon={channel.icon} />
+								<CommandMenuLabel>{channel.name}</CommandMenuLabel>
+							</CommandMenuItem>
+						)
+					})}
 				</CommandMenuSection>
 			)}
 
@@ -356,6 +431,7 @@ function HomeView({
 							key={`channel-${channel.id}`}
 							textValue={channel.name}
 							onAction={() => {
+								trackChannel(channel.id)
 								navigate({
 									to: "/$orgSlug/chat/$id",
 									params: { orgSlug: orgSlug!, id: channel.id },
@@ -391,6 +467,7 @@ function HomeView({
 								key={`dm-${dm.id}`}
 								textValue={searchText}
 								onAction={() => {
+									trackChannel(dm.id)
 									navigate({
 										to: "/$orgSlug/chat/$id",
 										params: { orgSlug: orgSlug!, id: dm.id },
