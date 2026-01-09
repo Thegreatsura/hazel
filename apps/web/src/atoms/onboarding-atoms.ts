@@ -48,8 +48,8 @@ export interface OnboardingState {
 	}
 }
 
-// Flow configuration
-const CREATOR_FLOW: OnboardingStep[] = [
+// Flow configuration (exported for URL validation)
+export const CREATOR_FLOW: OnboardingStep[] = [
 	"welcome",
 	"profileInfo",
 	"timezoneSelection",
@@ -61,7 +61,7 @@ const CREATOR_FLOW: OnboardingStep[] = [
 	"finalization",
 ]
 
-const INVITED_FLOW: OnboardingStep[] = [
+export const INVITED_FLOW: OnboardingStep[] = [
 	"welcome",
 	"profileInfo",
 	"timezoneSelection",
@@ -69,6 +69,12 @@ const INVITED_FLOW: OnboardingStep[] = [
 	"role",
 	"finalization",
 ]
+
+// Validate if a step is valid for a given user type
+export function isValidStepForUser(step: string, userType: UserType): step is OnboardingStep {
+	const flow = userType === "creator" ? CREATOR_FLOW : INVITED_FLOW
+	return flow.includes(step as OnboardingStep)
+}
 
 // Step numbers for progress indicator
 const STEP_NUMBERS: Record<OnboardingStep, { creator: number | null; invited: number | null }> = {

@@ -10,6 +10,7 @@ import {
 	createInitialState,
 	getNextStep,
 	getPreviousStep,
+	isValidStepForUser,
 	onboardingAtomFamily,
 	type OnboardingStep,
 } from "~/atoms/onboarding-atoms"
@@ -29,6 +30,8 @@ interface UseOnboardingOptions {
 		slug?: string
 	}
 	organizationMemberId?: OrganizationMemberId
+	initialStep?: string
+	onStepChange?: (step: OnboardingStep) => void
 }
 
 export function useOnboarding(options: UseOnboardingOptions) {
@@ -63,8 +66,22 @@ export function useOnboarding(options: UseOnboardingOptions) {
 			organization: options.organization,
 		})
 
+		// If an initial step is provided via URL and it's valid for this user type, use it
+		if (options.initialStep && isValidStepForUser(options.initialStep, initialState.userType)) {
+			initialState.currentStep = options.initialStep
+		}
+
 		setState(initialState)
-	}, [options.orgId, options.organization, setState])
+	}, [options.orgId, options.organization, options.initialStep, setState])
+
+	// Notify parent when step changes (for URL sync)
+	const prevStepRef = useRef<OnboardingStep | null>(null)
+	useEffect(() => {
+		if (prevStepRef.current !== null && prevStepRef.current !== state.currentStep) {
+			options.onStepChange?.(state.currentStep)
+		}
+		prevStepRef.current = state.currentStep
+	}, [state.currentStep, options.onStepChange])
 
 	// Navigation helpers
 	const goBack = useCallback(() => {

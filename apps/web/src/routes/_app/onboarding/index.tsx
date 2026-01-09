@@ -1,6 +1,9 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
+import { type } from "arktype"
 import { AnimatePresence, motion } from "motion/react"
+import { useCallback } from "react"
+import type { OnboardingStep } from "~/atoms/onboarding-atoms"
 import { InviteTeamStep } from "~/components/onboarding/invite-team-step"
 import { OnboardingLayout } from "~/components/onboarding/onboarding-layout"
 import { OrgSetupStep } from "~/components/onboarding/org-setup-step"
@@ -15,12 +18,20 @@ import { organizationCollection, organizationMemberCollection } from "~/db/colle
 import { useOnboarding } from "~/hooks/use-onboarding"
 import { useAuth } from "~/lib/auth"
 
+const searchSchema = type({
+	"step?": "string",
+	"orgId?": "string",
+})
+
 export const Route = createFileRoute("/_app/onboarding/")({
 	component: RouteComponent,
+	validateSearch: searchSchema,
 })
 
 function RouteComponent() {
 	const { user } = useAuth()
+	const navigate = Route.useNavigate()
+	const { step: urlStep } = Route.useSearch()
 
 	// Fetch user's organizations to determine if they're creating or joining
 	const { data: userOrganizations } = useLiveQuery(
@@ -42,6 +53,14 @@ function RouteComponent() {
 	const organization = userOrganizations?.org
 	const organizationMemberId = userOrganizations?.member.id
 
+	// Update URL when step changes (preserve orgId if present)
+	const handleStepChange = useCallback(
+		(step: OnboardingStep) => {
+			navigate({ search: (prev) => ({ ...prev, step }), replace: true })
+		},
+		[navigate],
+	)
+
 	const onboarding = useOnboarding({
 		orgId,
 		organization: organization
@@ -52,6 +71,8 @@ function RouteComponent() {
 				}
 			: undefined,
 		organizationMemberId,
+		initialStep: urlStep,
+		onStepChange: handleStepChange,
 	})
 
 	// Animation variants based on direction with blur effect
@@ -240,9 +261,7 @@ function RouteComponent() {
 							<Loader className="size-12" />
 							<p className="font-medium text-lg">Setting up your workspace...</p>
 							<p className="text-muted-fg text-sm">This will just take a moment</p>
-							{onboarding.error && (
-								<p className="text-danger text-sm">{onboarding.error}</p>
-							)}
+							{onboarding.error && <p className="text-danger text-sm">{onboarding.error}</p>}
 						</div>
 					</motion.div>
 				)}
