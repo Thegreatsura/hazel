@@ -1,0 +1,109 @@
+export interface S3Config {
+	bucket: string
+	endpoint: string
+	accessKeyId: string
+	secretAccessKey: string
+	publicUrl: string
+}
+
+export interface Config {
+	workosApiKey: string
+	workosClientId: string
+	secrets: {
+		cookiePassword: string
+		encryptionKey: string
+	}
+	s3?: S3Config
+	s3PublicUrl?: string
+	linear?: {
+		clientId: string
+		clientSecret: string
+	}
+	githubWebhookSecret?: string
+	openrouterApiKey?: string
+}
+
+export const ENV_TEMPLATES = {
+	web: (config: Config) => ({
+		VITE_BACKEND_URL: "http://localhost:3003",
+		VITE_CLUSTER_URL: "http://localhost:3020",
+		VITE_ELECTRIC_URL: "http://localhost:8184/v1/shape",
+		VITE_WORKOS_CLIENT_ID: config.workosClientId,
+		VITE_WORKOS_REDIRECT_URI: "http://localhost:3000/auth/callback",
+		VITE_R2_PUBLIC_URL: config.s3PublicUrl ?? "",
+	}),
+
+	backend: (config: Config) => {
+		const base: Record<string, string> = {
+			// Database
+			DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+
+			// Server
+			PORT: "3003",
+			IS_DEV: "true",
+
+			// URLs
+			FRONTEND_URL: "http://localhost:3000",
+			API_BASE_URL: "http://localhost:3003",
+			CLUSTER_URL: "http://localhost:3020",
+
+			// Redis
+			REDIS_URL: "redis://localhost:6380",
+
+			// Electric
+			ELECTRIC_URL: "http://localhost:3333",
+
+			// WorkOS
+			WORKOS_API_KEY: config.workosApiKey,
+			WORKOS_CLIENT_ID: config.workosClientId,
+			WORKOS_COOKIE_PASSWORD: config.secrets.cookiePassword,
+			WORKOS_COOKIE_DOMAIN: "localhost",
+			WORKOS_REDIRECT_URI: "http://localhost:3003/auth/callback",
+			WORKOS_WEBHOOK_SECRET: "whsec_" + config.secrets.cookiePassword.slice(0, 20),
+
+			// Encryption
+			INTEGRATION_ENCRYPTION_KEY: config.secrets.encryptionKey,
+			INTEGRATION_ENCRYPTION_KEY_VERSION: "1",
+		}
+
+		// Add S3 config if provided
+		if (config.s3) {
+			base.S3_BUCKET = config.s3.bucket
+			base.S3_ENDPOINT = config.s3.endpoint
+			base.S3_ACCESS_KEY_ID = config.s3.accessKeyId
+			base.S3_SECRET_ACCESS_KEY = config.s3.secretAccessKey
+		}
+
+		// Linear config (always present, empty if not configured)
+		base.LINEAR_CLIENT_ID = config.linear?.clientId ?? ""
+		base.LINEAR_CLIENT_SECRET = config.linear?.clientSecret ?? ""
+		base.LINEAR_REDIRECT_URI = "http://localhost:3003/integrations/linear/callback"
+
+		// GitHub webhook secret (always present, empty if not configured)
+		base.GITHUB_WEBHOOK_SECRET = config.githubWebhookSecret ?? ""
+
+		return base
+	},
+
+	cluster: (config: Config) => ({
+		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+		EFFECT_DATABASE_URL: "postgresql://user:password@localhost:5432/cluster",
+		IS_DEV: "true",
+		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
+	}),
+
+	electricProxy: (config: Config) => ({
+		PORT: "8184",
+		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+		IS_DEV: "true",
+		ELECTRIC_URL: "http://localhost:3333",
+		WORKOS_API_KEY: config.workosApiKey,
+		WORKOS_CLIENT_ID: config.workosClientId,
+		WORKOS_COOKIE_PASSWORD: config.secrets.cookiePassword,
+		ALLOWED_ORIGIN: "http://localhost:3000",
+	}),
+
+	db: () => ({
+		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+	}),
+}
