@@ -16,7 +16,6 @@ export function ChatTabBar({ orgSlug, channelId }: ChatTabBarProps) {
 	const matchRoute = useMatchRoute()
 	const navigate = useNavigate()
 
-	// Determine active tab using fuzzy route matching
 	const isFilesRoute = !!matchRoute({
 		to: "/$orgSlug/chat/$id/files",
 		params: { orgSlug, id: channelId },

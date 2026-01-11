@@ -35,13 +35,11 @@ function RouteComponent() {
 	)
 	const channel = channelResult?.channel
 
-	// Determine selected tab using fuzzy route matching
 	const selectedTab =
-		tabs.find((tab) =>
+		[...tabs].find((tab) =>
 			matchRoute({
 				to: tab.to,
 				params: { orgSlug, channelId },
-				fuzzy: true,
 			}),
 		)?.id ?? "overview"
 

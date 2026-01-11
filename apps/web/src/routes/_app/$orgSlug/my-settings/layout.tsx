@@ -16,14 +16,11 @@ function RouteComponent() {
 	const navigate = useNavigate()
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 
-	// Determine selected tab using fuzzy route matching
-	// Reverse tabs so more specific routes are checked first (otherwise parent route always matches)
 	const selectedTab =
-		[...tabs].reverse().find((tab) =>
+		[...tabs].find((tab) =>
 			matchRoute({
 				to: tab.to,
 				params: { orgSlug },
-				fuzzy: true,
 			}),
 		)?.id ?? "appearance"
 
