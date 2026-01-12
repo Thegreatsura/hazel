@@ -1,6 +1,6 @@
 import { PersistedCache, type Persistence } from "@effect/experimental"
-import { and, Database, eq, inArray, isNull, schema } from "@hazel/db"
-import type { BotId, ChannelId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
+import { and, Database, eq, isNull, schema } from "@hazel/db"
+import type { BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import {
 	AccessContextLookupError,
@@ -61,7 +61,6 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 								client
 									.select({
 										organizationId: schema.organizationMembersTable.organizationId,
-										id: schema.organizationMembersTable.id,
 									})
 									.from(schema.organizationMembersTable)
 									.where(
@@ -83,73 +82,9 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 							)
 
 						const organizationIds = orgMembers.map((m) => m.organizationId)
-						const memberIds = orgMembers.map((m) => m.id)
-
-						// Query channel memberships
-						const channelMembers = yield* db
-							.execute((client) =>
-								client
-									.select({ channelId: schema.channelMembersTable.channelId })
-									.from(schema.channelMembersTable)
-									.where(
-										and(
-											eq(schema.channelMembersTable.userId, userId),
-											isNull(schema.channelMembersTable.deletedAt),
-										),
-									),
-							)
-							.pipe(
-								Effect.mapError(
-									(error) =>
-										new AccessContextLookupError({
-											message: `Failed to query user's channels: ${String(error)}`,
-											entityId: userId,
-											entityType: "user",
-										}),
-								),
-							)
-
-						const channelIds = channelMembers.map((m) => m.channelId)
-
-						// Query co-organization users
-						const coOrgUsers =
-							organizationIds.length > 0
-								? yield* db
-										.execute((client) =>
-											client
-												.selectDistinct({
-													userId: schema.organizationMembersTable.userId,
-												})
-												.from(schema.organizationMembersTable)
-												.where(
-													and(
-														inArray(
-															schema.organizationMembersTable.organizationId,
-															organizationIds,
-														),
-														isNull(schema.organizationMembersTable.deletedAt),
-													),
-												),
-										)
-										.pipe(
-											Effect.mapError(
-												(error) =>
-													new AccessContextLookupError({
-														message: `Failed to query co-organization users: ${String(error)}`,
-														entityId: userId,
-														entityType: "user",
-													}),
-											),
-										)
-								: []
-
-						const coOrgUserIds = coOrgUsers.map((u) => u.userId)
 
 						return {
 							organizationIds,
-							channelIds,
-							memberIds,
-							coOrgUserIds,
 						}
 					}),
 
@@ -205,9 +140,6 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 					userCache.get(new UserAccessContextRequest({ userId })).pipe(
 						Effect.map((result) => ({
 							organizationIds: result.organizationIds as readonly OrganizationId[],
-							channelIds: result.channelIds as readonly ChannelId[],
-							memberIds: result.memberIds as readonly OrganizationMemberId[],
-							coOrgUserIds: result.coOrgUserIds as readonly UserId[],
 						})),
 					),
 

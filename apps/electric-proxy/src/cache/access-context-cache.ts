@@ -1,4 +1,4 @@
-import type { ChannelId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Duration, PrimaryKey, Schema } from "effect"
 
 /**
@@ -14,16 +14,10 @@ export const IN_MEMORY_TTL = Duration.seconds(10)
  */
 export const UserAccessContextSchema = Schema.Struct({
 	organizationIds: Schema.Array(Schema.String),
-	channelIds: Schema.Array(Schema.String),
-	memberIds: Schema.Array(Schema.String),
-	coOrgUserIds: Schema.Array(Schema.String),
 })
 
 export type UserAccessContext = {
 	organizationIds: readonly OrganizationId[]
-	channelIds: readonly ChannelId[]
-	memberIds: readonly OrganizationMemberId[]
-	coOrgUserIds: readonly UserId[]
 }
 
 /**

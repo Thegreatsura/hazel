@@ -5,10 +5,10 @@ import {
 	buildChannelAccessClause,
 	buildChannelVisibilityClause,
 	buildDeletedAtNullClause,
-	buildInClause,
 	buildIntegrationConnectionClause,
 	buildNoFilterClause,
 	buildOrgMembershipClause,
+	buildUserMembershipClause,
 	buildUserOrgMembershipClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
@@ -246,9 +246,8 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("notifications", () =>
-			// Users can only see their own notifications (via their member IDs)
-			// This filter is kept as notifications are user-specific and memberIds rarely change mid-session
-			Effect.succeed(buildInClause(schema.notificationsTable.memberId, user.accessContext.memberIds)),
+			// Users can only see their own notifications (via subquery on organization_members)
+			Effect.succeed(buildUserMembershipClause(user.internalUserId, schema.notificationsTable.memberId)),
 		),
 
 		Match.when("pinned_messages", () =>
