@@ -6,6 +6,7 @@ import { devtools } from "@tanstack/devtools-vite"
 import tanstackRouter from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig, type Plugin } from "vite"
+import { VitePWA } from "vite-plugin-pwa"
 
 // Generate build timestamp once and reuse it everywhere
 const BUILD_TIME = Date.now()
@@ -50,6 +51,47 @@ export default defineConfig({
 		}),
 		tailwindcss(),
 		versionPlugin(),
+		VitePWA({
+			registerType: "prompt",
+			includeAssets: ["icon.svg", "favicon.ico"],
+			manifest: {
+				name: "Hazel Chat",
+				short_name: "Hazel",
+				description: "Slack alternative for modern teams.",
+				theme_color: "#000000",
+				background_color: "#ffffff",
+				display: "standalone",
+				start_url: "/",
+				icons: [
+					{
+						src: "pwa-64x64.png",
+						sizes: "64x64",
+						type: "image/png",
+					},
+					{
+						src: "pwa-192x192.png",
+						sizes: "192x192",
+						type: "image/png",
+					},
+					{
+						src: "pwa-512x512.png",
+						sizes: "512x512",
+						type: "image/png",
+					},
+					{
+						src: "maskable-icon-512x512.png",
+						sizes: "512x512",
+						type: "image/png",
+						purpose: "maskable",
+					},
+				],
+			},
+			workbox: {
+				globPatterns: ["**/*.{js,css,html,svg,ico,woff2}"],
+				globIgnores: ["**/images/onboarding/**"],
+				maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
+			},
+		}),
 	],
 
 	define: {
