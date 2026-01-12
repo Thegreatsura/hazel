@@ -1,10 +1,11 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
-import type { ChannelId } from "@hazel/schema"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
+import { messageCollection } from "~/db/collections"
 import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-message-notification-cleaner"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
@@ -22,6 +23,7 @@ interface MessageVirtualListProps {
 	hasNextPage: boolean
 	fetchNextPage: () => void
 	onViewableItemsChanged?: (info: { viewableItems: ViewToken<MessageRow>[] }) => void
+	highlightedMessageId: string | null
 }
 
 const MessageVirtualList = memo(
@@ -32,6 +34,7 @@ const MessageVirtualList = memo(
 		hasNextPage,
 		fetchNextPage,
 		onViewableItemsChanged,
+		highlightedMessageId,
 		ref,
 	}: MessageVirtualListProps & { ref: React.Ref<LegendListRef> }) => {
 		return (
@@ -71,6 +74,7 @@ const MessageVirtualList = memo(
 							isGroupEnd={props.item.isGroupEnd}
 							isFirstNewMessage={props.item.isFirstNewMessage}
 							isPinned={props.item.isPinned}
+							isHighlighted={highlightedMessageId === props.item.message.id}
 							onHoverChange={onHoverChange}
 						/>
 					)
@@ -85,14 +89,17 @@ MessageVirtualList.displayName = "MessageVirtualList"
 
 export interface MessageListRef {
 	scrollToBottom: () => void
+	scrollToMessage: (messageId: string) => Promise<void>
 }
 
 export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	const { messagesInfiniteQuery } = Route.useLoaderData()
-	const { id: channelId } = Route.useParams()
+	const { id } = Route.useParams()
+	const channelId = id as ChannelId
 
 	const legendListRef = useRef<LegendListRef>(null)
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
+	const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
 	const targetRef = useRef<HTMLDivElement | null>(null)
 	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
 	const isToolbarHoveredRef = useRef(false)
@@ -101,7 +108,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 
 	// Hook for clearing notifications when messages become visible
 	const { onVisibleMessagesChange } = useVisibleMessageNotificationCleaner({
-		channelId: channelId as ChannelId,
+		channelId,
 	})
 
 	// Handle viewable items changes from LegendList
@@ -117,25 +124,86 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		[onVisibleMessagesChange],
 	)
 
+	// We need messageRows for scrollToMessage, but it's defined later
+	// Use a ref to hold the latest messageRows value
+	const messageRowsRef = useRef<MessageRow[]>([])
+	const collectionRef = useRef<{ utils?: { setWindow?: (params: { offset: number; limit: number }) => true | Promise<void> } }>({})
+
 	useImperativeHandle(ref, () => ({
 		scrollToBottom: () => {
 			legendListRef.current?.scrollToEnd({ animated: true })
 		},
+		scrollToMessage: async (messageId: string) => {
+			const PAGE_SIZE = 30
+
+			// Helper to find and scroll to message
+			const tryScroll = () => {
+				const index = messageRowsRef.current.findIndex(
+					(row) => row.type === "row" && row.id === messageId,
+				)
+				if (index !== -1) {
+					legendListRef.current?.scrollToIndex({
+						index,
+						animated: true,
+						viewPosition: 0.5, // Center in view
+					})
+					setHighlightedMessageId(messageId)
+					setTimeout(() => setHighlightedMessageId(null), 2000)
+					return true
+				}
+				return false
+			}
+
+			// Try to scroll immediately if message is already in loaded data
+			if (tryScroll()) return
+
+			// Message not in current window - query local collection directly to find its position
+			// This works because Electric SQL syncs all messages locally
+			const allMessages = messageCollection.toArray
+				.filter((m) => m.channelId === channelId)
+				.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+			const messageIndex = allMessages.findIndex((m) => m.id === (messageId as MessageId))
+
+			if (messageIndex === -1) {
+				console.warn(`Message ${messageId} not found in local collection`)
+				return
+			}
+
+			// Calculate window needed to include this message (with buffer for date headers)
+			const windowLimit = messageIndex + PAGE_SIZE + 10
+
+			// Use setWindow to jump directly to the right position
+			const setWindow = collectionRef.current?.utils?.setWindow
+			if (setWindow) {
+				const result = setWindow({ offset: 0, limit: windowLimit })
+
+				// Wait for window expansion if it returns a promise
+				if (result !== true) {
+					await result
+				}
+			}
+
+			// Now the message should be in messageRows - scroll to it
+			// Use requestAnimationFrame to ensure React has re-rendered with new data
+			requestAnimationFrame(() => {
+				tryScroll()
+			})
+		},
 	}))
 
-	const {
-		data,
-		pages: _pages,
-		fetchNextPage,
-		hasNextPage,
-		isLoading,
-	} = useLiveInfiniteQuery(messagesInfiniteQuery, {
-		pageSize: 30,
-		getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
-	})
+	const { data, fetchNextPage, hasNextPage, isLoading, collection } = useLiveInfiniteQuery(
+		messagesInfiniteQuery,
+		{
+			pageSize: 30,
+			getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
+		},
+	)
+
+	// Keep ref updated for scrollToMessage
+	collectionRef.current = collection as typeof collectionRef.current
 
 	const messages = (data || []) as MessageWithPinned[]
-	const isLoadingMessages = isLoading
 
 	const hoveredMessage = useMemo(
 		() => messages.find((m) => m.id === hoveredMessageId) || null,
@@ -227,6 +295,9 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		return { messageRows: rows, stickyIndices: sticky }
 	}, [processedMessages])
 
+	// Keep ref updated for scrollToMessage
+	messageRowsRef.current = messageRows
+
 	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
 	if (messages.length === 0) {
 		return (
@@ -249,7 +320,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			style={{
 				overflowAnchor: "auto",
 				scrollBehavior: "auto",
-				opacity: isLoadingMessages && messages.length > 0 ? 0.7 : 1,
+				opacity: isLoading && messages.length > 0 ? 0.7 : 1,
 			}}
 		>
 			{hoveredMessageId && (
@@ -263,6 +334,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 				hasNextPage={hasNextPage}
 				fetchNextPage={fetchNextPage}
 				onViewableItemsChanged={handleViewableItemsChanged}
+				highlightedMessageId={highlightedMessageId}
 			/>
 
 			{(hoveredMessageId || isToolbarMenuOpen) &&
