@@ -92,7 +92,7 @@ export default defineConfig({
 			? []
 			: [
 					VitePWA({
-						registerType: "prompt",
+						registerType: "autoUpdate",
 						includeAssets: ["icon.svg", "favicon.ico"],
 						manifest: {
 							name: "Hazel Chat",
