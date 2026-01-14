@@ -4,22 +4,23 @@
  * @description Enable/disable automatic app launch at system login
  */
 
-import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart"
-import { isTauri } from "./tauri"
+type AutostartApi = typeof import("@tauri-apps/plugin-autostart")
+
+const autostart: AutostartApi | undefined = (window as any).__TAURI__?.autostart
 
 export async function enableAutostart(): Promise<boolean> {
-	if (!isTauri()) return false
-	await enable()
+	if (!autostart) return false
+	await autostart.enable()
 	return true
 }
 
 export async function disableAutostart(): Promise<boolean> {
-	if (!isTauri()) return false
-	await disable()
+	if (!autostart) return false
+	await autostart.disable()
 	return true
 }
 
 export async function isAutostartEnabled(): Promise<boolean> {
-	if (!isTauri()) return false
-	return await isEnabled()
+	if (!autostart) return false
+	return await autostart.isEnabled()
 }

@@ -6,7 +6,12 @@
 
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { isTauri } from "~/lib/tauri"
+
+type UpdaterApi = typeof import("@tauri-apps/plugin-updater")
+type ProcessApi = typeof import("@tauri-apps/plugin-process")
+
+const updater: UpdaterApi | undefined = (window as any).__TAURI__?.updater
+const process: ProcessApi | undefined = (window as any).__TAURI__?.process
 
 /**
  * Component that checks for Tauri app updates and displays a toast notification
@@ -22,17 +27,14 @@ export const TauriUpdateCheck = () => {
 	const checkingRef = useRef(false)
 
 	useEffect(() => {
-		if (!isTauri()) return
+		if (!updater || !process) return
 
 		const checkForUpdates = async () => {
 			if (checkingRef.current) return
 			checkingRef.current = true
 
 			try {
-				const { check } = await import("@tauri-apps/plugin-updater")
-				const { relaunch } = await import("@tauri-apps/plugin-process")
-
-				const update = await check()
+				const update = await updater.check()
 				if (update) {
 					toast(`Update available: v${update.version}`, {
 						id: "tauri-update",
@@ -43,7 +45,7 @@ export const TauriUpdateCheck = () => {
 							onClick: async () => {
 								toast.loading("Downloading update...", { id: "tauri-update" })
 								await update.downloadAndInstall()
-								await relaunch()
+								await process.relaunch()
 							},
 						},
 						cancel: {

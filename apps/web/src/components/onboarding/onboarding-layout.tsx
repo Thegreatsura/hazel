@@ -119,10 +119,8 @@ export function OnboardingLayout({
 			</div>
 
 			{/* Right panel - content */}
-			<div className="flex min-h-dvh items-start overflow-y-auto p-3 pt-6 sm:items-center sm:p-4 md:p-12">
-				<div className="w-full max-w-2xl space-y-4 py-4 sm:mx-auto sm:space-y-6 sm:py-6">
-					{children}
-				</div>
+			<div className="flex min-h-dvh flex-col overflow-y-auto p-3 pt-6 sm:p-4 md:p-12 lg:h-full lg:min-h-0">
+				<div className="m-auto w-full max-w-2xl space-y-4 py-4 sm:space-y-6 sm:py-6">{children}</div>
 			</div>
 		</main>
 	)

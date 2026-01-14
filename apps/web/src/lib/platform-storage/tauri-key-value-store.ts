@@ -13,13 +13,16 @@ import { Effect, Layer, Option } from "effect"
 
 const STORE_NAME = "settings.json"
 
-type StoreType = Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>
+type StoreApi = typeof import("@tauri-apps/plugin-store")
+type StoreType = Awaited<ReturnType<StoreApi["load"]>>
+
+const store: StoreApi | undefined = (window as any).__TAURI__?.store
 
 // Load store effect - separate from caching
 const loadStore: Effect.Effect<StoreType, SystemError> = Effect.tryPromise({
 	try: async () => {
-		const { load } = await import("@tauri-apps/plugin-store")
-		return load(STORE_NAME, { autoSave: true, defaults: {} })
+		if (!store) throw new Error("Tauri store not available")
+		return store.load(STORE_NAME, { autoSave: true, defaults: {} })
 	},
 	catch: (error) =>
 		new SystemError({

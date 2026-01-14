@@ -7,22 +7,26 @@
  * The web app uses cookies (WorkOS sealed sessions) for authentication.
  */
 
+type StoreApi = typeof import("@tauri-apps/plugin-store")
+type StoreInstance = Awaited<ReturnType<StoreApi["load"]>>
+
+const storeApi: StoreApi | undefined = (window as any).__TAURI__?.store
+
 const STORE_NAME = "auth.json"
 const ACCESS_TOKEN_KEY = "access_token"
 const REFRESH_TOKEN_KEY = "refresh_token"
 const EXPIRES_AT_KEY = "expires_at"
 
 // Lazy-loaded store instance
-let storePromise: Promise<Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>> | null = null
+let storePromise: Promise<StoreInstance> | null = null
 
 /**
  * Get or create the store instance
  */
-const getStore = async () => {
+const getStore = async (): Promise<StoreInstance> => {
+	if (!storeApi) throw new Error("Tauri store not available")
 	if (!storePromise) {
-		storePromise = import("@tauri-apps/plugin-store").then((mod) =>
-			mod.load(STORE_NAME, { defaults: {}, autoSave: true }),
-		)
+		storePromise = storeApi.load(STORE_NAME, { defaults: {}, autoSave: true })
 	}
 	return storePromise
 }

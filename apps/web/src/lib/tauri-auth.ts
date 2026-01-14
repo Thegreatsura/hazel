@@ -5,14 +5,21 @@
  *
  * - Dev mode: Uses localhost OAuth server on fixed port (17927)
  * - Prod mode: Uses deep links (hazel://auth/callback)
- *
- * This module uses dynamic imports for Tauri APIs to avoid breaking
- * the web build - Tauri APIs are only available in the Tauri runtime.
  */
 
 import type { OrganizationId } from "@hazel/schema"
 import { startTokenRefresh } from "./token-refresh"
 import { storeTokens } from "./token-storage"
+
+type DeepLinkApi = typeof import("@tauri-apps/plugin-deep-link")
+type OpenerApi = typeof import("@tauri-apps/plugin-opener")
+type CoreApi = typeof import("@tauri-apps/api/core")
+type EventApi = typeof import("@tauri-apps/api/event")
+
+const deepLink: DeepLinkApi | undefined = (window as any).__TAURI__?.deepLink
+const opener: OpenerApi | undefined = (window as any).__TAURI__?.opener
+const core: CoreApi | undefined = (window as any).__TAURI__?.core
+const event: EventApi | undefined = (window as any).__TAURI__?.event
 
 interface DesktopAuthOptions {
 	returnTo?: string
@@ -45,7 +52,7 @@ let deepLinkResolver: ((params: AuthCallbackParams) => void) | null = null
  * Call once at app startup
  */
 export const initDeepLinkListener = async (): Promise<void> => {
-	const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link")
+	if (!deepLink) return
 
 	const handleUrl = (url: string) => {
 		try {
@@ -68,7 +75,7 @@ export const initDeepLinkListener = async (): Promise<void> => {
 
 	// Check for cold start deep link (app opened via deep link)
 	try {
-		const urls = await getCurrent()
+		const urls = await deepLink.getCurrent()
 		if (urls?.[0]) {
 			console.log("[tauri-auth] Cold start deep link:", urls[0])
 			handleUrl(urls[0])
@@ -79,7 +86,7 @@ export const initDeepLinkListener = async (): Promise<void> => {
 
 	// Listen for warm start deep links (app already running)
 	try {
-		await onOpenUrl((urls) => {
+		await deepLink.onOpenUrl((urls) => {
 			if (urls[0]) {
 				console.log("[tauri-auth] Warm start deep link:", urls[0])
 				handleUrl(urls[0])
@@ -117,7 +124,7 @@ const exchangeCodeForToken = async (code: string, state: string): Promise<TokenR
  * - Prod mode: Uses deep links for callback
  */
 export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Promise<void> => {
-	const { openUrl } = await import("@tauri-apps/plugin-opener")
+	if (!opener) throw new Error("Tauri opener not available")
 
 	const backendUrl = import.meta.env.VITE_BACKEND_URL
 	const isDev = import.meta.env.DEV
@@ -130,11 +137,10 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 
 	if (isDev) {
 		// DEV MODE: Use localhost OAuth server on fixed port
-		const { invoke } = await import("@tauri-apps/api/core")
-		const { listen } = await import("@tauri-apps/api/event")
+		if (!core || !event) throw new Error("Tauri core/event not available")
 
 		// Start local OAuth server (returns fixed port 17927)
-		const port = await invoke<number>("start_oauth_server")
+		const port = await core.invoke<number>("start_oauth_server")
 		const redirectUri = `http://127.0.0.1:${port}`
 		console.log("[tauri-auth] OAuth server started on port:", port)
 
@@ -151,10 +157,10 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 			}, 120000)
 
 			// Set up listener - must be done inside promise to capture resolve/reject
-			listen<string>("oauth-callback", (event) => {
+			event.listen<string>("oauth-callback", (evt) => {
 				if (cleanup.timeoutId) clearTimeout(cleanup.timeoutId)
-				console.log("[tauri-auth] Received OAuth callback:", event.payload)
-				resolve(event.payload)
+				console.log("[tauri-auth] Received OAuth callback:", evt.payload)
+				resolve(evt.payload)
 			}).then((unlistenFn) => {
 				cleanup.unlisten = unlistenFn
 			})
@@ -174,7 +180,7 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 		console.log("[tauri-auth] Opening URL:", loginUrl.toString())
 
 		// Open system browser for OAuth
-		await openUrl(loginUrl.toString())
+		await opener.openUrl(loginUrl.toString())
 		console.log("[tauri-auth] Browser opened, waiting for callback...")
 
 		// Wait for OAuth callback with cleanup
@@ -217,7 +223,7 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 		console.log("[tauri-auth] Opening URL:", loginUrl.toString())
 
 		// Open system browser for OAuth
-		await openUrl(loginUrl.toString())
+		await opener.openUrl(loginUrl.toString())
 		console.log("[tauri-auth] Browser opened, waiting for deep link callback...")
 
 		// Wait for deep link callback
