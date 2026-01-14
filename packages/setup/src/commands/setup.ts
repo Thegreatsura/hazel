@@ -13,6 +13,7 @@ import {
 	type Config,
 } from "../templates.ts"
 import { promptWithExisting, getExistingValue } from "../prompts.ts"
+import { certsCommand } from "./certs.ts"
 
 // CLI Options
 const skipValidation = Options.boolean("skip-validation").pipe(
@@ -44,7 +45,10 @@ export const setupCommand = Command.make(
 		Effect.gen(function* () {
 			yield* Console.log(`\n${pc.bold("\u{1F33F} Hazel Local Development Setup")}\n`)
 
-			// Start Docker Compose first
+      // Run the certs setup
+      yield* certsCommand.handler({});
+
+			// Start Docker Compose after that
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Starting Docker Compose \u2500\u2500\u2500"))
 			yield* Console.log(pc.dim("Running `docker compose up -d`...\n"))
 
