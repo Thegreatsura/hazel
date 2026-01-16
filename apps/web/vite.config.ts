@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import localesPlugin from "@react-aria/optimize-locales-plugin"
 import tailwindcss from "@tailwindcss/vite"
@@ -9,6 +10,10 @@ import { VitePWA } from "vite-plugin-pwa"
 
 const host = process.env.TAURI_DEV_HOST
 const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
+
+// Read app version from tauri.conf.json (single source of truth)
+const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "src-tauri/tauri.conf.json"), "utf-8"))
+const appVersion = tauriConfig.version
 
 export default defineConfig({
 	server: {
@@ -28,6 +33,9 @@ export default defineConfig({
 		},
 	},
 	envPrefix: ["VITE_", "TAURI_ENV_*"],
+	define: {
+		__APP_VERSION__: JSON.stringify(appVersion),
+	},
 	build: {
 		target: process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",
 		minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,

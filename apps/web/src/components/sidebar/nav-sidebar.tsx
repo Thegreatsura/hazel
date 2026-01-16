@@ -6,6 +6,7 @@ import { Link } from "~/components/ui/link"
 import {
 	Sidebar,
 	SidebarContent,
+	SidebarFooter,
 	SidebarHeader,
 	SidebarItem,
 	SidebarLink,
@@ -14,6 +15,7 @@ import {
 	SidebarSeparator,
 	useSidebar,
 } from "~/components/ui/sidebar"
+import { useAppVersion } from "~/lib/version"
 import { useUnreadNotificationCount } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
 
@@ -21,6 +23,7 @@ export function NavSidebar() {
 	const { isMobile } = useSidebar()
 	const { slug } = useOrganization()
 	const { unreadCount } = useUnreadNotificationCount()
+	const version = useAppVersion()
 
 	return (
 		<Sidebar
@@ -114,6 +117,11 @@ export function NavSidebar() {
 					</SidebarSection>
 				</SidebarSectionGroup>
 			</SidebarContent>
+			<SidebarFooter className="p-2">
+				{version && (
+					<span className="text-center text-[10px] font-mono text-muted-fg">v{version}</span>
+				)}
+			</SidebarFooter>
 		</Sidebar>
 	)
 }

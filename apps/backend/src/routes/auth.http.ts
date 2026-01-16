@@ -1,5 +1,6 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
+import { Database, eq, schema } from "@hazel/db"
 import {
 	CurrentUser,
 	InternalServerError,
@@ -205,6 +206,55 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 					if (workosOrg?.externalId && Option.isSome(user)) {
 						const orgId = workosOrg.externalId as OrganizationId
+						const db = yield* Database.Database
+
+						// Ensure organization exists locally before creating membership
+						// (org may exist in WorkOS but not synced to our DB yet)
+						const existingOrgResult = yield* db
+							.execute((client) =>
+								client
+									.select()
+									.from(schema.organizationsTable)
+									.where(eq(schema.organizationsTable.id, orgId))
+									.limit(1),
+							)
+							.pipe(
+								Effect.map((results) => results[0]),
+								Effect.catchTags({
+									DatabaseError: () => Effect.succeed(undefined),
+								}),
+							)
+
+						if (!existingOrgResult) {
+							// Organization exists in WorkOS but not locally - create it
+							yield* db
+								.execute((client) =>
+									client.insert(schema.organizationsTable).values({
+										id: orgId,
+										name: workosOrg.name,
+										slug: workosOrg.name
+											.toLowerCase()
+											.replace(/[^a-z0-9]+/g, "-")
+											.replace(/^-|-$/g, ""),
+										logoUrl: null,
+										settings: null,
+										deletedAt: null,
+										createdAt: new Date(),
+										updatedAt: new Date(),
+									}),
+								)
+								.pipe(
+									Effect.catchTags({
+										DatabaseError: (err) =>
+											Effect.fail(
+												new InternalServerError({
+													message: "Failed to create organization",
+													detail: String(err),
+												}),
+											),
+									}),
+								)
+						}
 
 						// Check if membership already exists - if so, skip creation
 						const existingMembership = yield* orgMemberRepo
