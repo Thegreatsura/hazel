@@ -1,8 +1,8 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
+dockerfilePath = "infra/otel-collector/Dockerfile"
+watchPatterns = ["infra/otel-collector/**"]
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 30
-restartPolicyType = "always"
