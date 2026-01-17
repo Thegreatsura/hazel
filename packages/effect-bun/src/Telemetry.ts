@@ -88,6 +88,10 @@ export const createTracingLayer = (otelServiceName: string) =>
 
 			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
 
+			const otelBaseUrl = yield* Config.string("OTEL_BASE_URL").pipe(
+				Config.withDefault("https://ingest.eu.signoz.cloud"),
+			)
+
 			if (environment === "local") {
 				if (nodeEnv === "production") {
 					return yield* Effect.die(
@@ -98,10 +102,10 @@ export const createTracingLayer = (otelServiceName: string) =>
 				return DevTools.layerWebSocket().pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
 			}
 
-			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY")
+			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY").pipe(Config.withDefault(""))
 
 			return Otlp.layer({
-				baseUrl: "https://ingest.eu.signoz.cloud:443",
+				baseUrl: otelBaseUrl,
 				resource: {
 					serviceName: otelServiceName,
 					serviceVersion: commitSha,
