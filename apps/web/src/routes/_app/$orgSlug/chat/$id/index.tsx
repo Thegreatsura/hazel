@@ -1,8 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import { MessageList } from "~/components/chat/message-list"
-import { SlateMessageComposer } from "~/components/chat/slate-editor/slate-message-composer"
 import { TypingIndicator } from "~/components/chat/typing-indicator"
+
+// Lazy load the Slate composer (~30-40KB savings)
+const SlateMessageComposer = lazy(() =>
+	import("~/components/chat/slate-editor/slate-message-composer").then((m) => ({
+		default: m.SlateMessageComposer,
+	})),
+)
+
+// Minimal skeleton for composer while loading
+function ComposerSkeleton() {
+	return (
+		<div className="rounded-lg border border-border bg-secondary/30 p-3">
+			<div className="h-10 w-full animate-pulse rounded bg-muted" />
+		</div>
+	)
+}
 
 export const Route = createFileRoute("/_app/$orgSlug/chat/$id/")({
 	component: MessagesRoute,
@@ -26,7 +41,9 @@ function MessagesRoute() {
 				<MessageList />
 			</div>
 			<div className="shrink-0 px-4 pt-2.5">
-				<SlateMessageComposer />
+				<Suspense fallback={<ComposerSkeleton />}>
+					<SlateMessageComposer />
+				</Suspense>
 				<TypingIndicator />
 			</div>
 		</>

@@ -242,14 +242,20 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		)
 	}
 
+	// Memoize container style to avoid object recreation on each render
+	const containerStyle = useMemo(
+		() => ({
+			overflowAnchor: "auto" as const,
+			scrollBehavior: "auto" as const,
+			opacity: isLoading && messages.length > 0 ? 0.7 : 1,
+		}),
+		[isLoading, messages.length],
+	)
+
 	return (
 		<div
 			className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2 transition-opacity duration-200"
-			style={{
-				overflowAnchor: "auto",
-				scrollBehavior: "auto",
-				opacity: isLoading && messages.length > 0 ? 0.7 : 1,
-			}}
+			style={containerStyle}
 		>
 			{hoveredMessageId && (
 				<style>{`#message-${hoveredMessageId} { background-color: var(--color-secondary) !important; }`}</style>

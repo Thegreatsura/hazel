@@ -1,7 +1,7 @@
 "use client"
 
 import { createLink } from "@tanstack/react-router"
-import { createContext, use, useCallback, useMemo, useState } from "react"
+import { createContext, use, useCallback, useMemo, useState, type CSSProperties } from "react"
 import type {
 	ButtonProps,
 	DisclosureGroupProps,
@@ -125,6 +125,17 @@ const SidebarProvider = ({
 		[state, open, setOpen, isMobile, openMobile, toggleSidebar],
 	)
 
+	// Memoize the style object to avoid recreation on each render
+	const containerStyle = useMemo<CSSProperties>(
+		() =>
+			({
+				"--sidebar-width": SIDEBAR_WIDTH,
+				"--sidebar-width-dock": SIDEBAR_WIDTH_DOCK,
+				...style,
+			}) as CSSProperties,
+		[style],
+	)
+
 	if (isMobile === undefined) {
 		return null
 	}
@@ -132,13 +143,7 @@ const SidebarProvider = ({
 	return (
 		<SidebarContext value={contextValue}>
 			<div
-				style={
-					{
-						"--sidebar-width": SIDEBAR_WIDTH,
-						"--sidebar-width-dock": SIDEBAR_WIDTH_DOCK,
-						...style,
-					} as React.CSSProperties
-				}
+				style={containerStyle}
 				className={twMerge(
 					"@container **:data-[slot=icon]:shrink-0",
 					"flex w-full text-sidebar-fg",

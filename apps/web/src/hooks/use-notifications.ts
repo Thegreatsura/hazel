@@ -109,10 +109,8 @@ export function useNotifications() {
 	const markAllAsRead = useCallback(async () => {
 		const unreadNotifications = notifications.filter((n) => n.notification.readAt === null)
 
-		// Mark each notification as read
-		for (const { notification } of unreadNotifications) {
-			await markAsRead(notification.id)
-		}
+		// Mark all notifications as read in parallel
+		await Promise.all(unreadNotifications.map(({ notification }) => markAsRead(notification.id)))
 	}, [notifications, markAsRead])
 
 	return {

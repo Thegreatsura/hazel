@@ -4,7 +4,7 @@ import type { UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import IconCheck from "~/components/icons/icon-check"
 import IconEnvelope from "~/components/icons/icon-envelope"
@@ -153,22 +153,24 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 		setSearchQuery("")
 	}
 
-	const toggleUserSelection = (user: typeof User.Model.Type) => {
-		const isSelected = selectedUsers.some((u) => u.id === user.id)
-		let newSelection: (typeof User.Model.Type)[]
+	// Stable callback for toggling user selection
+	const toggleUserSelection = useCallback(
+		(user: typeof User.Model.Type) => {
+			setSelectedUsers((prev) => {
+				const isSelected = prev.some((u) => u.id === user.id)
+				const newSelection = isSelected ? prev.filter((u) => u.id !== user.id) : [...prev, user]
 
-		if (isSelected) {
-			newSelection = selectedUsers.filter((u) => u.id !== user.id)
-		} else {
-			newSelection = [...selectedUsers, user]
-		}
+				// Update form value
+				form.setFieldValue(
+					"userIds",
+					newSelection.map((u) => u.id),
+				)
 
-		setSelectedUsers(newSelection)
-		form.setFieldValue(
-			"userIds",
-			newSelection.map((u) => u.id),
-		)
-	}
+				return newSelection
+			})
+		},
+		[form],
+	)
 
 	return (
 		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>

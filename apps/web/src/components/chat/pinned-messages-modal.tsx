@@ -1,6 +1,8 @@
+import type { PinnedMessageId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
+import { useCallback, useMemo } from "react"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import IconClose from "../icons/icon-close"
@@ -38,18 +40,35 @@ export function PinnedMessagesModal() {
 		[channelId],
 	)
 
+	// Memoize sorted pins to avoid re-sorting on every render
+	const sortedPins = useMemo(
+		() =>
+			[...(pinnedMessages || [])].sort(
+				(a, b) => a.pinned.pinnedAt.getTime() - b.pinned.pinnedAt.getTime(),
+			),
+		[pinnedMessages],
+	)
+
+	// Stable navigation callback
 	// TODO: Implement scroll-to-message - see GitHub issue
 	// For now, just navigate with messageId in search params (ready for when scroll is reimplemented)
-	const goToMessage = (messageId: string) => {
-		navigate({
-			search: {
-				messageId,
-			},
-		})
-	}
+	const goToMessage = useCallback(
+		(messageId: string) => {
+			navigate({
+				search: {
+					messageId,
+				},
+			})
+		},
+		[navigate],
+	)
 
-	const sortedPins = [...(pinnedMessages || [])].sort(
-		(a, b) => a.pinned.pinnedAt.getTime() - b.pinned.pinnedAt.getTime(),
+	// Stable unpin callback
+	const handleUnpin = useCallback(
+		(pinnedId: PinnedMessageId) => {
+			unpinMessage(pinnedId)
+		},
+		[unpinMessage],
 	)
 
 	return (
@@ -98,7 +117,7 @@ export function PinnedMessagesModal() {
 											<button
 												onClick={(e) => {
 													e.stopPropagation()
-													unpinMessage(pinnedMessage.pinned.id)
+													handleUnpin(pinnedMessage.pinned.id)
 												}}
 												className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-secondary group-hover:opacity-100"
 												aria-label="Unpin message"

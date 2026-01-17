@@ -5,6 +5,7 @@ import { AtomRpc } from "@effect-atom/atom-react"
 import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
 import {
 	AttachmentRpcs,
+	BotRpcs,
 	ChannelMemberRpcs,
 	ChannelRpcs,
 	ChannelSectionRpcs,
@@ -59,6 +60,7 @@ const AllRpcs = MessageRpcs.merge(
 	PinnedMessageRpcs,
 	AttachmentRpcs,
 	UserPresenceStatusRpcs,
+	BotRpcs,
 )
 
 // Configure RPC type resolver for devtools (only in dev mode)

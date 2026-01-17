@@ -32,6 +32,7 @@ import { Route as AppOrgSlugChatIndexRouteImport } from './routes/_app/$orgSlug/
 import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSlug/settings/team'
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
+import { Route as AppOrgSlugSettingsBotsRouteImport } from './routes/_app/$orgSlug/settings/bots'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$orgSlug/my-settings/profile'
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
@@ -166,6 +167,11 @@ const AppOrgSlugSettingsDebugRoute = AppOrgSlugSettingsDebugRouteImport.update({
   path: '/debug',
   getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
 } as any)
+const AppOrgSlugSettingsBotsRoute = AppOrgSlugSettingsBotsRouteImport.update({
+  id: '/bots',
+  path: '/bots',
+  getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+} as any)
 const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
   id: '/profile/$userId',
   path: '/profile/$userId',
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/_app/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/_app/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/_app/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
+    | '/$orgSlug/settings/bots'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
+    | '/$orgSlug/settings/bots'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/my-settings/notifications'
     | '/_app/$orgSlug/my-settings/profile'
     | '/_app/$orgSlug/profile/$userId'
+    | '/_app/$orgSlug/settings/bots'
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
     | '/_app/$orgSlug/settings/team'
@@ -647,6 +659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugSettingsDebugRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
+    '/_app/$orgSlug/settings/bots': {
+      id: '/_app/$orgSlug/settings/bots'
+      path: '/bots'
+      fullPath: '/$orgSlug/settings/bots'
+      preLoaderRoute: typeof AppOrgSlugSettingsBotsRouteImport
+      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+    }
     '/_app/$orgSlug/profile/$userId': {
       id: '/_app/$orgSlug/profile/$userId'
       path: '/profile/$userId'
@@ -770,6 +789,7 @@ const AppOrgSlugMySettingsLayoutRouteWithChildren =
   )
 
 interface AppOrgSlugSettingsLayoutRouteChildren {
+  AppOrgSlugSettingsBotsRoute: typeof AppOrgSlugSettingsBotsRoute
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
   AppOrgSlugSettingsInvitationsRoute: typeof AppOrgSlugSettingsInvitationsRoute
   AppOrgSlugSettingsTeamRoute: typeof AppOrgSlugSettingsTeamRoute
@@ -780,6 +800,7 @@ interface AppOrgSlugSettingsLayoutRouteChildren {
 
 const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildren =
   {
+    AppOrgSlugSettingsBotsRoute: AppOrgSlugSettingsBotsRoute,
     AppOrgSlugSettingsDebugRoute: AppOrgSlugSettingsDebugRoute,
     AppOrgSlugSettingsInvitationsRoute: AppOrgSlugSettingsInvitationsRoute,
     AppOrgSlugSettingsTeamRoute: AppOrgSlugSettingsTeamRoute,

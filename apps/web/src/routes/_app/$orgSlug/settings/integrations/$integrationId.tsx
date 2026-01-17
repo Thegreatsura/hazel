@@ -93,37 +93,35 @@ function IntegrationConfigPage() {
 	useEffect(() => {
 		if (!connection_status || !integration) return
 
-		const handleCallbackResult = async () => {
-			if (connection_status === "success") {
-				setIsVerifying(true)
+		if (connection_status === "success") {
+			setIsVerifying(true)
 
-				// Show success toast - the backend confirmed success via the URL param
-				toast.success(`Connected to ${integration.name}`, {
-					description: "Your account has been successfully connected.",
-				})
-
-				// Wait for Electric sync to catch up before hiding verifying state
-				// This ensures the UI shows the connected state after the toast
-				await new Promise((resolve) => setTimeout(resolve, 1500))
-				setIsVerifying(false)
-			} else if (connection_status === "error") {
-				const errorMessage = getErrorMessageFromCode(error_code)
-				toast.error(`Failed to connect to ${integration.name}`, {
-					description: errorMessage,
-				})
-			}
-
-			// Clear search params
-			navigate({
-				to: "/$orgSlug/settings/integrations/$integrationId",
-				params: { orgSlug, integrationId },
-				search: {},
-				replace: true,
+			// Show success toast - the backend confirmed success via the URL param
+			toast.success(`Connected to ${integration.name}`, {
+				description: "Your account has been successfully connected.",
+			})
+		} else if (connection_status === "error") {
+			const errorMessage = getErrorMessageFromCode(error_code)
+			toast.error(`Failed to connect to ${integration.name}`, {
+				description: errorMessage,
 			})
 		}
 
-		handleCallbackResult()
+		// Clear search params
+		navigate({
+			to: "/$orgSlug/settings/integrations/$integrationId",
+			params: { orgSlug, integrationId },
+			search: {},
+			replace: true,
+		})
 	}, [connection_status, error_code, integration, orgSlug, integrationId, navigate])
+
+	// Stop verifying when Electric sync completes and connection becomes available
+	useEffect(() => {
+		if (isVerifying && isConnected) {
+			setIsVerifying(false)
+		}
+	}, [isVerifying, isConnected])
 
 	// Mutations for OAuth flow and disconnect
 	const getOAuthUrl = useAtomSet(HazelApiClient.mutation("integrations", "getOAuthUrl"), {

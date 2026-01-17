@@ -177,12 +177,12 @@ export function SectionGroup({
 				<Strong>{name}</Strong>
 			</button>
 			{singleAction ? (
-				<Button intent="plain" isCircle size="sq-sm" onPress={singleAction.onAction}>
+				<Button intent="plain" isCircle size="sq-xs" onPress={singleAction.onAction}>
 					<IconPlus />
 				</Button>
 			) : (
 				<Menu>
-					<Button intent="plain" isCircle size="sq-sm">
+					<Button intent="plain" isCircle size="sq-xs">
 						<IconPlus />
 					</Button>
 					<MenuContent>

@@ -1,6 +1,7 @@
 import { RpcServer } from "@effect/rpc"
 import {
 	AttachmentRpcs,
+	BotRpcs,
 	ChannelMemberRpcs,
 	ChannelRpcs,
 	ChannelSectionRpcs,
@@ -20,6 +21,7 @@ import {
 } from "@hazel/domain/rpc"
 import { Layer } from "effect"
 import { AttachmentRpcLive } from "./handlers/attachments"
+import { BotRpcLive } from "./handlers/bots"
 import { ChannelMemberRpcLive } from "./handlers/channel-members"
 import { ChannelSectionRpcLive } from "./handlers/channel-sections"
 import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
@@ -70,6 +72,7 @@ export const AllRpcs = MessageRpcs.merge(
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
 	AttachmentRpcs,
+	BotRpcs,
 ).middleware(RpcLoggingMiddleware)
 
 export const RpcServerLive = Layer.empty.pipe(
@@ -90,6 +93,7 @@ export const RpcServerLive = Layer.empty.pipe(
 	Layer.provideMerge(ChannelWebhookRpcLive),
 	Layer.provideMerge(GitHubSubscriptionRpcLive),
 	Layer.provideMerge(AttachmentRpcLive),
+	Layer.provideMerge(BotRpcLive),
 	Layer.provideMerge(AuthMiddlewareLive),
 	Layer.provideMerge(RpcLoggingMiddlewareLive),
 )

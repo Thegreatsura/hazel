@@ -14,6 +14,7 @@ import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
+import { BotPolicy } from "./policies/bot-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
@@ -147,6 +148,7 @@ const PolicyLive = Layer.mergeAll(
 	IntegrationConnectionPolicy.Default,
 	ChannelWebhookPolicy.Default,
 	GitHubSubscriptionPolicy.Default,
+	BotPolicy.Default,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)

@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode, useEffect, useRef } from "react"
+import { type ReactNode, memo, useCallback, useEffect, useRef } from "react"
 import { cx } from "~/utils/cx"
 import type { AutocompleteOption } from "./types"
 
@@ -73,7 +73,17 @@ interface OptionProps<T> {
 	renderItem?: (props: { option: AutocompleteOption<T>; isFocused: boolean }) => ReactNode
 }
 
-function Option<T>({ item, index, isActive, onSelect, onHover, renderItem }: OptionProps<T>) {
+// Memoized Option component to prevent unnecessary re-renders
+// When the list has many items, this prevents all items from re-rendering
+// when only the active index changes
+const Option = memo(function Option<T>({
+	item,
+	index,
+	isActive,
+	onSelect,
+	onHover,
+	renderItem,
+}: OptionProps<T>) {
 	const ref = useRef<HTMLDivElement>(null)
 
 	// Scroll active item into view
@@ -83,19 +93,35 @@ function Option<T>({ item, index, isActive, onSelect, onHover, renderItem }: Opt
 		}
 	}, [isActive])
 
+	// Stable click handler
+	const handleClick = useCallback(() => {
+		onSelect(index)
+	}, [onSelect, index])
+
+	// Stable keydown handler
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault()
+				onSelect(index)
+			}
+		},
+		[onSelect, index],
+	)
+
+	// Stable hover handler
+	const handleMouseEnter = useCallback(() => {
+		onHover(index)
+	}, [onHover, index])
+
 	return (
 		<div
 			ref={ref}
 			role="option"
 			aria-selected={isActive}
-			onClick={() => onSelect(index)}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault()
-					onSelect(index)
-				}
-			}}
-			onMouseEnter={() => onHover(index)}
+			onClick={handleClick}
+			onKeyDown={handleKeyDown}
+			onMouseEnter={handleMouseEnter}
 			className={cx(
 				"flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm",
 				"outline-none transition-colors",
@@ -110,7 +136,7 @@ function Option<T>({ item, index, isActive, onSelect, onHover, renderItem }: Opt
 			)}
 		</div>
 	)
-}
+}) as <T>(props: OptionProps<T>) => ReactNode
 
 /**
  * Default item content renderer

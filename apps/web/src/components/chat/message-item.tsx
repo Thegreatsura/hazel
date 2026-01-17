@@ -1,11 +1,10 @@
 import { useAtomValue } from "@effect-atom/atom-react"
 import { format } from "date-fns"
-import { memo, useRef } from "react"
+import { lazy, memo, Suspense, useRef } from "react"
 import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
-import { GitHubPREmbed, LinearIssueEmbed } from "~/components/integrations"
 import {
 	extractGitHubInfo,
 	extractLinearIssueKey,
@@ -18,7 +17,6 @@ import {
 	isYoutubeUrl,
 	LinkPreview,
 } from "~/components/link-preview"
-import { TweetEmbed } from "~/components/tweet-embed"
 import { Badge } from "~/components/ui/badge"
 import { YoutubeEmbed } from "~/components/youtube-embed"
 import { useChat } from "~/hooks/use-chat"
@@ -31,6 +29,30 @@ import { MessageEmbeds } from "./message-embeds"
 import { MessageReplySection } from "./message-reply-section"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 import { UserProfilePopover } from "./user-profile-popover"
+
+// Lazy load heavy embed components (~85KB combined savings)
+const TweetEmbed = lazy(() => import("~/components/tweet-embed").then((m) => ({ default: m.TweetEmbed })))
+const GitHubPREmbed = lazy(() =>
+	import("~/components/integrations/github-pr-embed").then((m) => ({ default: m.GitHubPREmbed })),
+)
+const LinearIssueEmbed = lazy(() =>
+	import("~/components/integrations/linear-issue-embed").then((m) => ({
+		default: m.LinearIssueEmbed,
+	})),
+)
+
+// Skeleton placeholder for lazy-loaded embeds
+function EmbedSkeleton() {
+	return (
+		<div className="mt-2 flex max-w-sm flex-col gap-2 rounded-lg border border-fg/15 bg-muted/40 p-4">
+			<div className="flex flex-row gap-2">
+				<div className="size-10 shrink-0 animate-pulse rounded-full bg-muted" />
+				<div className="h-10 w-full animate-pulse rounded bg-muted" />
+			</div>
+			<div className="h-20 w-full animate-pulse rounded bg-muted" />
+		</div>
+	)
+}
 
 interface MessageItemProps {
 	message: MessageWithPinned
@@ -167,12 +189,13 @@ export const MessageItem = memo(function MessageItem({
 								{tweetUrls.map((url) => {
 									const tweetId = extractTweetId(url)
 									return tweetId ? (
-										<TweetEmbed
-											key={url}
-											id={tweetId}
-											author={message.author ?? undefined}
-											messageCreatedAt={message.createdAt.getTime()}
-										/>
+										<Suspense key={url} fallback={<EmbedSkeleton />}>
+											<TweetEmbed
+												id={tweetId}
+												author={message.author ?? undefined}
+												messageCreatedAt={message.createdAt.getTime()}
+											/>
+										</Suspense>
 									) : null
 								})}
 								{/* Render all YouTube embeds */}
@@ -186,22 +209,18 @@ export const MessageItem = memo(function MessageItem({
 								{linearUrls.map((url) => {
 									const issueKey = extractLinearIssueKey(url)
 									return issueKey && currentUser?.organizationId ? (
-										<LinearIssueEmbed
-											key={url}
-											url={url}
-											orgId={currentUser.organizationId}
-										/>
+										<Suspense key={url} fallback={<EmbedSkeleton />}>
+											<LinearIssueEmbed url={url} orgId={currentUser.organizationId} />
+										</Suspense>
 									) : null
 								})}
 								{/* Render all GitHub PR embeds */}
 								{githubPRUrls.map((url) => {
 									const info = extractGitHubInfo(url)
 									return info && currentUser?.organizationId ? (
-										<GitHubPREmbed
-											key={url}
-											url={url}
-											orgId={currentUser.organizationId}
-										/>
+										<Suspense key={url} fallback={<EmbedSkeleton />}>
+											<GitHubPREmbed url={url} orgId={currentUser.organizationId} />
+										</Suspense>
 									) : null
 								})}
 								{/* Render last other URL as link preview */}
