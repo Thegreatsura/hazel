@@ -6,6 +6,7 @@ dist-ssr
 .turbo
 .idea
 .env
+.claude
 .source
 version.json
 

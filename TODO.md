@@ -1,5 +1,6 @@
 # Today
 
+- voice to text
 - replace tanstack form with effect based form
 - setup sequin locally with config as code
 

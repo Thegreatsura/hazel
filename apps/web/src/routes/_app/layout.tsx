@@ -16,8 +16,7 @@ import { isTauri } from "~/lib/tauri"
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
 	loader: async () => {
-		await organizationCollection.preload()
-		await organizationMemberCollection.preload()
+		await Promise.all([organizationCollection.preload(), organizationMemberCollection.preload()])
 
 		return null
 	},

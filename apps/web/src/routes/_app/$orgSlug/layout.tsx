@@ -1,18 +1,38 @@
 import type { ChannelId } from "@hazel/schema"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
-import { useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
 import { useModal } from "~/atoms/modal-atoms"
-import { CommandPalette } from "~/components/command-palette"
 import { Loader } from "~/components/loader"
 import { MobileNav } from "~/components/mobile-nav"
-import { CreateChannelModal } from "~/components/modals/create-channel-modal"
-import { CreateDmModal } from "~/components/modals/create-dm-modal"
-import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
-import { CreateSectionModal } from "~/components/modals/create-section-modal"
-import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
-import { EmailInviteModal } from "~/components/modals/email-invite-modal"
-import { JoinChannelModal } from "~/components/modals/join-channel-modal"
+
+// Lazy load heavy components - only loaded when opened
+const CommandPalette = lazy(() =>
+	import("~/components/command-palette").then((m) => ({ default: m.CommandPalette })),
+)
+const CreateChannelModal = lazy(() =>
+	import("~/components/modals/create-channel-modal").then((m) => ({ default: m.CreateChannelModal })),
+)
+const CreateDmModal = lazy(() =>
+	import("~/components/modals/create-dm-modal").then((m) => ({ default: m.CreateDmModal })),
+)
+const CreateOrganizationModal = lazy(() =>
+	import("~/components/modals/create-organization-modal").then((m) => ({
+		default: m.CreateOrganizationModal,
+	})),
+)
+const CreateSectionModal = lazy(() =>
+	import("~/components/modals/create-section-modal").then((m) => ({ default: m.CreateSectionModal })),
+)
+const DeleteChannelModal = lazy(() =>
+	import("~/components/modals/delete-channel-modal").then((m) => ({ default: m.DeleteChannelModal })),
+)
+const EmailInviteModal = lazy(() =>
+	import("~/components/modals/email-invite-modal").then((m) => ({ default: m.EmailInviteModal })),
+)
+const JoinChannelModal = lazy(() =>
+	import("~/components/modals/join-channel-modal").then((m) => ({ default: m.JoinChannelModal })),
+)
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
@@ -33,15 +53,15 @@ import { PresenceProvider } from "~/providers/presence-provider"
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
 	loader: async () => {
-		// TODO: Should be scoped to the organization
-		await channelCollection.preload()
-		await channelMemberCollection.preload()
-		await channelSectionCollection.preload()
-		await attachmentCollection.preload()
-
-		await organizationCollection.preload()
-		await organizationMemberCollection.preload()
-		await userCollection.preload()
+		await Promise.all([
+			channelCollection.preload(),
+			channelMemberCollection.preload(),
+			channelSectionCollection.preload(),
+			attachmentCollection.preload(),
+			organizationCollection.preload(),
+			organizationMemberCollection.preload(),
+			userCollection.preload(),
+		])
 
 		return null
 	},
@@ -125,46 +145,50 @@ function RouteComponent() {
 					<SidebarInset className="pb-16 md:pb-0">
 						<Outlet />
 						<MobileNav />
-						<CommandPalette
-							isOpen={openCmd}
-							onOpenChange={setOpenCmd}
-							initialPage={initialPage}
-						/>
+						<Suspense fallback={null}>
+							<CommandPalette
+								isOpen={openCmd}
+								onOpenChange={setOpenCmd}
+								initialPage={initialPage}
+							/>
+						</Suspense>
 					</SidebarInset>
 
-					{/* Global Modals - controlled by hook state */}
-					<CreateChannelModal
-						isOpen={newChannelModal.isOpen}
-						onOpenChange={(open) => !open && newChannelModal.close()}
-					/>
-					<CreateDmModal
-						isOpen={createDmModal.isOpen}
-						onOpenChange={(open) => !open && createDmModal.close()}
-					/>
-					<JoinChannelModal
-						isOpen={joinChannelModal.isOpen}
-						onOpenChange={(open) => !open && joinChannelModal.close()}
-					/>
-					<EmailInviteModal
-						isOpen={emailInviteModal.isOpen}
-						onOpenChange={(open) => !open && emailInviteModal.close()}
-					/>
-					<CreateOrganizationModal
-						isOpen={createOrgModal.isOpen}
-						onOpenChange={(open) => !open && createOrgModal.close()}
-					/>
-					<CreateSectionModal
-						isOpen={createSectionModal.isOpen}
-						onOpenChange={(open) => !open && createSectionModal.close()}
-					/>
-					{deleteChannelModal.metadata?.channelId ? (
-						<DeleteChannelModal
-							channelId={deleteChannelModal.metadata.channelId as ChannelId}
-							channelName={(deleteChannelModal.metadata.channelName as string) ?? ""}
-							isOpen={deleteChannelModal.isOpen}
-							onOpenChange={(open) => !open && deleteChannelModal.close()}
+					{/* Global Modals - controlled by hook state, lazy loaded */}
+					<Suspense fallback={null}>
+						<CreateChannelModal
+							isOpen={newChannelModal.isOpen}
+							onOpenChange={(open) => !open && newChannelModal.close()}
 						/>
-					) : null}
+						<CreateDmModal
+							isOpen={createDmModal.isOpen}
+							onOpenChange={(open) => !open && createDmModal.close()}
+						/>
+						<JoinChannelModal
+							isOpen={joinChannelModal.isOpen}
+							onOpenChange={(open) => !open && joinChannelModal.close()}
+						/>
+						<EmailInviteModal
+							isOpen={emailInviteModal.isOpen}
+							onOpenChange={(open) => !open && emailInviteModal.close()}
+						/>
+						<CreateOrganizationModal
+							isOpen={createOrgModal.isOpen}
+							onOpenChange={(open) => !open && createOrgModal.close()}
+						/>
+						<CreateSectionModal
+							isOpen={createSectionModal.isOpen}
+							onOpenChange={(open) => !open && createSectionModal.close()}
+						/>
+						{deleteChannelModal.metadata?.channelId ? (
+							<DeleteChannelModal
+								channelId={deleteChannelModal.metadata.channelId as ChannelId}
+								channelName={(deleteChannelModal.metadata.channelName as string) ?? ""}
+								isOpen={deleteChannelModal.isOpen}
+								onOpenChange={(open) => !open && deleteChannelModal.close()}
+							/>
+						) : null}
+					</Suspense>
 				</NotificationSoundProvider>
 			</PresenceProvider>
 		</SidebarProvider>

@@ -5,7 +5,7 @@
  */
 
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
-import { StrictMode } from "react"
+import { StrictMode, useEffect, useState, type ReactNode } from "react"
 import ReactDOM from "react-dom/client"
 
 import { routeTree } from "./routeTree.gen.ts"
@@ -22,7 +22,6 @@ import "./lib/registry.ts"
 // Initialize Tauri-specific features (no-op in browser)
 import { initTauri } from "./lib/tauri.ts"
 
-import { PostHogProvider } from "posthog-js/react"
 import { Loader } from "./components/loader.tsx"
 import { RouteErrorComponent } from "./components/route-error.tsx"
 import { RouteNotFoundComponent } from "./components/route-not-found.tsx"
@@ -31,13 +30,15 @@ import { ThemeProvider } from "./components/theme-provider.tsx"
 import { Toast } from "./components/ui/toast.tsx"
 import reportWebVitals from "./reportWebVitals.ts"
 
-// Load react-scan if enabled in localStorage
+// Load react-scan if enabled in localStorage - defer to idle time
 const reactScanEnabled = localStorage.getItem("react-scan-enabled")
 if (reactScanEnabled === "true") {
-	const script = document.createElement("script")
-	script.crossOrigin = "anonymous"
-	script.src = "//unpkg.com/react-scan/dist/auto.global.js"
-	document.head.appendChild(script)
+	requestIdleCallback(() => {
+		const script = document.createElement("script")
+		script.crossOrigin = "anonymous"
+		script.src = "//unpkg.com/react-scan/dist/auto.global.js"
+		document.head.appendChild(script)
+	})
 }
 
 const posthogOptions = {
@@ -46,6 +47,26 @@ const posthogOptions = {
 
 	defaults: "2025-11-30",
 } as const
+
+// Defer PostHog initialization until after hydration for faster TTI
+function DeferredPostHog({ children }: { children: ReactNode }) {
+	const [PostHogProvider, setProvider] = useState<React.ComponentType<{
+		apiKey: string
+		options: typeof posthogOptions
+		children: ReactNode
+	}> | null>(null)
+
+	useEffect(() => {
+		import("posthog-js/react").then((m) => setProvider(() => m.PostHogProvider))
+	}, [])
+
+	if (!PostHogProvider) return <>{children}</>
+	return (
+		<PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={posthogOptions}>
+			{children}
+		</PostHogProvider>
+	)
+}
 
 export const router = createRouter({
 	routeTree,
@@ -61,13 +82,13 @@ export const router = createRouter({
 	defaultNotFoundComponent: RouteNotFoundComponent,
 	Wrap: ({ children }) => {
 		return (
-			<PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={posthogOptions}>
+			<DeferredPostHog>
 				<ThemeProvider>
 					<Toast />
 					<TauriUpdateCheck />
 					{children}
 				</ThemeProvider>
-			</PostHogProvider>
+			</DeferredPostHog>
 		)
 	},
 })
