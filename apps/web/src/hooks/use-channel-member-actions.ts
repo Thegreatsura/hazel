@@ -16,6 +16,7 @@ interface MemberState {
 	id: ChannelMemberId
 	isMuted: boolean
 	isFavorite: boolean
+	isHidden: boolean
 }
 
 type ItemType = "channel" | "thread" | "conversation"
@@ -24,7 +25,7 @@ type ItemType = "channel" | "thread" | "conversation"
  * Shared handlers for channel member actions (mute, favorite, leave).
  * Used by channel-item, thread-item, and dm-channel-item.
  */
-export function useChannelMemberActions(member: MemberState, itemType: ItemType = "channel") {
+export function useChannelMemberActions(member: MemberState | undefined, itemType: ItemType = "channel") {
 	const updateMember = useAtomSet(updateChannelMemberAction, {
 		mode: "promiseExit",
 	})
@@ -35,6 +36,7 @@ export function useChannelMemberActions(member: MemberState, itemType: ItemType 
 	const itemLabel = itemType.charAt(0).toUpperCase() + itemType.slice(1)
 
 	const handleToggleMute = async () => {
+		if (!member) return
 		const exit = await updateMember({
 			memberId: member.id,
 			isMuted: !member.isMuted,
@@ -48,6 +50,7 @@ export function useChannelMemberActions(member: MemberState, itemType: ItemType 
 	}
 
 	const handleToggleFavorite = async () => {
+		if (!member) return
 		const exit = await updateMember({
 			memberId: member.id,
 			isFavorite: !member.isFavorite,
@@ -61,6 +64,7 @@ export function useChannelMemberActions(member: MemberState, itemType: ItemType 
 	}
 
 	const handleLeave = async () => {
+		if (!member) return
 		const exit = await deleteMember({
 			payload: { id: member.id },
 		})
@@ -72,5 +76,19 @@ export function useChannelMemberActions(member: MemberState, itemType: ItemType 
 		})
 	}
 
-	return { handleToggleMute, handleToggleFavorite, handleLeave }
+	const handleToggleHidden = async () => {
+		if (!member) return
+		const exit = await updateMember({
+			memberId: member.id,
+			isHidden: !member.isHidden,
+		})
+
+		matchExitWithToast(exit, {
+			onSuccess: () => {},
+			successMessage: member.isHidden ? "Conversation unhidden" : "Conversation hidden",
+			customErrors: MEMBER_NOT_FOUND_ERROR,
+		})
+	}
+
+	return { handleToggleMute, handleToggleFavorite, handleLeave, handleToggleHidden }
 }

@@ -18,6 +18,7 @@ import { organizationMemberCollection, userCollection, userPresenceStatusCollect
 import { useAppForm } from "~/hooks/use-app-form"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
+import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
 
 const dmFormSchema = type({
@@ -69,7 +70,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 			onChange: dmFormSchema,
 		},
 		onSubmit: async ({ value }) => {
-			if (value.userIds.length === 0 || !user?.id || !organizationId || !slug) return
+			if (!value.userIds || value.userIds.length === 0 || !user?.id || !organizationId || !slug) return
 
 			// Determine if it's a single DM or group
 			const type = value.userIds.length === 1 ? "single" : "direct"
@@ -86,7 +87,18 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 
 			const targetUser = organizationUsers?.find((u) => u?.id === value.userIds[0])
 
-			const exit = await toastExit(
+			// Check if channel already exists locally
+			const existingChannel = findExistingDmChannel(user.id, value.userIds)
+
+			// If channel already exists, navigate directly to it
+			if (existingChannel) {
+				navigate({
+					to: "/$orgSlug/chat/$id",
+					params: { orgSlug: slug, id: existingChannel.id },
+				})
+				return handleClose()
+			}
+			await toastExit(
 				createDmChannel({
 					payload: {
 						organizationId,
@@ -102,14 +114,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 							to: "/$orgSlug/chat/$id",
 							params: { orgSlug: slug, id: result.data.id },
 						})
-
-						// Close modal and reset form
-						onOpenChange(false)
-						form.reset()
-						setSelectedUsers([])
-						setSearchQuery("")
-
-						// Return success message
+						handleClose()
 						if (type === "single") {
 							return `Started conversation with ${targetUser?.firstName}`
 						}
@@ -117,8 +122,6 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 					},
 				},
 			)
-
-			return exit
 		},
 	})
 
@@ -162,6 +165,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 				// Update form value
 				form.setFieldValue(
 					"userIds",
+
 					newSelection.map((u) => u.id),
 				)
 

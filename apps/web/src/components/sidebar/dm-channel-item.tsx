@@ -259,7 +259,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 										</MenuItem>
 										<MenuItem intent="danger" onAction={handleClose}>
 											<IconClose className="size-4" />
-											<MenuLabel>Close</MenuLabel>
+											<MenuLabel>Hide conversation</MenuLabel>
 										</MenuItem>
 									</MenuContent>
 								</Menu>

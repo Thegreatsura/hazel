@@ -1,6 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
-import { IconWarning } from "~/components/icons/icon-warning"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
@@ -12,6 +11,7 @@ import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconMessage from "~/components/icons/icon-msgs"
 import IconPlus from "~/components/icons/icon-plus"
 import IconTrash from "~/components/icons/icon-trash"
+import { IconWarning } from "~/components/icons/icon-warning"
 import { ChangeRoleModal } from "~/components/modals/change-role-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { Avatar } from "~/components/ui/avatar"
@@ -114,7 +114,7 @@ function TeamSettings() {
 	const handleMessageUser = async (targetUserId: UserId, targetUserName: string) => {
 		if (!user?.id || !organizationId || !orgSlug) return
 
-		const existingChannel = findExistingDmChannel(user.id, targetUserId)
+		const existingChannel = findExistingDmChannel(user.id, [targetUserId])
 
 		if (existingChannel) {
 			navigate({
@@ -122,7 +122,7 @@ function TeamSettings() {
 				params: { orgSlug, id: existingChannel.id },
 			})
 		} else {
-			const _result = await toastExit(
+			await toastExit(
 				createDmChannel({
 					payload: {
 						organizationId,
@@ -134,12 +134,10 @@ function TeamSettings() {
 					loading: `Starting conversation with ${targetUserName}...`,
 					success: ({ data }) => {
 						// Navigate to the newly created channel
-						if (data?.id) {
-							navigate({
-								to: "/$orgSlug/chat/$id",
-								params: { orgSlug, id: data.id },
-							})
-						}
+						navigate({
+							to: "/$orgSlug/chat/$id",
+							params: { orgSlug, id: data.id },
+						})
 						return `Started conversation with ${targetUserName}`
 					},
 				},
