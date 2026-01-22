@@ -7,9 +7,7 @@ import { useAuth } from "~/lib/auth"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { useOrganization } from "./use-organization"
 
-const deleteNotificationsByMessageIdsMutation = HazelRpcClient.mutation(
-	"notification.deleteByMessageIds",
-)
+const deleteNotificationsByMessageIdsMutation = HazelRpcClient.mutation("notification.deleteByMessageIds")
 
 interface UseVisibleMessageNotificationCleanerOptions {
 	channelId: ChannelId

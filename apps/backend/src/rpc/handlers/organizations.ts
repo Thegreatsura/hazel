@@ -359,37 +359,18 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const orgOption = yield* OrganizationRepo.findBySlug(slug).pipe(withSystemActor)
 
 							if (Option.isNone(orgOption)) {
-								return yield* Effect.fail(
-									new OrganizationNotFoundError({
-										organizationId: "unknown" as any,
-									}),
-								)
+								return yield* new OrganizationNotFoundError({
+									organizationId: "unknown" as any,
+								})
 							}
 
 							const org = orgOption.value
 
 							// Check if organization has public invites enabled
 							if (!org.isPublic) {
-								return yield* Effect.fail(
-									new PublicInviteDisabledError({
-										organizationId: org.id,
-									}),
-								)
-							}
-
-							// Check if user is already a member
-							const existingMember = yield* OrganizationMemberRepo.findByOrgAndUser(
-								org.id,
-								currentUser.id,
-							).pipe(withSystemActor)
-
-							if (Option.isSome(existingMember)) {
-								return yield* Effect.fail(
-									new AlreadyMemberError({
-										organizationId: org.id,
-										organizationSlug: org.slug,
-									}),
-								)
+								return yield* new PublicInviteDisabledError({
+									organizationId: org.id,
+								})
 							}
 
 							// Get the user's external ID for WorkOS sync
@@ -407,17 +388,54 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							)
 
 							if (Option.isNone(userOption)) {
-								return yield* Effect.fail(
-									new InternalServerError({
-										message: "User not found",
-										detail: `Could not find user with ID ${currentUser.id}`,
-									}),
-								)
+								return yield* new InternalServerError({
+									message: "User not found",
+									detail: `Could not find user with ID ${currentUser.id}`,
+								})
 							}
 
 							const user = userOption.value
 
-							// Create membership in local database
+							// Get WorkOS org first - fail early if not found
+							const workosOrg = yield* workos
+								.call((client) => client.organizations.getOrganizationByExternalId(org.id))
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to get WorkOS organization",
+												detail: String(error),
+											}),
+									),
+								)
+
+							// Check if user is already a member in local DB
+							const existingMember = yield* OrganizationMemberRepo.findByOrgAndUser(
+								org.id,
+								currentUser.id,
+							).pipe(withSystemActor)
+
+							// Check WorkOS membership
+							const workosMembers = yield* workos
+								.call((client) =>
+									client.userManagement.listOrganizationMemberships({
+										organizationId: workosOrg.id,
+										userId: user.externalId,
+									}),
+								)
+								.pipe(Effect.catchAll(() => Effect.succeed({ data: [] })))
+
+							const hasWorkosMembership = workosMembers.data.length > 0
+
+							if (Option.isSome(existingMember) && hasWorkosMembership) {
+								// Truly already a member in both systems
+								return yield* new AlreadyMemberError({
+									organizationId: org.id,
+									organizationSlug: org.slug,
+								})
+							}
+
+							// Create/ensure membership in local database
 							yield* OrganizationMemberRepo.upsertByOrgAndUser({
 								organizationId: org.id,
 								userId: currentUser.id,
@@ -428,22 +446,26 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								deletedAt: null,
 							}).pipe(withSystemActor)
 
-							// Try to sync to WorkOS (non-blocking - we don't fail if WorkOS fails)
-							yield* workos
-								.call((client) =>
-									client.userManagement.createOrganizationMembership({
-										userId: user.externalId,
-										organizationId: org.id,
-										roleSlug: "member",
-									}),
-								)
-								.pipe(
-									Effect.catchAll((error) =>
-										Effect.logWarning(
-											`Failed to sync membership to WorkOS: ${String(error)}`,
+							// Sync to WorkOS - REQUIRED, fails the transaction if it fails
+							if (!hasWorkosMembership) {
+								yield* workos
+									.call((client) =>
+										client.userManagement.createOrganizationMembership({
+											userId: user.externalId,
+											organizationId: workosOrg.id,
+											roleSlug: "member",
+										}),
+									)
+									.pipe(
+										Effect.mapError(
+											(error) =>
+												new InternalServerError({
+													message: "Failed to create WorkOS membership",
+													detail: String(error),
+												}),
 										),
-									),
-								)
+									)
+							}
 
 							// Add user to the default "general" channel
 							const generalChannel = yield* ChannelRepo.findByOrgAndName(
