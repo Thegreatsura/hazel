@@ -602,6 +602,9 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		// Clear content and focus
 		const resetAndFocus = useCallback(() => {
+			// Close any open autocomplete (emoji picker, mentions, commands)
+			closeAutocomplete()
+
 			// Directly reset the editor's children to force complete state clear
 			editor.children = createEmptyValue()
 			editor.onChange()
@@ -617,7 +620,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				ReactEditor.focus(editor)
 				Transforms.select(editor, Editor.start(editor, []))
 			}, 0)
-		}, [editor])
+		}, [editor, closeAutocomplete])
 
 		// Set content from markdown string
 		const setContent = useCallback(
