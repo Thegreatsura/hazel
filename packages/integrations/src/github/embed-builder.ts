@@ -7,6 +7,7 @@ import type {
 	GitHubEventType,
 	GitHubIssuesPayload,
 	GitHubLabel,
+	GitHubMilestonePayload,
 	GitHubPullRequestPayload,
 	GitHubPushPayload,
 	GitHubReleasePayload,
@@ -21,14 +22,50 @@ const githubConfig = INTEGRATION_BOT_CONFIGS.github
 
 /**
  * Build embed for push event.
+ * Returns null for 0-commit pushes that aren't branch/tag creations.
  */
-export function buildPushEmbed(payload: GitHubPushPayload): MessageEmbed {
+export function buildPushEmbed(payload: GitHubPushPayload): MessageEmbed | null {
 	const commits = payload.commits ?? []
 	const ref = payload.ref ?? ""
-	const branch = ref.replace("refs/heads/", "")
+	const isTag = ref.startsWith("refs/tags/")
+	const refName = ref.replace("refs/heads/", "").replace("refs/tags/", "")
 	const repository = payload.repository
 	const sender = payload.sender
 	const commitCount = commits.length
+
+	// Detect branch/tag creation (before is all zeros)
+	const isCreated = payload.before === "0000000000000000000000000000000000000000"
+
+	// Handle 0-commit cases
+	if (commitCount === 0) {
+		if (isCreated) {
+			// Branch/tag created
+			const badgeText = isTag ? "Tag Created" : "Branch Created"
+			const description = isTag ? `Tag **${refName}** created` : `Branch **${refName}** created`
+
+			return {
+				title: repository.full_name,
+				description,
+				url: repository.html_url,
+				color: GITHUB_COLORS.push,
+				author: sender
+					? {
+							name: sender.login,
+							url: sender.html_url,
+							iconUrl: sender.avatar_url,
+						}
+					: undefined,
+				footer: {
+					text: "GitHub",
+					iconUrl: githubConfig.avatarUrl,
+				},
+				timestamp: new Date().toISOString(),
+				badge: { text: badgeText, color: GITHUB_COLORS.push },
+			}
+		}
+		// Skip other 0-commit pushes (force push without new commits, etc.)
+		return null
+	}
 
 	// Build commit list for fields (max 5 commits)
 	const commitFields = commits.slice(0, 5).map((commit) => {
@@ -43,7 +80,7 @@ export function buildPushEmbed(payload: GitHubPushPayload): MessageEmbed {
 
 	return {
 		title: repository.full_name,
-		description: `**${commitCount}** commit${commitCount !== 1 ? "s" : ""} pushed to [[${branch}]]`,
+		description: `**${commitCount}** commit${commitCount !== 1 ? "s" : ""} pushed to [[${refName}]]`,
 		url: payload.compare,
 		color: GITHUB_COLORS.push,
 		author: sender
@@ -412,20 +449,13 @@ export function buildStarEmbed(payload: GitHubStarPayload): MessageEmbed {
 	const action = payload.action
 	const starCount = repository.stargazers_count
 
-	// Only show "created" (starred) events, not "deleted" (unstarred)
 	const isStarred = action === "created"
+	const color = isStarred ? GITHUB_COLORS.star : GITHUB_COLORS.unstar
 
-	// Build description with star count if available
-	let description: string
-	if (isStarred) {
-		if (starCount !== undefined) {
-			description = `**${sender?.login ?? "Someone"}** starred this repository\nNow at **${formatCompactNumber(starCount)}** ⭐ stars`
-		} else {
-			description = `**${sender?.login ?? "Someone"}** starred this repository`
-		}
-	} else {
-		description = `**${sender?.login ?? "Someone"}** unstarred this repository`
-	}
+	// Build description
+	const description = isStarred
+		? `**${sender?.login ?? "Someone"}** starred this repository`
+		: `**${sender?.login ?? "Someone"}** unstarred this repository`
 
 	// Build fields
 	const fields: Array<{ name: string; value: string; type?: "text" | "badge"; inline?: boolean }> = []
@@ -452,11 +482,14 @@ export function buildStarEmbed(payload: GitHubStarPayload): MessageEmbed {
 		})
 	}
 
+	// Use starred_at for star events, fall back to current time for unstar (which has null starred_at)
+	const timestamp = payload.starred_at ?? new Date().toISOString()
+
 	return {
 		title: repository.full_name,
 		description,
 		url: repository.html_url,
-		color: GITHUB_COLORS.star,
+		color,
 		author: sender
 			? {
 					name: sender.login,
@@ -469,8 +502,110 @@ export function buildStarEmbed(payload: GitHubStarPayload): MessageEmbed {
 			iconUrl: githubConfig.avatarUrl,
 		},
 		fields: fields.length > 0 ? fields : undefined,
+		timestamp,
+		badge: { text: isStarred ? "Starred" : "Unstarred", color },
+	}
+}
+
+/**
+ * Build embed for milestone event.
+ */
+export function buildMilestoneEmbed(payload: GitHubMilestonePayload): MessageEmbed {
+	const milestone = payload.milestone
+	const repository = payload.repository
+	const sender = payload.sender
+	const action = payload.action
+
+	// Determine color based on action
+	let color: number
+	let badgeText: string
+	switch (action) {
+		case "created":
+			color = GITHUB_COLORS.milestone_created
+			badgeText = "Created"
+			break
+		case "opened":
+			color = GITHUB_COLORS.milestone_opened
+			badgeText = "Opened"
+			break
+		case "closed":
+			color = GITHUB_COLORS.milestone_closed
+			badgeText = "Closed"
+			break
+		case "edited":
+			color = GITHUB_COLORS.milestone_edited
+			badgeText = "Edited"
+			break
+		case "deleted":
+			color = GITHUB_COLORS.milestone_deleted
+			badgeText = "Deleted"
+			break
+		default:
+			color = GITHUB_COLORS.milestone_created
+			badgeText = action.charAt(0).toUpperCase() + action.slice(1)
+	}
+
+	// Calculate progress
+	const totalIssues = milestone.open_issues + milestone.closed_issues
+	const progressPercent = totalIssues > 0 ? Math.round((milestone.closed_issues / totalIssues) * 100) : 0
+
+	// Build fields
+	const fields: Array<{ name: string; value: string; type?: "text" | "badge"; inline?: boolean }> = []
+
+	// Progress field
+	if (totalIssues > 0) {
+		fields.push({
+			name: "Progress",
+			value: `${progressPercent}% (${milestone.closed_issues}/${totalIssues})`,
+			inline: true,
+		})
+	}
+
+	// Issues field with colored counts
+	fields.push({
+		name: "Issues",
+		value: `{green:${milestone.closed_issues} closed} {red:${milestone.open_issues} open}`,
+		inline: true,
+	})
+
+	// Due date field
+	if (milestone.due_on) {
+		const dueDate = new Date(milestone.due_on)
+		const now = new Date()
+		const isOverdue = dueDate < now && milestone.state !== "closed"
+		const dueDateStr = dueDate.toLocaleDateString("en-US", {
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		})
+		fields.push({
+			name: "Due Date",
+			value: isOverdue ? `{red:${dueDateStr} (overdue)}` : dueDateStr,
+			inline: true,
+		})
+	}
+
+	return {
+		title: milestone.title,
+		description: milestone.description
+			? `${milestone.description.slice(0, 200)}${milestone.description.length > 200 ? "..." : ""}`
+			: undefined,
+		url: milestone.html_url,
+		color,
+		author: sender
+			? {
+					name: sender.login,
+					url: sender.html_url,
+					iconUrl: sender.avatar_url,
+				}
+			: undefined,
+		footer: {
+			text: `${repository.full_name}`,
+			iconUrl: githubConfig.avatarUrl,
+		},
+		fields: fields.length > 0 ? fields : undefined,
 		timestamp: new Date().toISOString(),
-		badge: { text: isStarred ? "Starred" : "Unstarred", color: GITHUB_COLORS.star },
+		badge: { text: `Milestone ${badgeText}`, color },
 	}
 }
 
@@ -493,6 +628,8 @@ export function mapEventType(githubEventType: string): GitHubEventType | null {
 			return "workflow_run"
 		case "star":
 			return "star"
+		case "milestone":
+			return "milestone"
 		default:
 			return null
 	}
@@ -529,6 +666,8 @@ export function buildGitHubEmbed(eventType: string, payload: unknown): MessageEm
 			return buildWorkflowRunEmbed(payload as GitHubWorkflowRunPayload)
 		case "star":
 			return buildStarEmbed(payload as GitHubStarPayload)
+		case "milestone":
+			return buildMilestoneEmbed(payload as GitHubMilestonePayload)
 		default:
 			return null
 	}

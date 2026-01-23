@@ -34,6 +34,14 @@ export const GITHUB_COLORS = {
 
 	// Star events
 	star: 0xf1e05a, // GitHub yellow/gold star color
+	unstar: 0x6e7681, // Gray for unstar
+
+	// Milestone states
+	milestone_created: 0x238636, // Green
+	milestone_opened: 0x238636, // Green
+	milestone_closed: 0x8957e5, // Purple - completion
+	milestone_edited: 0x1f6feb, // Blue
+	milestone_deleted: 0xda3633, // Red
 } as const
 
 export type GitHubColorKey = keyof typeof GITHUB_COLORS

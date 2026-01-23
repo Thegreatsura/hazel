@@ -9,11 +9,12 @@
 - replace tanstack form with effect based form
 
 - Figure out an cookie/auth setup that works without the need of a 3rd party cookie
-- Add User Custom Status
-- Improve Github Embed Cards and add milestone cards
-- fix weird 0 commit webhooks
-- fix star one alwyas saying Now
-- fix unstar looking the same as star
+
+# Bugs
+
+- When message fails to send should retry
+- Profile Pic getting synced later, initally no pfp??
+- emoji picker popping off with : but not closing after sneding message
 
 # Later
 

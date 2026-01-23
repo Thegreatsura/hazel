@@ -5,6 +5,7 @@
 import type {
 	GitHubDeploymentStatusPayload,
 	GitHubIssuesPayload,
+	GitHubMilestonePayload,
 	GitHubPullRequestPayload,
 	GitHubPushPayload,
 	GitHubReleasePayload,
@@ -62,6 +63,24 @@ export const testPayloads = {
 			{ id: "def2345678901", message: "feat: add API endpoints" },
 			{ id: "ghi3456789012", message: "test: add unit tests" },
 		],
+		repository: baseRepo,
+		sender: baseUser,
+	} satisfies GitHubPushPayload,
+
+	push_branch_created: {
+		ref: "refs/heads/feature/new-api",
+		before: "0000000000000000000000000000000000000000",
+		after: "abc1234567890",
+		commits: [],
+		repository: baseRepo,
+		sender: baseUser,
+	} satisfies GitHubPushPayload,
+
+	push_tag_created: {
+		ref: "refs/tags/v1.0.0",
+		before: "0000000000000000000000000000000000000000",
+		after: "abc1234567890",
+		commits: [],
 		repository: baseRepo,
 		sender: baseUser,
 	} satisfies GitHubPushPayload,
@@ -299,6 +318,58 @@ export const testPayloads = {
 		repository: starRepo,
 		sender: baseUser,
 	} satisfies GitHubStarPayload,
+
+	// Milestone events
+	milestone_created: {
+		action: "created",
+		milestone: {
+			number: 1,
+			title: "Version 2.0",
+			description: "Major release with new features and improvements",
+			state: "open",
+			due_on: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
+			open_issues: 8,
+			closed_issues: 4,
+			html_url: "https://github.com/octocat/hello-world/milestone/1",
+			creator: baseUser,
+		},
+		repository: baseRepo,
+		sender: baseUser,
+	} satisfies GitHubMilestonePayload,
+
+	milestone_closed: {
+		action: "closed",
+		milestone: {
+			number: 1,
+			title: "Version 1.5",
+			description: "Bug fixes and performance improvements",
+			state: "closed",
+			due_on: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+			open_issues: 0,
+			closed_issues: 12,
+			html_url: "https://github.com/octocat/hello-world/milestone/1",
+			creator: baseUser,
+		},
+		repository: baseRepo,
+		sender: baseUser,
+	} satisfies GitHubMilestonePayload,
+
+	milestone_overdue: {
+		action: "edited",
+		milestone: {
+			number: 2,
+			title: "Q4 Release",
+			description: "Quarterly release milestone",
+			state: "open",
+			due_on: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago (overdue)
+			open_issues: 5,
+			closed_issues: 10,
+			html_url: "https://github.com/octocat/hello-world/milestone/2",
+			creator: baseUser,
+		},
+		repository: baseRepo,
+		sender: baseUser,
+	} satisfies GitHubMilestonePayload,
 }
 
 export type TestPayloadKey = keyof typeof testPayloads

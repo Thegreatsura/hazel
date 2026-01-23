@@ -169,6 +169,28 @@ export const GitHubStarPayload = Schema.Struct({
 
 export type GitHubStarPayload = Schema.Schema.Type<typeof GitHubStarPayload>
 
+// Milestone event
+export const GitHubMilestone = Schema.Struct({
+	number: Schema.Number,
+	title: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	state: Schema.String,
+	due_on: Schema.NullOr(Schema.String),
+	open_issues: Schema.Number,
+	closed_issues: Schema.Number,
+	html_url: Schema.String,
+	creator: Schema.optional(GitHubUser),
+})
+
+export const GitHubMilestonePayload = Schema.Struct({
+	action: Schema.String, // "created" | "opened" | "closed" | "edited" | "deleted"
+	milestone: GitHubMilestone,
+	repository: GitHubRepository,
+	sender: Schema.optional(GitHubUser),
+})
+
+export type GitHubMilestonePayload = Schema.Schema.Type<typeof GitHubMilestonePayload>
+
 /**
  * Union of all GitHub webhook payload types.
  */
@@ -180,6 +202,7 @@ export type GitHubWebhookPayload =
 	| GitHubDeploymentStatusPayload
 	| GitHubWorkflowRunPayload
 	| GitHubStarPayload
+	| GitHubMilestonePayload
 
 /**
  * GitHub event types supported by the integration.
@@ -192,6 +215,7 @@ export const GitHubEventType = Schema.Literal(
 	"deployment_status",
 	"workflow_run",
 	"star",
+	"milestone",
 )
 export type GitHubEventType = Schema.Schema.Type<typeof GitHubEventType>
 

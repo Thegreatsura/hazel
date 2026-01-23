@@ -1,6 +1,7 @@
 import {
 	buildDeploymentEmbed,
 	buildIssueEmbed,
+	buildMilestoneEmbed,
 	buildPullRequestEmbed,
 	buildPushEmbed,
 	buildReleaseEmbed,
@@ -8,6 +9,7 @@ import {
 	buildWorkflowRunEmbed,
 	testPayloads,
 } from "@hazel/integrations/github/browser"
+import type { MessageEmbed } from "@hazel/integrations/common"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { MessageEmbeds } from "~/components/chat/message-embeds"
 
@@ -31,6 +33,8 @@ const mockEmbeds = {
 	// Push events
 	push_single: buildPushEmbed(testPayloads.push_single),
 	push_multiple: buildPushEmbed(testPayloads.push_multiple),
+	push_branch_created: buildPushEmbed(testPayloads.push_branch_created),
+	push_tag_created: buildPushEmbed(testPayloads.push_tag_created),
 
 	// Issue events
 	issue_opened: buildIssueEmbed(testPayloads.issue_opened),
@@ -49,6 +53,11 @@ const mockEmbeds = {
 	workflow_success: buildWorkflowRunEmbed(testPayloads.workflow_success),
 	workflow_failure: buildWorkflowRunEmbed(testPayloads.workflow_failure),
 	workflow_cancelled: buildWorkflowRunEmbed(testPayloads.workflow_cancelled),
+
+	// Milestone events
+	milestone_created: buildMilestoneEmbed(testPayloads.milestone_created),
+	milestone_closed: buildMilestoneEmbed(testPayloads.milestone_closed),
+	milestone_overdue: buildMilestoneEmbed(testPayloads.milestone_overdue),
 }
 
 function EmbedSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -60,13 +69,18 @@ function EmbedSection({ title, children }: { title: string; children: React.Reac
 	)
 }
 
-function EmbedPreview({
-	label,
-	embed,
-}: {
-	label: string
-	embed: (typeof mockEmbeds)[keyof typeof mockEmbeds]
-}) {
+function EmbedPreview({ label, embed }: { label: string; embed: MessageEmbed | null }) {
+	if (!embed) {
+		return (
+			<div className="space-y-2">
+				<span className="font-mono text-muted-fg text-xs">{label}</span>
+				<div className="rounded-lg border border-dashed border-muted-fg/30 p-4 text-center text-muted-fg text-sm">
+					No embed (filtered)
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<div className="space-y-2">
 			<span className="font-mono text-muted-fg text-xs">{label}</span>
@@ -109,6 +123,8 @@ function RouteComponent() {
 				<EmbedSection title="Push Events">
 					<EmbedPreview label="push:single" embed={mockEmbeds.push_single} />
 					<EmbedPreview label="push:multiple" embed={mockEmbeds.push_multiple} />
+					<EmbedPreview label="push:branch_created" embed={mockEmbeds.push_branch_created} />
+					<EmbedPreview label="push:tag_created" embed={mockEmbeds.push_tag_created} />
 				</EmbedSection>
 
 				<EmbedSection title="Issue Events">
@@ -131,6 +147,12 @@ function RouteComponent() {
 					<EmbedPreview label="workflow:success" embed={mockEmbeds.workflow_success} />
 					<EmbedPreview label="workflow:failure" embed={mockEmbeds.workflow_failure} />
 					<EmbedPreview label="workflow:cancelled" embed={mockEmbeds.workflow_cancelled} />
+				</EmbedSection>
+
+				<EmbedSection title="Milestone Events">
+					<EmbedPreview label="milestone:created" embed={mockEmbeds.milestone_created} />
+					<EmbedPreview label="milestone:closed" embed={mockEmbeds.milestone_closed} />
+					<EmbedPreview label="milestone:overdue" embed={mockEmbeds.milestone_overdue} />
 				</EmbedSection>
 			</div>
 		</div>
