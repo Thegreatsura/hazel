@@ -242,6 +242,36 @@ const MainLive = Layer.mergeAll(
 - Infrastructure layers that are globally provided (e.g., Redis, Database) may be intentionally "leaked" to be provided once at the application root
 - When a dependency is explicitly meant to be provided by the consumer
 
+### Use Descriptive Errors Instead of `catchAll`
+
+**ALWAYS** prefer `catchTag` or `catchTags` over `catchAll` when handling errors. This preserves error type information and allows for proper error handling throughout the stack.
+
+```typescript
+// ❌ WRONG - catchAll loses error type information
+yield* someEffect.pipe(
+    Effect.catchAll((err) =>
+        Effect.fail(new InternalServerError({ message: "Something failed" }))
+    )
+)
+
+// ✅ CORRECT - catchTag preserves error types and provides specific handling
+yield* someEffect.pipe(
+    Effect.catchTag("RequestError", (err) =>
+        Effect.fail(new WorkflowServiceUnavailableError({ message: "Service unreachable", cause: String(err) }))
+    ),
+    Effect.catchTag("ResponseError", (err) =>
+        Effect.fail(new InternalServerError({ message: err.reason, cause: String(err) }))
+    ),
+)
+```
+
+**Why this matters:**
+
+- Preserves error type information for downstream handlers
+- Enables proper error handling on frontend (specific messages per error type)
+- Makes debugging easier with clear error categorization
+- Allows type-safe error handling with `Effect.catchTags`
+
 ## Brand Icons
 
 Use Brandfetch CDN for integration brand logos/icons. See `apps/web/src/routes/_app/$orgSlug/settings/integrations/_data.ts` for the helper function.

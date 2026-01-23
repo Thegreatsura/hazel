@@ -9,12 +9,12 @@ const OpenRouterClientLayer = OpenRouterClient.layerConfig({
 	title: Config.string("APP_NAME").pipe(Config.withDefault("Hazel")),
 }).pipe(Layer.provide(FetchHttpClient.layer))
 
-const MODEL = "google/gemini-3-flash-preview"
+const MODEL = "anthropic/claude-3.5-haiku"
 
 export const OpenRouterLanguageModelLayer = OpenRouterLanguageModel.layer({
 	model: MODEL,
 	config: {
-		max_tokens: 50,
+		max_tokens: 200,
 		temperature: 0.3,
 	},
 }).pipe(Layer.provide(OpenRouterClientLayer))

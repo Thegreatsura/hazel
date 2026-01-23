@@ -98,7 +98,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 			isMuted: !channel.currentUser.isMuted,
 		})
 		matchExitWithToast(exit, {
-			onSuccess: () => { },
+			onSuccess: () => {},
 			successMessage: channel.currentUser.isMuted ? "Channel unmuted" : "Channel muted",
 			customErrors: {
 				ChannelMemberNotFoundError: () => ({
@@ -117,7 +117,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 			isFavorite: !channel.currentUser.isFavorite,
 		})
 		matchExitWithToast(exit, {
-			onSuccess: () => { },
+			onSuccess: () => {},
 			successMessage: channel.currentUser.isFavorite ? "Removed from favorites" : "Added to favorites",
 			customErrors: {
 				ChannelMemberNotFoundError: () => ({
@@ -181,8 +181,8 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 								}}
 							>
 								{channel.type === "single" &&
-									filteredMembers.length === 1 &&
-									filteredMembers[0] ? (
+								filteredMembers.length === 1 &&
+								filteredMembers[0] ? (
 									<>
 										<DmAvatar member={filteredMembers[0]} />
 										<SidebarLabel

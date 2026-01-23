@@ -2,10 +2,9 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
-import { Exit } from "effect"
 import { useState } from "react"
-import { toast } from "sonner"
 import { generateThreadNameMutation } from "~/atoms/channel-atoms"
+import { toastExitOnError } from "~/lib/toast-exit"
 import { channelCollection } from "~/db/collections"
 import { useMessage } from "~/db/hooks"
 import { ChatProvider } from "~/providers/chat-provider"
@@ -50,9 +49,67 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating
 		const exit = await generateName({ payload: { channelId: threadChannelId } })
 		setIsGenerating(false)
 
-		if (Exit.isFailure(exit)) {
-			toast.error("Failed to generate thread name")
-		}
+		toastExitOnError(exit, {
+			customErrors: {
+				// Backend validation errors
+				ChannelNotFoundError: () => ({
+					title: "Thread not found",
+					description: "This thread may have been deleted.",
+					isRetryable: false,
+				}),
+				MessageNotFoundError: () => ({
+					title: "Original message not found",
+					description: "The message that started this thread could not be found.",
+					isRetryable: false,
+				}),
+				// Workflow resource errors
+				ThreadChannelNotFoundError: () => ({
+					title: "Thread not found",
+					description: "This thread may have been deleted.",
+					isRetryable: false,
+				}),
+				OriginalMessageNotFoundError: () => ({
+					title: "Message not found",
+					description: "The original message could not be found.",
+					isRetryable: false,
+				}),
+				ThreadContextQueryError: () => ({
+					title: "Database error",
+					description: "Failed to load thread data. Please try again.",
+					isRetryable: true,
+				}),
+				// AI errors
+				AIProviderUnavailableError: () => ({
+					title: "AI service unavailable",
+					description: "The AI service is temporarily unavailable. Please try again later.",
+					isRetryable: true,
+				}),
+				AIRateLimitError: (err: { retryAfter?: number }) => ({
+					title: "AI rate limited",
+					description: err.retryAfter
+						? `Please wait ${err.retryAfter} seconds and try again.`
+						: "Please wait a moment and try again.",
+					isRetryable: true,
+				}),
+				AIResponseParseError: () => ({
+					title: "AI response error",
+					description: "The AI returned an unexpected response. Please try again.",
+					isRetryable: true,
+				}),
+				// Update error
+				ThreadNameUpdateError: () => ({
+					title: "Update failed",
+					description: "Failed to save the thread name. Please try again.",
+					isRetryable: true,
+				}),
+				// Service unavailable
+				WorkflowServiceUnavailableError: () => ({
+					title: "Service temporarily unavailable",
+					description: "Please try again later.",
+					isRetryable: true,
+				}),
+			},
+		})
 	}
 
 	return (

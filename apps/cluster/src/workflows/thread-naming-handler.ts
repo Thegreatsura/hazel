@@ -19,14 +19,25 @@ Thread replies:
 
 Generate a concise thread name:`
 
+// Define the workflow error type union for type safety
+type ThreadNamingError =
+	| Cluster.ThreadChannelNotFoundError
+	| Cluster.OriginalMessageNotFoundError
+	| Cluster.ThreadContextQueryError
+	| Cluster.AIProviderUnavailableError
+	| Cluster.AIRateLimitError
+	| Cluster.AIResponseParseError
+	| Cluster.ThreadNameUpdateError
+
 export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 	Effect.fn(function* (payload: Cluster.ThreadNamingWorkflowPayload) {
 		yield* Effect.logDebug(`Starting ThreadNamingWorkflow for thread ${payload.threadChannelId}`)
 
-		const contextResult = yield* Activity.make({
+		// Activity 1: Get thread context from database
+		const contextResult: Cluster.GetThreadContextResult = yield* Activity.make({
 			name: "GetThreadContext",
 			success: Cluster.GetThreadContextResult,
-			error: Cluster.GetThreadContextError,
+			error: Cluster.ThreadNamingWorkflowError,
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 
@@ -43,23 +54,21 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							.limit(1),
 					)
 					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.GetThreadContextError({
-										threadChannelId: payload.threadChannelId,
-										message: "Failed to query thread channel",
-										cause: err,
-									}),
-								),
-						}),
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new Cluster.ThreadContextQueryError({
+									threadChannelId: payload.threadChannelId,
+									operation: "thread",
+									cause: err,
+								}),
+							),
+						),
 					)
 
 				if (threadChannel.length === 0) {
 					return yield* Effect.fail(
-						new Cluster.GetThreadContextError({
+						new Cluster.ThreadChannelNotFoundError({
 							threadChannelId: payload.threadChannelId,
-							message: "Thread channel not found",
 						}),
 					)
 				}
@@ -87,23 +96,22 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							.limit(1),
 					)
 					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.GetThreadContextError({
-										threadChannelId: payload.threadChannelId,
-										message: "Failed to query original message",
-										cause: err,
-									}),
-								),
-						}),
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new Cluster.ThreadContextQueryError({
+									threadChannelId: payload.threadChannelId,
+									operation: "originalMessage",
+									cause: err,
+								}),
+							),
+						),
 					)
 
 				if (originalMessage.length === 0) {
 					return yield* Effect.fail(
-						new Cluster.GetThreadContextError({
+						new Cluster.OriginalMessageNotFoundError({
 							threadChannelId: payload.threadChannelId,
-							message: "Original message not found",
+							messageId: payload.originalMessageId,
 						}),
 					)
 				}
@@ -137,16 +145,15 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							.limit(10),
 					)
 					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.GetThreadContextError({
-										threadChannelId: payload.threadChannelId,
-										message: "Failed to query thread messages",
-										cause: err,
-									}),
-								),
-						}),
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new Cluster.ThreadContextQueryError({
+									threadChannelId: payload.threadChannelId,
+									operation: "threadMessages",
+									cause: err,
+								}),
+							),
+						),
 					)
 
 				return {
@@ -168,16 +175,25 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					})),
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("GetThreadContext activity failed", {
+					threadChannelId: payload.threadChannelId,
+					errorTag: err._tag,
+					cause: "cause" in err ? String(err.cause) : undefined,
+				}),
+			),
+		)
 
-		const nameResult = yield* Activity.make({
+		// Activity 2: Generate thread name using AI
+		const nameResult: Cluster.GenerateThreadNameResult = yield* Activity.make({
 			name: "GenerateThreadName",
 			success: Cluster.GenerateThreadNameResult,
-			error: Cluster.GenerateThreadNameError,
+			error: Cluster.ThreadNamingWorkflowError,
 			execute: Effect.gen(function* () {
 				// Build the prompt
 				const threadMessagesText = contextResult.threadMessages
-					.map((m) => `${m.authorName}: ${m.content}`)
+					.map((m: Cluster.ThreadMessageContext) => `${m.authorName}: ${m.content}`)
 					.join("\n")
 
 				const prompt = NAMING_PROMPT.replace(
@@ -193,9 +209,8 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 				}).pipe(
 					Effect.catchAll((err) =>
 						Effect.fail(
-							new Cluster.GenerateThreadNameError({
-								threadChannelId: payload.threadChannelId,
-								message: "AI generation failed",
+							new Cluster.AIProviderUnavailableError({
+								provider: "openrouter",
 								cause: err,
 							}),
 						),
@@ -219,13 +234,22 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 
 				return { threadName }
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("GenerateThreadName activity failed", {
+					threadChannelId: payload.threadChannelId,
+					errorTag: err._tag,
+					provider: "provider" in err ? err.provider : undefined,
+					cause: "cause" in err ? String(err.cause) : undefined,
+				}),
+			),
+		)
 
 		// Activity 3: Update thread name in database
 		yield* Activity.make({
 			name: "UpdateThreadName",
 			success: Cluster.UpdateThreadNameResult,
-			error: Cluster.UpdateThreadNameError,
+			error: Cluster.ThreadNamingWorkflowError,
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 
@@ -240,16 +264,15 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							.where(eq(schema.channelsTable.id, payload.threadChannelId)),
 					)
 					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.UpdateThreadNameError({
-										threadChannelId: payload.threadChannelId,
-										message: "Failed to update thread name",
-										cause: err,
-									}),
-								),
-						}),
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new Cluster.ThreadNameUpdateError({
+									threadChannelId: payload.threadChannelId,
+									newName: nameResult.threadName,
+									cause: err,
+								}),
+							),
+						),
 					)
 
 				yield* Effect.logDebug(
@@ -262,7 +285,16 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					newName: nameResult.threadName,
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("UpdateThreadName activity failed", {
+					threadChannelId: payload.threadChannelId,
+					errorTag: err._tag,
+					newName: "newName" in err ? err.newName : undefined,
+					cause: "cause" in err ? String(err.cause) : undefined,
+				}),
+			),
+		)
 
 		yield* Effect.logDebug(`ThreadNamingWorkflow completed for thread ${payload.threadChannelId}`)
 	}),

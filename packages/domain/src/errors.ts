@@ -83,6 +83,23 @@ export class NestedThreadError extends Schema.TaggedError<NestedThreadError>("Ne
 	}),
 ) {}
 
+/**
+ * Error thrown when the workflow service is unreachable or unavailable.
+ * Used when the cluster service cannot be contacted.
+ */
+export class WorkflowServiceUnavailableError extends Schema.TaggedError<WorkflowServiceUnavailableError>(
+	"WorkflowServiceUnavailableError",
+)(
+	"WorkflowServiceUnavailableError",
+	{
+		message: Schema.String,
+		cause: Schema.optionalWith(Schema.String, { nullable: true }),
+	},
+	HttpApiSchema.annotations({
+		status: 503,
+	}),
+) {}
+
 export function withRemapDbErrors<R, E extends { _tag: string }, A>(
 	entityType: string,
 	action: "update" | "create" | "delete" | "select",

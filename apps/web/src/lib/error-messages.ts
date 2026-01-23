@@ -1,6 +1,7 @@
 import type { HttpClientError } from "@effect/platform/HttpClientError"
 import { RpcClientError } from "@effect/rpc/RpcClientError"
 import {
+	Cluster,
 	DesktopConnectionError,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
@@ -22,8 +23,20 @@ import {
 	TokenNotFoundError,
 	TokenStoreError,
 	UnauthorizedError,
+	WorkflowServiceUnavailableError,
 	WorkOSUserFetchError,
 } from "@hazel/domain"
+
+// Extract thread naming workflow errors from Cluster namespace
+const {
+	AIProviderUnavailableError,
+	AIRateLimitError,
+	AIResponseParseError,
+	OriginalMessageNotFoundError,
+	ThreadChannelNotFoundError,
+	ThreadContextQueryError,
+	ThreadNameUpdateError,
+} = Cluster
 import { Cause, Chunk, Match, Option, Schema } from "effect"
 import type { ParseError } from "effect/ParseResult"
 import {
@@ -64,6 +77,7 @@ export const CommonAppErrorSchema = Schema.Union(
 	SessionLoadError,
 	SessionRefreshError,
 	WorkOSUserFetchError,
+	WorkflowServiceUnavailableError,
 	// Business logic errors
 	DmChannelAlreadyExistsError,
 	// Server errors (500)
@@ -94,6 +108,14 @@ export const CommonAppErrorSchema = Schema.Union(
 	TokenDecodeError,
 	DesktopConnectionError,
 	InvalidDesktopStateError,
+	// Thread naming workflow errors
+	ThreadChannelNotFoundError,
+	OriginalMessageNotFoundError,
+	ThreadContextQueryError,
+	AIProviderUnavailableError,
+	AIRateLimitError,
+	AIResponseParseError,
+	ThreadNameUpdateError,
 )
 
 /**
@@ -150,6 +172,11 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	SessionLoadError: {
 		title: "Service temporarily unavailable",
 		description: "We're having trouble connecting. Please try again.",
+		isRetryable: true,
+	},
+	WorkflowServiceUnavailableError: {
+		title: "Service temporarily unavailable",
+		description: "The workflow service is temporarily unavailable. Please try again later.",
 		isRetryable: true,
 	},
 	SessionRefreshError: {
@@ -240,6 +267,43 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	CollectionSyncEffectError: {
 		title: "Sync error",
 		description: "Failed to sync data. Please try again.",
+		isRetryable: true,
+	},
+
+	// Thread naming workflow errors
+	ThreadChannelNotFoundError: {
+		title: "Thread not found",
+		description: "This thread may have been deleted.",
+		isRetryable: false,
+	},
+	OriginalMessageNotFoundError: {
+		title: "Message not found",
+		description: "The original message could not be found.",
+		isRetryable: false,
+	},
+	ThreadContextQueryError: {
+		title: "Database error",
+		description: "Failed to load thread data. Please try again.",
+		isRetryable: true,
+	},
+	AIProviderUnavailableError: {
+		title: "AI service unavailable",
+		description: "The AI service is temporarily unavailable. Please try again later.",
+		isRetryable: true,
+	},
+	AIRateLimitError: {
+		title: "AI rate limited",
+		description: "Please wait a moment and try again.",
+		isRetryable: true,
+	},
+	AIResponseParseError: {
+		title: "AI response error",
+		description: "The AI returned an unexpected response. Please try again.",
+		isRetryable: true,
+	},
+	ThreadNameUpdateError: {
+		title: "Update failed",
+		description: "Failed to save the thread name. Please try again.",
 		isRetryable: true,
 	},
 

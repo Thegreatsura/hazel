@@ -2,11 +2,21 @@ import { RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import {
+	AIProviderUnavailableError,
+	AIRateLimitError,
+	AIResponseParseError,
+	OriginalMessageNotFoundError,
+	ThreadChannelNotFoundError,
+	ThreadContextQueryError,
+	ThreadNameUpdateError,
+} from "../cluster/activities/thread-naming-activities"
+import {
 	DmChannelAlreadyExistsError,
 	InternalServerError,
 	MessageNotFoundError,
 	NestedThreadError,
 	UnauthorizedError,
+	WorkflowServiceUnavailableError,
 } from "../errors"
 
 export { NestedThreadError } from "../errors"
@@ -167,6 +177,13 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws MessageNotFoundError if original message is not found
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
+	 * @throws ThreadChannelNotFoundError if thread channel not found in workflow
+	 * @throws OriginalMessageNotFoundError if original message not found in workflow
+	 * @throws ThreadContextQueryError if database query fails in workflow
+	 * @throws AIProviderUnavailableError if AI service is unreachable
+	 * @throws AIRateLimitError if AI service rate limits the request
+	 * @throws AIResponseParseError if AI response cannot be parsed
+	 * @throws ThreadNameUpdateError if database update fails in workflow
 	 */
 	Rpc.mutation("channel.generateName", {
 		payload: Schema.Struct({ channelId: ChannelId }),
@@ -176,6 +193,15 @@ export class ChannelRpcs extends RpcGroup.make(
 			MessageNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
+			WorkflowServiceUnavailableError,
+			// Workflow errors - exposed to client for granular error handling
+			ThreadChannelNotFoundError,
+			OriginalMessageNotFoundError,
+			ThreadContextQueryError,
+			AIProviderUnavailableError,
+			AIRateLimitError,
+			AIResponseParseError,
+			ThreadNameUpdateError,
 		),
 	}).middleware(AuthMiddleware),
 ) {}

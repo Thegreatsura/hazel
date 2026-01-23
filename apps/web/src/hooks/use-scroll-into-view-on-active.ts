@@ -23,4 +23,3 @@ export function useScrollIntoViewOnActive(itemId: string) {
 
 	return scrollRef
 }
-

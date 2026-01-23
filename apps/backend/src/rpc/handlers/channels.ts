@@ -8,6 +8,7 @@ import {
 	policyUse,
 	withRemapDbErrors,
 	withSystemActor,
+	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
 import { OrganizationId } from "@hazel/domain/ids"
 import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
@@ -294,15 +295,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 				Effect.gen(function* () {
 					const channel = yield* ChannelRepo.findById(channelId).pipe(
 						withSystemActor,
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to query channel",
-										cause: String(err),
-									}),
-								),
-						}),
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to query channel",
+									cause: String(err),
+								}),
+							),
+						),
 					)
 
 					if (Option.isNone(channel)) {
@@ -326,11 +326,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								.where(eq(schema.messagesTable.threadChannelId, channelId))
 								.limit(1),
 						)
-						.pipe(
-							Effect.catchTags({
-								DatabaseError: () => Effect.succeed([]),
-							}),
-						)
+						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
 
 					if (originalMessageResult.length === 0) {
 						return yield* Effect.fail(
@@ -358,15 +354,42 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						.pipe(
 							Effect.tapError((err) =>
 								Effect.logError("Failed to execute thread naming workflow", {
-									error: err.message,
 									threadChannelId: channelId,
+									error: String(err),
+									errorTag: "_tag" in err ? err._tag : "unknown",
 								}),
 							),
-							Effect.catchAll((err) =>
+							// Workflow errors (ThreadChannelNotFoundError, AIProviderUnavailableError, etc.)
+							// pass through directly since they're in the RPC union - only handle HTTP client errors
+							Effect.catchTag("RequestError", (err) =>
+								Effect.fail(
+									new WorkflowServiceUnavailableError({
+										message: "Cannot connect to workflow service",
+										cause: String(err),
+									}),
+								),
+							),
+							Effect.catchTag("ResponseError", (err) =>
 								Effect.fail(
 									new InternalServerError({
-										message: "Failed to trigger thread naming workflow",
-										cause: err.message,
+										message: `Thread naming failed: ${err.reason}`,
+										cause: String(err),
+									}),
+								),
+							),
+							Effect.catchTag("HttpApiDecodeError", (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to decode workflow response",
+										cause: String(err),
+									}),
+								),
+							),
+							Effect.catchTag("ParseError", (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to parse workflow response",
+										cause: String(err),
 									}),
 								),
 							),
