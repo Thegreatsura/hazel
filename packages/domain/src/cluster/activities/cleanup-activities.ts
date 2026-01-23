@@ -34,7 +34,9 @@ export class FindStaleUploadsError extends Schema.TaggedError<FindStaleUploadsEr
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
 
 export class MarkUploadsFailedError extends Schema.TaggedError<MarkUploadsFailedError>()(
 	"MarkUploadsFailedError",
@@ -42,4 +44,12 @@ export class MarkUploadsFailedError extends Schema.TaggedError<MarkUploadsFailed
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
+
+// ============================================================================
+// Workflow Error Union
+// ============================================================================
+
+export const CleanupUploadsWorkflowError = Schema.Union(FindStaleUploadsError, MarkUploadsFailedError)

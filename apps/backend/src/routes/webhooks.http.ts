@@ -211,6 +211,21 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 													cause: err.message,
 												}),
 											),
+										// Workflow activity errors
+										GetChannelMembersError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Notification workflow failed",
+													cause: err.message,
+												}),
+											),
+										CreateNotificationError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Notification workflow failed",
+													cause: err.message,
+												}),
+											),
 									}),
 								)
 
@@ -481,6 +496,21 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											cause: err.message,
 										}),
 									),
+								// Workflow activity errors
+								FindConnectionByInstallationError: (err) =>
+									Effect.fail(
+										new WorkflowInitializationError({
+											message: "GitHub installation workflow failed",
+											cause: err.message,
+										}),
+									),
+								UpdateConnectionStatusError: (err) =>
+									Effect.fail(
+										new WorkflowInitializationError({
+											message: "GitHub installation workflow failed",
+											cause: err.message,
+										}),
+									),
 							}),
 						)
 
@@ -554,6 +584,28 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 								Effect.fail(
 									new WorkflowInitializationError({
 										message: "Failed to execute GitHub webhook workflow",
+										cause: err.message,
+									}),
+								),
+							// Workflow activity errors
+							GetGitHubSubscriptionsError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "GitHub webhook workflow failed",
+										cause: err.message,
+									}),
+								),
+							CreateGitHubMessageError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "GitHub webhook workflow failed",
+										cause: err.message,
+									}),
+								),
+							BotUserQueryError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "GitHub webhook workflow failed",
 										cause: err.message,
 									}),
 								),

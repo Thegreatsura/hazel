@@ -1,6 +1,7 @@
 import { ChannelId, GitHubSubscriptionId, MessageId } from "@hazel/schema"
 import { Schema } from "effect"
 import { GitHubSubscription } from "../../models"
+import { BotUserQueryError } from "./bot-activities.ts"
 
 // Re-export GitHubEventType for use in workflow handlers
 export { GitHubEventType, GitHubEventTypes } from "../../models/github-subscription-model"
@@ -39,7 +40,9 @@ export class GetGitHubSubscriptionsError extends Schema.TaggedError<GetGitHubSub
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
 
 export class CreateGitHubMessageError extends Schema.TaggedError<CreateGitHubMessageError>()(
 	"CreateGitHubMessageError",
@@ -48,4 +51,16 @@ export class CreateGitHubMessageError extends Schema.TaggedError<CreateGitHubMes
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
+
+// ============================================================================
+// Workflow Error Union
+// ============================================================================
+
+export const GitHubWebhookWorkflowError = Schema.Union(
+	GetGitHubSubscriptionsError,
+	CreateGitHubMessageError,
+	BotUserQueryError,
+)

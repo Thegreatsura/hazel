@@ -207,14 +207,49 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 				const response = yield* LanguageModel.generateText({
 					prompt,
 				}).pipe(
-					Effect.catchAll((err) =>
-						Effect.fail(
-							new Cluster.AIProviderUnavailableError({
-								provider: "openrouter",
-								cause: err,
-							}),
-						),
-					),
+					Effect.catchTags({
+						HttpRequestError: (err) =>
+							Effect.fail(
+								new Cluster.AIProviderUnavailableError({
+									provider: "openrouter",
+									cause: err,
+								}),
+							),
+						HttpResponseError: (err) =>
+							err.response.status === 429
+								? Effect.fail(
+										new Cluster.AIRateLimitError({
+											provider: "openrouter",
+										}),
+									)
+								: Effect.fail(
+										new Cluster.AIProviderUnavailableError({
+											provider: "openrouter",
+											cause: err,
+										}),
+									),
+						MalformedInput: (err) =>
+							Effect.fail(
+								new Cluster.AIResponseParseError({
+									threadChannelId: payload.threadChannelId,
+									rawResponse: err.description,
+								}),
+							),
+						MalformedOutput: (err) =>
+							Effect.fail(
+								new Cluster.AIResponseParseError({
+									threadChannelId: payload.threadChannelId,
+									rawResponse: err.description,
+								}),
+							),
+						UnknownError: (err) =>
+							Effect.fail(
+								new Cluster.AIProviderUnavailableError({
+									provider: "openrouter",
+									cause: err,
+								}),
+							),
+					}),
 				)
 
 				// Clean up the response

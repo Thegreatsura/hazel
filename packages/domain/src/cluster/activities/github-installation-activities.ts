@@ -34,7 +34,9 @@ export class FindConnectionByInstallationError extends Schema.TaggedError<FindCo
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
 
 export class UpdateConnectionStatusError extends Schema.TaggedError<UpdateConnectionStatusError>()(
 	"UpdateConnectionStatusError",
@@ -43,4 +45,15 @@ export class UpdateConnectionStatusError extends Schema.TaggedError<UpdateConnec
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
+
+// ============================================================================
+// Workflow Error Union
+// ============================================================================
+
+export const GitHubInstallationWorkflowError = Schema.Union(
+	FindConnectionByInstallationError,
+	UpdateConnectionStatusError,
+)

@@ -84,9 +84,11 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 			}),
 		}).pipe(
 			Effect.tapError((err) =>
-				Effect.logError("FindConnectionByInstallationId activity failed", { error: err }),
+				Effect.logError("FindConnectionByInstallationId activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
 			),
-			Effect.orDie,
 		)
 
 		// If no connection found, nothing more to do
@@ -158,9 +160,11 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 			}),
 		}).pipe(
 			Effect.tapError((err) =>
-				Effect.logError("UpdateConnectionStatus activity failed", { error: err }),
+				Effect.logError("UpdateConnectionStatus activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
 			),
-			Effect.orDie,
 		)
 
 		yield* Effect.logDebug(

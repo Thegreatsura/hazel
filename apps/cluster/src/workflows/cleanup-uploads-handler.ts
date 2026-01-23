@@ -67,7 +67,14 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 					totalCount: uploads.length,
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("FindStaleUploads activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
+			),
+		)
 
 		// If no stale uploads found, we're done
 		if (staleUploadsResult.totalCount === 0) {
@@ -121,7 +128,14 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 					failedIds,
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("MarkUploadsFailed activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
+			),
+		)
 
 		yield* Effect.logDebug(
 			`CleanupUploadsWorkflow completed: ${markFailedResult.markedCount} uploads marked as failed`,

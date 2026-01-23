@@ -1,5 +1,6 @@
 import { Workflow } from "@effect/workflow"
 import { Schema } from "effect"
+import { GitHubWebhookWorkflowError } from "../activities/github-activities.ts"
 
 // GitHub webhook workflow - triggered when a GitHub webhook event is received
 // Processes the event and creates messages in subscribed channels
@@ -18,6 +19,7 @@ export const GitHubWebhookWorkflow = Workflow.make({
 		// Full GitHub event payload (varies by event type)
 		eventPayload: Schema.Unknown,
 	},
+	error: GitHubWebhookWorkflowError,
 	// Use GitHub's delivery ID for idempotency - each delivery is processed only once
 	idempotencyKey: (payload) => payload.deliveryId,
 })

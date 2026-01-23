@@ -1,5 +1,6 @@
 import { Workflow } from "@effect/workflow"
 import { Schema } from "effect"
+import { GitHubInstallationWorkflowError } from "../activities/github-installation-activities.ts"
 
 /**
  * GitHub Installation Workflow - handles GitHub App lifecycle events.
@@ -25,6 +26,7 @@ export const GitHubInstallationWorkflow = Workflow.make({
 		// User who performed the action
 		senderLogin: Schema.String,
 	},
+	error: GitHubInstallationWorkflowError,
 	// Use GitHub's delivery ID for idempotency - each delivery is processed only once
 	idempotencyKey: (payload) => payload.deliveryId,
 })

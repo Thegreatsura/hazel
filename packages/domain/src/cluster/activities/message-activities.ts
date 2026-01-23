@@ -52,7 +52,9 @@ export class GetChannelMembersError extends Schema.TaggedError<GetChannelMembers
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
 
 export class CreateNotificationError extends Schema.TaggedError<CreateNotificationError>()(
 	"CreateNotificationError",
@@ -63,4 +65,12 @@ export class CreateNotificationError extends Schema.TaggedError<CreateNotificati
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
-) {}
+) {
+	readonly retryable = true // Database errors are transient
+}
+
+// ============================================================================
+// Workflow Error Union
+// ============================================================================
+
+export const MessageNotificationWorkflowError = Schema.Union(GetChannelMembersError, CreateNotificationError)

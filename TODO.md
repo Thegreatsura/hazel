@@ -14,7 +14,6 @@
 
 - When message fails to send should retry
 - Profile Pic getting synced later, initally no pfp??
-- emoji picker popping off with : but not closing after sneding message
 
 # Later
 

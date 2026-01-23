@@ -75,9 +75,11 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 			}),
 		}).pipe(
 			Effect.tapError((err) =>
-				Effect.logError("GetGitHubSubscriptions activity failed", { error: err }),
+				Effect.logError("GetGitHubSubscriptions activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
 			),
-			Effect.orDie,
 		)
 
 		// Extract ref from payload for branch filtering
@@ -179,8 +181,12 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 				}
 			}),
 		}).pipe(
-			Effect.tapError((err) => Effect.logError("CreateGitHubMessages activity failed", { error: err })),
-			Effect.orDie,
+			Effect.tapError((err) =>
+				Effect.logError("CreateGitHubMessages activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
+			),
 		)
 
 		yield* Effect.logDebug(

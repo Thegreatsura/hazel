@@ -210,7 +210,14 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 					totalCount: channelMembers.length,
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("GetChannelMembers activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
+			),
+		)
 
 		// If no members to notify, we're done
 		if (membersResult.totalCount === 0) {
@@ -344,7 +351,14 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 					notifiedCount: notificationIds.length,
 				}
 			}),
-		}).pipe(Effect.orDie)
+		}).pipe(
+			Effect.tapError((err) =>
+				Effect.logError("CreateNotifications activity failed", {
+					errorTag: err._tag,
+					retryable: err.retryable,
+				}),
+			),
+		)
 
 		yield* Effect.logDebug(
 			`MessageNotificationWorkflow completed: ${notificationsResult.notifiedCount} notifications created`,
