@@ -11,6 +11,8 @@ export const ThreadNamingWorkflow = Workflow.make({
 		originalMessageId: MessageId,
 	},
 	error: ThreadNamingWorkflowError,
+	// Process each thread only once using thread channel ID
+	idempotencyKey: (payload) => `thread-naming-${payload.threadChannelId}`,
 })
 
 export type ThreadNamingWorkflowPayload = typeof ThreadNamingWorkflow.payloadSchema.Type
