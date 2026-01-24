@@ -62,7 +62,12 @@ export interface UserRepoLike {
 		{ _tag: "DatabaseError" },
 		any
 	>
-	update: (data: { id: UserId; firstName?: string; lastName?: string }) => Effect.Effect<
+	update: (data: {
+		id: UserId
+		firstName?: string
+		lastName?: string
+		avatarUrl?: string
+	}) => Effect.Effect<
 		{
 			id: UserId
 			email: string
@@ -91,6 +96,15 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		const validator = yield* SessionValidator
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+
+		/**
+		 * Check if an avatar URL is a Vercel fallback avatar.
+		 * These are placeholder avatars that should be replaced with real OAuth avatars.
+		 */
+		const isVercelFallbackAvatar = (avatarUrl: string | null | undefined): boolean => {
+			if (!avatarUrl) return true
+			return avatarUrl.startsWith("https://avatar.vercel.sh/")
+		}
 
 		/**
 		 * Sync a WorkOS user to the database (find or create).
@@ -150,19 +164,27 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 							const needsNameUpdate =
 								(!existingUser.firstName && firstName) || (!existingUser.lastName && lastName)
 
-							if (needsNameUpdate) {
+							// If existing user has a Vercel fallback avatar and OAuth provides a real one, update it
+							// This preserves custom R2-uploaded avatars while fixing initial sync issues
+							const needsAvatarUpdate =
+								isVercelFallbackAvatar(existingUser.avatarUrl) &&
+								avatarUrl &&
+								!isVercelFallbackAvatar(avatarUrl)
+
+							if (needsNameUpdate || needsAvatarUpdate) {
 								const updated = yield* userRepo
 									.update({
 										id: existingUser.id,
 										firstName: existingUser.firstName || firstName || "",
 										lastName: existingUser.lastName || lastName || "",
+										...(needsAvatarUpdate ? { avatarUrl } : {}),
 									})
 									.pipe(
 										Effect.catchTags({
 											DatabaseError: (err) =>
 												Effect.fail(
 													new SessionLoadError({
-														message: "Failed to update user with OAuth name",
+														message: "Failed to update user with OAuth data",
 														detail: String(err),
 													}),
 												),
