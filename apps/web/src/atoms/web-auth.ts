@@ -311,10 +311,13 @@ export const webLogoutAtom = Atom.fn(
 		get?.set(webAuthStatusAtom, "idle")
 		get?.set(webAuthErrorAtom, null)
 
-		// Navigate to redirect path
+		// Navigate to backend logout endpoint to clear WorkOS session cookie
+		// Backend will then redirect to the final destination
 		const redirectTo = options?.redirectTo || "/"
-		yield* Effect.log(`[web-auth] Logout complete, redirecting to: ${redirectTo}`)
-		window.location.href = redirectTo
+		const backendUrl = import.meta.env.VITE_BACKEND_URL || ""
+		const logoutUrl = `${backendUrl}/auth/logout?redirectTo=${encodeURIComponent(redirectTo)}`
+		yield* Effect.log(`[web-auth] Logout complete, redirecting to backend logout: ${logoutUrl}`)
+		window.location.href = logoutUrl
 	}),
 )
 
