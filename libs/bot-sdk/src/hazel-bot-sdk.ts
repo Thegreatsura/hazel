@@ -15,6 +15,7 @@ import type {
 	TypingIndicatorId,
 	UserId,
 } from "@hazel/domain/ids"
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
@@ -484,6 +485,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							Effect.map((r) => r.data),
 							Effect.withSpan("bot.typing.stop", { attributes: { typingIndicatorId: id } }),
 						),
+			},
+
+			/**
+			 * Integration operations - get OAuth tokens for connected integrations
+			 * Requires the provider to be listed in the bot's `allowedIntegrations`
+			 */
+			integration: {
+				/**
+				 * Get a valid OAuth access token for an integration provider.
+				 * The token is auto-refreshed if expired.
+				 *
+				 * @param orgId - The organization ID to get the token for
+				 * @param provider - The integration provider ("linear" | "github" | "figma" | "notion")
+				 * @returns The access token, provider, and expiry info
+				 *
+				 * @example
+				 * ```typescript
+				 * const { accessToken } = yield* bot.integration.getToken(orgId, "linear")
+				 * // Use accessToken to call Linear API directly
+				 * ```
+				 */
+				getToken: (orgId: OrganizationId, provider: IntegrationConnection.IntegrationProvider) =>
+					httpApiClient["bot-commands"].getIntegrationToken({ path: { orgId, provider } }).pipe(
+						Effect.withSpan("bot.integration.getToken", {
+							attributes: { orgId, provider },
+						}),
+					),
 			},
 
 			/**

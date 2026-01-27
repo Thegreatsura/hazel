@@ -8,6 +8,9 @@ import {
 	BotMeResponse,
 	BotNotFoundError,
 	BotNotInstalledError,
+	IntegrationNotAllowedError,
+	IntegrationNotConnectedError,
+	IntegrationTokenResponse,
 	SyncBotCommandsResponse,
 } from "@hazel/domain/http"
 import { Redis } from "@hazel/effect-bun"
@@ -16,6 +19,8 @@ import { HazelApi } from "../api.ts"
 import { BotCommandRepo } from "../repositories/bot-command-repo.ts"
 import { BotInstallationRepo } from "../repositories/bot-installation-repo.ts"
 import { BotRepo } from "../repositories/bot-repo.ts"
+import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo.ts"
+import { IntegrationTokenService } from "../services/integration-token-service.ts"
 
 /**
  * Hash a token using SHA-256 (Web Crypto API)
@@ -309,6 +314,99 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 							commandName: path.commandName,
 							message: "Failed to publish command to bot",
 							details: String(error.message),
+						}),
+					),
+				),
+			),
+		)
+		// Get integration token (bot token auth)
+		.handle("getIntegrationToken", ({ path }) =>
+			Effect.gen(function* () {
+				const bot = yield* validateBotToken
+				const { orgId, provider } = path
+
+				// Check provider is in bot's allowedIntegrations
+				const allowed = bot.allowedIntegrations ?? []
+				if (!allowed.includes(provider)) {
+					return yield* Effect.fail(new IntegrationNotAllowedError({ botId: bot.id, provider }))
+				}
+
+				// Verify bot is installed in this org
+				const installationRepo = yield* BotInstallationRepo
+				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId).pipe(withSystemActor)
+				if (!isInstalled) {
+					return yield* Effect.fail(new BotNotInstalledError({ botId: bot.id, orgId }))
+				}
+
+				// Find active integration connection for the org
+				const connectionRepo = yield* IntegrationConnectionRepo
+				const connectionOption = yield* connectionRepo
+					.findOrgConnection(orgId, provider)
+					.pipe(withSystemActor)
+
+				if (Option.isNone(connectionOption)) {
+					return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))
+				}
+
+				const connection = connectionOption.value
+
+				// Verify connection is active
+				if (connection.status !== "active") {
+					return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))
+				}
+
+				// Get valid (auto-refreshed) access token
+				const tokenService = yield* IntegrationTokenService
+				const accessToken = yield* tokenService.getValidAccessToken(connection.id)
+
+				yield* Effect.logInfo("AUDIT: Bot accessed integration token", {
+					event: "bot_integration_token_access",
+					botId: bot.id,
+					orgId,
+					provider,
+				})
+
+				return new IntegrationTokenResponse({
+					accessToken,
+					provider,
+					expiresAt: connection.lastUsedAt?.toISOString() ?? null,
+				})
+			}).pipe(
+				Effect.catchTag("DatabaseError", () =>
+					Effect.fail(
+						new InternalServerError({
+							message: "Database error while fetching integration token",
+							detail: "Database error",
+						}),
+					),
+				),
+				Effect.catchTag("TokenNotFoundError", () =>
+					Effect.fail(new IntegrationNotConnectedError({ provider: path.provider })),
+				),
+				Effect.catchTag("TokenRefreshError", (error) =>
+					Effect.fail(
+						new InternalServerError({
+							message: `Failed to refresh ${path.provider} token`,
+							detail: String(error.cause),
+						}),
+					),
+				),
+				Effect.catchTag("ConnectionNotFoundError", () =>
+					Effect.fail(new IntegrationNotConnectedError({ provider: path.provider })),
+				),
+				Effect.catchTag("IntegrationEncryptionError", (error) =>
+					Effect.fail(
+						new InternalServerError({
+							message: `Failed to decrypt ${path.provider} token`,
+							detail: String(error),
+						}),
+					),
+				),
+				Effect.catchTag("KeyVersionNotFoundError", (error) =>
+					Effect.fail(
+						new InternalServerError({
+							message: `Encryption key version not found for ${path.provider} token`,
+							detail: String(error),
 						}),
 					),
 				),
