@@ -24,7 +24,6 @@ import {
 	Duration,
 	Effect,
 	Layer,
-	Logger,
 	LogLevel,
 	ManagedRuntime,
 	Option,
@@ -33,6 +32,8 @@ import {
 	Schema,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
+import { createLoggerLayer, type BotLogConfig, type LogFormat } from "./log-config.ts"
+import { createCommandLogContext, withLogContext, type BotIdentity } from "./log-context.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import {
 	CommandGroup,
@@ -160,8 +161,14 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 			),
 		)
-		// Get auth context (contains botId and userId for message authoring)
-		const _authContext = yield* bot.getAuthContext
+		// Get auth context (contains botId, botName, userId for message authoring)
+		const authContext = yield* bot.getAuthContext
+
+		// Create bot identity for log context
+		const botIdentity: BotIdentity = {
+			botId: authContext.botId,
+			botName: authContext.botName,
+		}
 
 		// Create rate limiter for outbound message operations
 		// Default: 10 messages per second to prevent API rate limiting
@@ -609,18 +616,24 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 											timestamp: event.timestamp,
 										}
 
-										yield* handler(ctx).pipe(
-											Effect.withSpan("bot.command.handle", {
-												attributes: {
-													commandName: event.commandName,
-													channelId: event.channelId,
-													userId: event.userId,
-												},
-											}),
-											Effect.catchAllCause((cause) =>
-												Effect.logError(
-													`Command handler failed for ${event.commandName}`,
-													{ cause },
+										// Create log context for this command invocation
+										const logCtx = createCommandLogContext({
+											...botIdentity,
+											commandName: event.commandName,
+											channelId: event.channelId as ChannelId,
+											userId: event.userId as UserId,
+											orgId: event.orgId as OrganizationId,
+										})
+
+										yield* withLogContext(
+											logCtx,
+											"bot.command.handle",
+											handler(ctx).pipe(
+												Effect.catchAllCause((cause) =>
+													Effect.logError(
+														`Command handler failed for ${event.commandName}`,
+														{ cause },
+													),
 												),
 											),
 										)
@@ -697,6 +710,33 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	 * @default "hazel-bot"
 	 */
 	readonly serviceName?: string
+
+	/**
+	 * Logging configuration (optional)
+	 *
+	 * @example
+	 * ```typescript
+	 * const runtime = createHazelBot({
+	 *   botToken: process.env.BOT_TOKEN!,
+	 *   logging: {
+	 *     level: LogLevel.Debug,  // Enable DEBUG logs
+	 *     format: "pretty",       // Human-readable output
+	 *   },
+	 * })
+	 * ```
+	 */
+	readonly logging?: {
+		/**
+		 * Minimum log level to output
+		 * @default LogLevel.Info
+		 */
+		readonly level?: LogLevel.LogLevel
+		/**
+		 * Output format: "pretty" for development, "structured" for production
+		 * @default Automatic based on NODE_ENV
+		 */
+		readonly format?: LogFormat
+	}
 }
 
 /**
@@ -831,16 +871,20 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		}),
 	)
 
-	// Use pretty logger in non-production, structured logger in production
-	// Default log level is INFO to reduce noise
-	const LoggerLayer = Layer.mergeAll(
-		Layer.unwrapEffect(
-			Effect.gen(function* () {
-				const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
-				return nodeEnv === "production" ? Logger.structured : Logger.pretty
-			}),
-		),
-		Logger.minimumLogLevel(LogLevel.Info),
+	// Create logger layer with configurable level and format
+	// Defaults: INFO level, format based on NODE_ENV
+	const LoggerLayer = Layer.unwrapEffect(
+		Effect.gen(function* () {
+			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
+			const defaultFormat: LogFormat = nodeEnv === "production" ? "structured" : "pretty"
+
+			const logConfig: BotLogConfig = {
+				level: config.logging?.level ?? LogLevel.Info,
+				format: config.logging?.format ?? defaultFormat,
+			}
+
+			return createLoggerLayer(logConfig)
+		}),
 	)
 
 	// Create tracing layer with configurable service name

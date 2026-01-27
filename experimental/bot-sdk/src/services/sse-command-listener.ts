@@ -12,6 +12,7 @@ import { Sse } from "@effect/experimental"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
 import { Context, Effect, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
+import { generateCorrelationId } from "../log-context.ts"
 
 // ============ Command Event Schema ============
 
@@ -75,9 +76,13 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 	accessors: true,
 	scoped: Effect.gen(function* () {
 		const auth = yield* BotAuth
-		yield* auth.getContext.pipe(Effect.orDie)
+		const authContext = yield* auth.getContext.pipe(Effect.orDie)
 		const config = yield* SseCommandListenerConfigTag
 		const httpClient = yield* HttpClient.HttpClient
+
+		// Extract bot identity for logging
+		const botId = authContext.botId
+		const botName = authContext.botName
 
 		// Build the SSE URL
 		const sseUrl = `${config.backendUrl}/bot-commands/stream`
@@ -99,7 +104,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		 * Connect to SSE stream and process events
 		 */
 		const connectAndProcess = Effect.gen(function* () {
-			yield* Effect.logDebug(`Connecting to SSE stream`, { url: sseUrl }).pipe(
+			yield* Effect.logDebug(`Connecting to SSE stream`, { url: sseUrl, botId, botName }).pipe(
 				Effect.annotateLogs("service", "SseCommandListener"),
 			)
 
@@ -121,7 +126,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			}
 
 			yield* Ref.set(isRunningRef, true)
-			yield* Effect.logInfo(`SSE stream connected`, { url: sseUrl }).pipe(
+			yield* Effect.logInfo(`SSE stream connected`, { url: sseUrl, botId, botName }).pipe(
 				Effect.annotateLogs("service", "SseCommandListener"),
 			)
 
@@ -147,28 +152,46 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			// Process events from the queue
 			yield* Stream.fromQueue(eventQueue).pipe(
 				Stream.tap((event) =>
-					Effect.logDebug("Received SSE event", { eventType: event.event }).pipe(
+					Effect.logDebug("Received SSE event", { eventType: event.event, botId }).pipe(
 						Effect.annotateLogs("service", "SseCommandListener"),
 					),
 				),
 				// Only process "command" events
 				Stream.filter((event) => event.event === "command"),
-				Stream.mapEffect((event) =>
-					Schema.decodeUnknown(CommandEventSchema)(JSON.parse(event.data)).pipe(
+				Stream.mapEffect((event) => {
+					// Generate correlation ID for this command
+					const correlationId = generateCorrelationId()
+
+					return Schema.decodeUnknown(CommandEventSchema)(JSON.parse(event.data)).pipe(
 						Effect.tap((cmd) =>
-							Effect.logInfo("Parsed command event", { commandName: cmd.commandName }).pipe(
-								Effect.annotateLogs("service", "SseCommandListener"),
-							),
+							Effect.logInfo("Command received", {
+								commandName: cmd.commandName,
+								channelId: cmd.channelId,
+								correlationId,
+							}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
+						),
+						Effect.tap((cmd) =>
+							Effect.logDebug("Command details", {
+								commandName: cmd.commandName,
+								channelId: cmd.channelId,
+								userId: cmd.userId,
+								argCount: Object.keys(cmd.arguments).length,
+								correlationId,
+							}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
 						),
 						Effect.flatMap((cmd) => Queue.offer(commandQueue, cmd)),
+						Effect.withSpan("bot.command.receive", {
+							attributes: { correlationId, botId },
+						}),
 						Effect.catchAll((parseError) =>
 							Effect.logWarning("Failed to parse command event", {
 								error: parseError,
 								data: event.data,
+								correlationId,
 							}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
 						),
-					),
-				),
+					)
+				}),
 				Stream.runDrain,
 			)
 		}).pipe(
@@ -208,7 +231,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 				),
 			),
 			Effect.tapError((error) =>
-				Effect.logError("SSE connection failed permanently", { error }).pipe(
+				Effect.logError("SSE connection failed permanently", { error, botId, botName }).pipe(
 					Effect.annotateLogs("service", "SseCommandListener"),
 				),
 			),
@@ -216,7 +239,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			Effect.forkScoped,
 		)
 
-		yield* Effect.logDebug(`Listening for commands via SSE`, { url: sseUrl }).pipe(
+		yield* Effect.logInfo(`Listening for commands via SSE`, { url: sseUrl, botId, botName }).pipe(
 			Effect.annotateLogs("service", "SseCommandListener"),
 		)
 
