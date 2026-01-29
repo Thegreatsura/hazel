@@ -15,6 +15,25 @@ import { CropArea, type CropAreaHandle } from "./crop-area"
 
 const OUTPUT_SIZE = 512
 
+// Discriminated union for image loading state
+type ImageState =
+	| { status: "idle" }
+	| { status: "loading" }
+	| {
+			status: "ready"
+			element: HTMLImageElement
+			dimensions: { width: number; height: number }
+			crop: { x: number; y: number; size: number }
+			src: string
+	  }
+	| {
+			status: "processing"
+			element: HTMLImageElement
+			dimensions: { width: number; height: number }
+			crop: { x: number; y: number; size: number }
+			src: string
+	  }
+
 interface AvatarCropModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
@@ -23,36 +42,36 @@ interface AvatarCropModalProps {
 }
 
 export function AvatarCropModal({ isOpen, onOpenChange, imageFile, onCropComplete }: AvatarCropModalProps) {
-	const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
-	const [imageDimensions, setImageDimensions] = useState<{
-		width: number
-		height: number
-	} | null>(null)
-	const [initialCrop, setInitialCrop] = useState<{ x: number; y: number; size: number } | null>(null)
-	const [isProcessing, setIsProcessing] = useState(false)
+	const [imageState, setImageState] = useState<ImageState>({ status: "idle" })
 	const objectUrlRef = useRef<string | null>(null)
 	const cropAreaRef = useRef<CropAreaHandle>(null)
 
 	// Load image when file changes
 	useEffect(() => {
 		if (!imageFile) {
-			setImageElement(null)
-			setImageDimensions(null)
-			setInitialCrop(null)
+			setImageState({ status: "idle" })
 			return
 		}
 
+		setImageState({ status: "loading" })
 		const url = URL.createObjectURL(imageFile)
 		objectUrlRef.current = url
 
 		const img = new Image()
 		img.onload = () => {
-			setImageElement(img)
-			setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
-			setInitialCrop(calculateInitialCrop(img.naturalWidth, img.naturalHeight))
+			const dimensions = { width: img.naturalWidth, height: img.naturalHeight }
+			const crop = calculateInitialCrop(img.naturalWidth, img.naturalHeight)
+			setImageState({
+				status: "ready",
+				element: img,
+				dimensions,
+				crop,
+				src: url,
+			})
 		}
 		img.onerror = () => {
 			console.error("Failed to load image")
+			setImageState({ status: "idle" })
 			onOpenChange(false)
 		}
 		img.src = url
@@ -66,17 +85,16 @@ export function AvatarCropModal({ isOpen, onOpenChange, imageFile, onCropComplet
 	}, [imageFile, onOpenChange])
 
 	const handleSave = async () => {
-		if (!imageElement || !cropAreaRef.current) return
+		if (imageState.status !== "ready" || !cropAreaRef.current) return
 
 		const cropRect = cropAreaRef.current.getCropRect()
-		setIsProcessing(true)
+		setImageState({ ...imageState, status: "processing" })
 		try {
-			const blob = await cropImage(imageElement, cropRect, OUTPUT_SIZE)
+			const blob = await cropImage(imageState.element, cropRect, OUTPUT_SIZE)
 			onCropComplete(blob)
 		} catch (error) {
 			console.error("Failed to crop image:", error)
-		} finally {
-			setIsProcessing(false)
+			setImageState({ ...imageState, status: "ready" })
 		}
 	}
 
@@ -84,8 +102,8 @@ export function AvatarCropModal({ isOpen, onOpenChange, imageFile, onCropComplet
 		onOpenChange(false)
 	}
 
-	const imageSrc = objectUrlRef.current
-	const isReady = imageElement && imageDimensions && initialCrop && imageSrc
+	const isReady = imageState.status === "ready" || imageState.status === "processing"
+	const isProcessing = imageState.status === "processing"
 
 	return (
 		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -97,10 +115,10 @@ export function AvatarCropModal({ isOpen, onOpenChange, imageFile, onCropComplet
 					{isReady ? (
 						<CropArea
 							ref={cropAreaRef}
-							imageSrc={imageSrc}
-							imageWidth={imageDimensions.width}
-							imageHeight={imageDimensions.height}
-							initialCrop={initialCrop}
+							imageSrc={imageState.src}
+							imageWidth={imageState.dimensions.width}
+							imageHeight={imageState.dimensions.height}
+							initialCrop={imageState.crop}
 						/>
 					) : (
 						<div className="flex h-64 items-center justify-center">

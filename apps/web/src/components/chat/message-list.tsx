@@ -9,11 +9,7 @@ import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-messag
 import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
-import {
-	MessageItem,
-	type MessageGroupPosition,
-	type MessageHighlight,
-} from "./message-item"
+import { MessageItem, type MessageGroupPosition, type MessageHighlight } from "./message-item"
 import { MessageToolbar } from "./message-toolbar"
 
 /** Helper to convert boolean flags to group position */
@@ -86,7 +82,10 @@ const MessageVirtualList = memo(
 						<MessageItem
 							message={props.item.message}
 							variants={{
-								groupPosition: toGroupPosition(props.item.isGroupStart, props.item.isGroupEnd),
+								groupPosition: toGroupPosition(
+									props.item.isGroupStart,
+									props.item.isGroupEnd,
+								),
 								highlight: toHighlight(props.item.isFirstNewMessage, props.item.isPinned),
 							}}
 						/>

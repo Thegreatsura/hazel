@@ -66,33 +66,44 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 	const lastProcessedIdRef = useRef<string | null>(null)
 
 	// Use refs for reactive values so manager always has current values
-	// without causing re-subscriptions
-	const settingsRef = useRef(settings)
-	const doNotDisturbRef = useRef(doNotDisturb)
-	const quietHoursStartRef = useRef(quietHoursStart)
-	const quietHoursEndRef = useRef(quietHoursEnd)
-	const sessionStartTimeRef = useRef(sessionStartTime)
-	const currentChannelIdRef = useRef(currentChannelId)
+	// without causing re-subscriptions. We use a single ref object to avoid
+	// multiple useEffect calls for syncing individual values.
+	const latestValuesRef = useRef({
+		settings,
+		doNotDisturb,
+		quietHoursStart,
+		quietHoursEnd,
+		sessionStartTime,
+		currentChannelId,
+	})
 
-	// Update refs when values change
+	// Sync all values in a single effect - this is equivalent to assigning directly
+	// but ensures the ref always has the latest values for use in callbacks
 	useEffect(() => {
-		settingsRef.current = settings
-	}, [settings])
-	useEffect(() => {
-		doNotDisturbRef.current = doNotDisturb
-	}, [doNotDisturb])
-	useEffect(() => {
-		quietHoursStartRef.current = quietHoursStart
-	}, [quietHoursStart])
-	useEffect(() => {
-		quietHoursEndRef.current = quietHoursEnd
-	}, [quietHoursEnd])
-	useEffect(() => {
-		sessionStartTimeRef.current = sessionStartTime
-	}, [sessionStartTime])
-	useEffect(() => {
-		currentChannelIdRef.current = currentChannelId
-	}, [currentChannelId])
+		latestValuesRef.current = {
+			settings,
+			doNotDisturb,
+			quietHoursStart,
+			quietHoursEnd,
+			sessionStartTime,
+			currentChannelId,
+		}
+	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd, sessionStartTime, currentChannelId])
+
+	// Helper to create dependencies from latest values ref
+	const createDependencies = () => {
+		const v = latestValuesRef.current
+		return {
+			getCurrentChannelId: () => latestValuesRef.current.currentChannelId,
+			getSessionStartTime: () => latestValuesRef.current.sessionStartTime,
+			getIsMuted: createIsMutedGetter(v.settings, v.doNotDisturb, v.quietHoursStart, v.quietHoursEnd),
+			getConfig: () => ({
+				soundFile: latestValuesRef.current.settings?.soundFile ?? "notification01",
+				volume: latestValuesRef.current.settings?.volume ?? 0.5,
+				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 2000,
+			}),
+		}
+	}
 
 	// Initialize manager dependencies once on mount
 	useEffect(() => {
@@ -100,42 +111,14 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		const cleanupPriming = notificationSoundManager.initPriming()
 
 		// Set up dependencies using refs for latest values
-		notificationSoundManager.setDependencies({
-			getCurrentChannelId: () => currentChannelIdRef.current,
-			getSessionStartTime: () => sessionStartTimeRef.current,
-			getIsMuted: createIsMutedGetter(
-				settingsRef.current,
-				doNotDisturbRef.current,
-				quietHoursStartRef.current,
-				quietHoursEndRef.current,
-			),
-			getConfig: () => ({
-				soundFile: settingsRef.current?.soundFile ?? "notification01",
-				volume: settingsRef.current?.volume ?? 0.5,
-				cooldownMs: settingsRef.current?.cooldownMs ?? 2000,
-			}),
-		})
+		notificationSoundManager.setDependencies(createDependencies())
 
 		return cleanupPriming
 	}, [])
 
 	// Update the getIsMuted function when relevant settings change
 	useEffect(() => {
-		notificationSoundManager.setDependencies({
-			getCurrentChannelId: () => currentChannelIdRef.current,
-			getSessionStartTime: () => sessionStartTimeRef.current,
-			getIsMuted: createIsMutedGetter(
-				settingsRef.current,
-				doNotDisturbRef.current,
-				quietHoursStartRef.current,
-				quietHoursEndRef.current,
-			),
-			getConfig: () => ({
-				soundFile: settingsRef.current?.soundFile ?? "notification01",
-				volume: settingsRef.current?.volume ?? 0.5,
-				cooldownMs: settingsRef.current?.cooldownMs ?? 2000,
-			}),
-		})
+		notificationSoundManager.setDependencies(createDependencies())
 	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd])
 
 	// Process new notifications

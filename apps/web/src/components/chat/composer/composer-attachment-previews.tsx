@@ -55,7 +55,11 @@ export function ComposerAttachmentPreviews({ className }: ComposerAttachmentPrev
 								<div className="truncate font-medium text-fg text-sm">{fileName}</div>
 								<div className="text-muted-fg text-xs">{formatFileSize(fileSize)}</div>
 							</div>
-							<Button intent="plain" size="sq-xs" onPress={() => removeAttachment(attachmentId)}>
+							<Button
+								intent="plain"
+								size="sq-xs"
+								onPress={() => removeAttachment(attachmentId)}
+							>
 								<IconClose data-slot="icon" />
 							</Button>
 						</div>

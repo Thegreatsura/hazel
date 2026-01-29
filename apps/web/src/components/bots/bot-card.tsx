@@ -24,6 +24,13 @@ import {
 } from "~/components/ui/modal"
 import { exitToastAsync } from "~/lib/toast-exit"
 
+// Discriminated union for modal state - eliminates 6 separate useState calls
+type ModalState =
+	| { type: "closed" }
+	| { type: "edit" }
+	| { type: "delete-confirm"; isDeleting: boolean }
+	| { type: "regenerate-confirm"; isRegenerating: boolean; token: string | null }
+
 interface BotCardProps {
 	bot: BotWithUser
 	showUninstall?: boolean
@@ -41,22 +48,19 @@ export function BotCard({
 	onUninstall,
 	reactivityKeys,
 }: BotCardProps) {
-	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-	const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
-	const [showEditModal, setShowEditModal] = useState(false)
-	const [regeneratedToken, setRegeneratedToken] = useState<string | null>(null)
-	const [isDeleting, setIsDeleting] = useState(false)
-	const [isRegenerating, setIsRegenerating] = useState(false)
+	const [modalState, setModalState] = useState<ModalState>({ type: "closed" })
 
 	const deleteBot = useAtomSet(deleteBotMutation, { mode: "promiseExit" })
 	const regenerateToken = useAtomSet(regenerateBotTokenMutation, { mode: "promiseExit" })
 
+	const closeModal = () => setModalState({ type: "closed" })
+
 	const handleDelete = async () => {
-		setIsDeleting(true)
+		setModalState({ type: "delete-confirm", isDeleting: true })
 		await exitToastAsync(deleteBot({ payload: { id: bot.id }, reactivityKeys }))
 			.loading("Deleting application...")
 			.onSuccess(() => {
-				setShowDeleteConfirm(false)
+				closeModal()
 				onDelete?.()
 			})
 			.successMessage("Application deleted successfully")
@@ -66,14 +70,16 @@ export function BotCard({
 				isRetryable: false,
 			}))
 			.run()
-		setIsDeleting(false)
+		setModalState((prev) => (prev.type === "delete-confirm" ? { ...prev, isDeleting: false } : prev))
 	}
 
 	const handleRegenerateToken = async () => {
-		setIsRegenerating(true)
+		setModalState({ type: "regenerate-confirm", isRegenerating: true, token: null })
 		await exitToastAsync(regenerateToken({ payload: { id: bot.id } }))
 			.loading("Regenerating token...")
-			.onSuccess((result) => setRegeneratedToken(result.token))
+			.onSuccess((result) =>
+				setModalState({ type: "regenerate-confirm", isRegenerating: false, token: result.token }),
+			)
 			.successMessage("Token regenerated successfully")
 			.onErrorTag("BotNotFoundError", () => ({
 				title: "Application not found",
@@ -86,8 +92,18 @@ export function BotCard({
 				isRetryable: true,
 			}))
 			.run()
-		setIsRegenerating(false)
+		setModalState((prev) =>
+			prev.type === "regenerate-confirm" ? { ...prev, isRegenerating: false } : prev,
+		)
 	}
+
+	// Derived state from discriminated union
+	const isDeleteConfirmOpen = modalState.type === "delete-confirm"
+	const isRegenerateConfirmOpen = modalState.type === "regenerate-confirm"
+	const isEditModalOpen = modalState.type === "edit"
+	const isDeleting = modalState.type === "delete-confirm" && modalState.isDeleting
+	const isRegenerating = modalState.type === "regenerate-confirm" && modalState.isRegenerating
+	const regeneratedToken = modalState.type === "regenerate-confirm" ? modalState.token : null
 
 	const scopeCount = bot.scopes?.length ?? 0
 
@@ -125,16 +141,29 @@ export function BotCard({
 								</Button>
 							</MenuTrigger>
 							<MenuContent placement="bottom end">
-								<MenuItem onAction={() => setShowEditModal(true)}>
+								<MenuItem onAction={() => setModalState({ type: "edit" })}>
 									<IconEdit data-slot="icon" className="size-4" />
 									<MenuLabel>Edit</MenuLabel>
 								</MenuItem>
-								<MenuItem onAction={() => setShowRegenerateConfirm(true)}>
+								<MenuItem
+									onAction={() =>
+										setModalState({
+											type: "regenerate-confirm",
+											isRegenerating: false,
+											token: null,
+										})
+									}
+								>
 									<IconArrowPath data-slot="icon" className="size-4" />
 									<MenuLabel>Regenerate Token</MenuLabel>
 								</MenuItem>
 								<MenuSeparator />
-								<MenuItem onAction={() => setShowDeleteConfirm(true)} intent="danger">
+								<MenuItem
+									onAction={() =>
+										setModalState({ type: "delete-confirm", isDeleting: false })
+									}
+									intent="danger"
+								>
 									<IconTrash data-slot="icon" className="size-4" />
 									<MenuLabel>Delete</MenuLabel>
 								</MenuItem>
@@ -162,15 +191,20 @@ export function BotCard({
 
 			{/* Edit Modal */}
 			<EditBotModal
-				isOpen={showEditModal}
-				onOpenChange={setShowEditModal}
+				isOpen={isEditModalOpen}
+				onOpenChange={(open) => (open ? setModalState({ type: "edit" }) : closeModal())}
 				bot={bot}
 				onSuccess={onUpdate}
 				reactivityKeys={reactivityKeys}
 			/>
 
 			{/* Delete Confirmation Modal */}
-			<Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+			<Modal
+				isOpen={isDeleteConfirmOpen}
+				onOpenChange={(open) =>
+					open ? setModalState({ type: "delete-confirm", isDeleting: false }) : closeModal()
+				}
+			>
 				<ModalContent>
 					<ModalHeader>
 						<ModalTitle>Delete Application</ModalTitle>
@@ -179,7 +213,7 @@ export function BotCard({
 						</ModalDescription>
 					</ModalHeader>
 					<ModalFooter>
-						<Button intent="outline" onPress={() => setShowDeleteConfirm(false)}>
+						<Button intent="outline" onPress={closeModal}>
 							Cancel
 						</Button>
 						<Button intent="danger" onPress={handleDelete} isDisabled={isDeleting}>
@@ -190,15 +224,7 @@ export function BotCard({
 			</Modal>
 
 			{/* Regenerate Token Confirmation Modal */}
-			<Modal
-				isOpen={showRegenerateConfirm}
-				onOpenChange={(open) => {
-					if (!open) {
-						setShowRegenerateConfirm(false)
-						setRegeneratedToken(null)
-					}
-				}}
-			>
+			<Modal isOpen={isRegenerateConfirmOpen} onOpenChange={(open) => !open && closeModal()}>
 				<ModalContent size="lg">
 					<ModalHeader>
 						<ModalTitle>
@@ -221,18 +247,12 @@ export function BotCard({
 					</ModalBody>
 					<ModalFooter>
 						{regeneratedToken ? (
-							<Button
-								intent="primary"
-								onPress={() => {
-									setShowRegenerateConfirm(false)
-									setRegeneratedToken(null)
-								}}
-							>
+							<Button intent="primary" onPress={closeModal}>
 								Done
 							</Button>
 						) : (
 							<>
-								<Button intent="outline" onPress={() => setShowRegenerateConfirm(false)}>
+								<Button intent="outline" onPress={closeModal}>
 									Cancel
 								</Button>
 								<Button

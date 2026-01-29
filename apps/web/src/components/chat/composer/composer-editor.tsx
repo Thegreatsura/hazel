@@ -18,11 +18,7 @@ export function ComposerEditor({ placeholder, className }: ComposerEditorProps) 
 	const composerContext = useComposerContext()
 	const { channelId, organizationId, editorRef, placeholder: defaultPlaceholder } = composerContext
 
-	const {
-		sendMessage,
-		attachmentIds,
-		activeThreadChannelId,
-	} = useChat()
+	const { sendMessage, attachmentIds, activeThreadChannelId } = useChat()
 
 	const { handleFilesUpload, isUploading } = useFileUploadHandler({
 		organizationId,

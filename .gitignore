@@ -10,6 +10,8 @@ dist-ssr
 .source
 version.json
 
+.agents
+
 # Local SSL certificates (mkcert)
 certs/
 docker/caddy/certs/*.pem

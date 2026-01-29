@@ -34,7 +34,6 @@ interface CreateDmModalProps {
 
 export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 	const [searchQuery, setSearchQuery] = useState("")
-	const [selectedUsers, setSelectedUsers] = useState<(typeof User.Model.Type)[]>([])
 
 	const navigate = useNavigate()
 	const { organizationId, slug } = useOrganization()
@@ -147,30 +146,32 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 		})
 	}, [organizationUsers, searchQuery, user?.id])
 
+	// Derive selected users from form state - single source of truth
+	const selectedUserIds = form.state.values.userIds
+	const selectedUsers = useMemo(
+		() =>
+			organizationUsers?.filter(
+				(u): u is NonNullable<typeof u> => u != null && selectedUserIds.includes(u.id),
+			) ?? [],
+		[organizationUsers, selectedUserIds],
+	)
+
 	const handleClose = () => {
 		onOpenChange(false)
 		// Reset form and state when closing
 		form.reset()
-		setSelectedUsers([])
 		setSearchQuery("")
 	}
 
-	// Stable callback for toggling user selection
+	// Stable callback for toggling user selection - only updates form state
 	const toggleUserSelection = useCallback(
-		(user: typeof User.Model.Type) => {
-			setSelectedUsers((prev) => {
-				const isSelected = prev.some((u) => u.id === user.id)
-				const newSelection = isSelected ? prev.filter((u) => u.id !== user.id) : [...prev, user]
-
-				// Update form value
-				form.setFieldValue(
-					"userIds",
-
-					newSelection.map((u) => u.id),
-				)
-
-				return newSelection
-			})
+		(targetUser: typeof User.Model.Type) => {
+			const currentIds = form.state.values.userIds
+			const isSelected = currentIds.includes(targetUser.id)
+			const newIds = isSelected
+				? currentIds.filter((id) => id !== targetUser.id)
+				: [...currentIds, targetUser.id]
+			form.setFieldValue("userIds", newIds)
 		},
 		[form],
 	)
@@ -233,7 +234,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 						) : (
 							<div className="flex flex-col gap-1">
 								{filteredUsers.map((user) => {
-									const isSelected = selectedUsers.some((u) => u.id === user?.id)
+									const isSelected = selectedUserIds.includes(user?.id ?? "")
 									return (
 										<button
 											key={user?.id}

@@ -90,8 +90,10 @@ export const MessageItem = memo(function MessageItem({
 	isHighlighted: legacyIsHighlighted = false,
 }: MessageItemProps) {
 	// Resolve variants with backwards compatibility
-	const groupPosition = variants?.groupPosition ?? resolveGroupPosition(legacyIsGroupStart, legacyIsGroupEnd)
-	const highlight = variants?.highlight ?? resolveHighlight(legacyIsFirstNewMessage, legacyIsPinned, legacyIsHighlighted)
+	const groupPosition =
+		variants?.groupPosition ?? resolveGroupPosition(legacyIsGroupStart, legacyIsGroupEnd)
+	const highlight =
+		variants?.highlight ?? resolveHighlight(legacyIsFirstNewMessage, legacyIsPinned, legacyIsHighlighted)
 
 	// Derived state from variants
 	const isGroupStart = groupPosition === "start" || groupPosition === "standalone"
