@@ -5,7 +5,7 @@
  */
 
 import { Atom } from "@effect-atom/atom-react"
-import { Data, Duration, Effect, Schedule, Stream } from "effect"
+import { Data, Duration, Effect } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 
 type UpdaterApi = typeof import("@tauri-apps/plugin-updater")
@@ -67,73 +67,49 @@ export const tauriUpdateStateAtom = Atom.make<TauriUpdateState>({ _tag: "idle" }
 export const tauriDownloadStateAtom = Atom.make<TauriDownloadState>({ _tag: "idle" }).pipe(Atom.keepAlive)
 
 /**
- * Check for updates interval (6 hours)
+ * Check for updates interval (6 hours) in milliseconds
  */
-const UPDATE_CHECK_INTERVAL = Duration.hours(6)
+export const UPDATE_CHECK_INTERVAL_MS = Duration.toMillis(Duration.hours(6))
 
 /**
- * Creates a stream that runs the given effect on a schedule.
- * Exported for testing purposes.
+ * Checks for updates and calls the setter with the result.
+ * This is a plain async function that works with React's useAtomSet.
  */
-export const createScheduledStream = <S, A, E, R>(
-	schedule: Schedule.Schedule<S>,
-	effect: Effect.Effect<A, E, R>,
-) =>
-	Stream.fromSchedule(schedule).pipe(
-		Stream.tap(() => effect),
-		Stream.runDrain,
-	)
+export async function checkForUpdates(
+	setUpdateState: (state: TauriUpdateState) => void,
+): Promise<void> {
+	if (!updater || !process) {
+		console.log("[update] Not in Tauri environment, skipping check")
+		return
+	}
 
-/**
- * Side-effect atom that performs periodic update checks.
- * Runs immediately on mount then every 6 hours.
- * Uses runtime.runFork() to run the stream as a fiber.
- */
-export const tauriUpdateCheckAtom = Atom.make((get) => {
-	// Skip if not in Tauri environment
-	if (!updater || !process) return null
+	console.log("[update] Starting update check...")
+	setUpdateState({ _tag: "checking" })
 
-	const checkForUpdates = Effect.gen(function* () {
-		// Get current state to prevent duplicate checks
-		const currentState = get(tauriUpdateStateAtom)
-		if (currentState._tag === "checking") return
+	try {
+		const update = await updater.check()
+		console.log("[update] Check completed:", update)
 
-		get.set(tauriUpdateStateAtom, { _tag: "checking" })
-
-		try {
-			const update = yield* Effect.promise(() => updater!.check())
-
-			if (update) {
-				get.set(tauriUpdateStateAtom, {
-					_tag: "available",
-					version: update.version,
-					body: update.body ?? null,
-					update,
-				})
-			} else {
-				get.set(tauriUpdateStateAtom, { _tag: "not-available", lastCheckedAt: new Date() })
-			}
-		} catch (error) {
-			console.error("Update check failed:", error)
-			get.set(tauriUpdateStateAtom, {
-				_tag: "error",
-				message: error instanceof Error ? error.message : "Unknown error",
+		if (update) {
+			console.log("[update] Update available:", update.version)
+			setUpdateState({
+				_tag: "available",
+				version: update.version,
+				body: update.body ?? null,
+				update,
 			})
+		} else {
+			console.log("[update] No update available")
+			setUpdateState({ _tag: "not-available", lastCheckedAt: new Date() })
 		}
-	})
-
-	// Schedule: run immediately at t=0 (once), then every 6 hours (spaced)
-	// Note: Schedule.spaced alone would delay the first check by 6 hours
-	const schedule = Schedule.union(Schedule.once, Schedule.spaced(UPDATE_CHECK_INTERVAL))
-
-	const fiber = runtime.runFork(createScheduledStream(schedule, checkForUpdates))
-
-	get.addFinalizer(() => {
-		fiber.unsafeInterruptAsFork(fiber.id())
-	})
-
-	return null
-}).pipe(Atom.keepAlive)
+	} catch (error) {
+		console.error("[update] Check failed:", error)
+		setUpdateState({
+			_tag: "error",
+			message: error instanceof Error ? error.message : "Update check failed",
+		})
+	}
+}
 
 /**
  * Creates an Effect that downloads and installs an update.
@@ -227,42 +203,6 @@ export const createDownloadEffect = (
 		}),
 	)
 
-/**
- * Creates an Effect that manually checks for updates.
- * Used by the Desktop settings page to allow users to trigger an update check.
- */
-export const checkForUpdatesManually = (setUpdateState: (state: TauriUpdateState) => void) =>
-	Effect.gen(function* () {
-		if (!updater || !process) return
-
-		setUpdateState({ _tag: "checking" })
-
-		const update = yield* Effect.tryPromise({
-			try: () => updater!.check(),
-			catch: (error) =>
-				new UpdateCheckError({
-					message: error instanceof Error ? error.message : "Failed to check for updates",
-				}),
-		})
-
-		if (update) {
-			setUpdateState({
-				_tag: "available",
-				version: update.version,
-				body: update.body ?? null,
-				update,
-			})
-		} else {
-			setUpdateState({ _tag: "not-available", lastCheckedAt: new Date() })
-		}
-	}).pipe(
-		Effect.catchTag("UpdateCheckError", (error) =>
-			Effect.sync(() => {
-				console.error("[update] Check failed:", error.message)
-				setUpdateState({ _tag: "error", message: error.message })
-			}),
-		),
-	)
 
 /**
  * Check if we're in a Tauri environment

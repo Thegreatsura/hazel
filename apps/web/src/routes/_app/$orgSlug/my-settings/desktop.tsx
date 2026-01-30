@@ -8,7 +8,7 @@ import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import {
-	checkForUpdatesManually,
+	checkForUpdates,
 	createDownloadEffect,
 	isTauriEnvironment,
 	tauriDownloadStateAtom,
@@ -53,7 +53,7 @@ function DesktopSettings() {
 	}, [])
 
 	const handleCheckForUpdates = () => {
-		runtime.runFork(checkForUpdatesManually(setUpdateState))
+		checkForUpdates(setUpdateState)
 	}
 
 	const handleInstallUpdate = () => {

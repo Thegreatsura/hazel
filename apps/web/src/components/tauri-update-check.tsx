@@ -4,15 +4,16 @@
  * @description Check for app updates and prompt user to install (no-op in browser)
  */
 
-import { useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
+	checkForUpdates,
 	createDownloadEffect,
 	isTauriEnvironment,
 	tauriDownloadStateAtom,
-	tauriUpdateCheckAtom,
 	tauriUpdateStateAtom,
+	UPDATE_CHECK_INTERVAL_MS,
 } from "~/atoms/tauri-update-atoms"
 import { runtime } from "~/lib/services/common/runtime"
 
@@ -27,8 +28,22 @@ import { runtime } from "~/lib/services/common/runtime"
  * - Only runs in Tauri environment (no-op in browser)
  */
 export const TauriUpdateCheck = () => {
-	// Mount the polling atom to start periodic update checks
-	useAtomMount(tauriUpdateCheckAtom)
+	const setUpdateState = useAtomSet(tauriUpdateStateAtom)
+
+	// Periodic update checking
+	useEffect(() => {
+		if (!isTauriEnvironment) return
+
+		// Check immediately on mount
+		checkForUpdates(setUpdateState)
+
+		// Then check every 6 hours
+		const intervalId = setInterval(() => {
+			checkForUpdates(setUpdateState)
+		}, UPDATE_CHECK_INTERVAL_MS)
+
+		return () => clearInterval(intervalId)
+	}, [setUpdateState])
 
 	// Subscribe to state
 	const updateState = useAtomValue(tauriUpdateStateAtom)

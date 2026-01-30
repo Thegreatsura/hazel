@@ -2,9 +2,8 @@ import { useEffect } from "react"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import { modalAtomFamily } from "~/atoms/modal-atoms"
-import { checkForUpdatesManually, tauriUpdateStateAtom } from "~/atoms/tauri-update-atoms"
+import { checkForUpdates, tauriUpdateStateAtom } from "~/atoms/tauri-update-atoms"
 import { useOrganization } from "~/hooks/use-organization"
-import { runtime } from "~/lib/services/common/runtime"
 import { isTauri } from "~/lib/tauri"
 
 type EventApi = typeof import("@tauri-apps/api/event")
@@ -35,7 +34,7 @@ export function TauriMenuListener() {
 
 		event
 			.listen("menu-check-updates", () => {
-				runtime.runFork(checkForUpdatesManually(setUpdateState))
+				checkForUpdates(setUpdateState)
 			})
 			.then((fn) => unlisteners.push(fn))
 
