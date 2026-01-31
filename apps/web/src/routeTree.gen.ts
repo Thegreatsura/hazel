@@ -332,13 +332,13 @@ const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof AppIndexRoute
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
-  '/': typeof AppIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
@@ -348,9 +348,9 @@ export interface FileRoutesByFullPath {
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
   '/dev/embeds/railway': typeof DevEmbedsRailwayRoute
   '/$orgSlug/': typeof AppOrgSlugIndexRoute
-  '/onboarding': typeof AppOnboardingIndexRoute
-  '/select-organization': typeof AppSelectOrganizationIndexRoute
-  '/dev/embeds': typeof DevEmbedsIndexRoute
+  '/onboarding/': typeof AppOnboardingIndexRoute
+  '/select-organization/': typeof AppSelectOrganizationIndexRoute
+  '/dev/embeds/': typeof DevEmbedsIndexRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
@@ -364,7 +364,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
-  '/$orgSlug/chat': typeof AppOrgSlugChatIndexRoute
+  '/$orgSlug/chat/': typeof AppOrgSlugChatIndexRoute
   '/$orgSlug/my-settings/': typeof AppOrgSlugMySettingsIndexRoute
   '/$orgSlug/notifications/': typeof AppOrgSlugNotificationsIndexRoute
   '/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
@@ -379,7 +379,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   '/$orgSlug/chat/$id/files/media': typeof AppOrgSlugChatIdFilesMediaRoute
   '/$orgSlug/channels/$channelId/settings/': typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
-  '/$orgSlug/chat/$id/files': typeof AppOrgSlugChatIdFilesIndexRoute
+  '/$orgSlug/chat/$id/files/': typeof AppOrgSlugChatIdFilesIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
@@ -479,13 +479,13 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/$orgSlug'
     | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
     | '/join/$slug'
-    | '/'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
     | '/$orgSlug/settings'
@@ -495,9 +495,9 @@ export interface FileRouteTypes {
     | '/dev/embeds/openstatus'
     | '/dev/embeds/railway'
     | '/$orgSlug/'
-    | '/onboarding'
-    | '/select-organization'
-    | '/dev/embeds'
+    | '/onboarding/'
+    | '/select-organization/'
+    | '/dev/embeds/'
     | '/$orgSlug/settings/integrations'
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/my-settings/desktop'
@@ -511,7 +511,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
-    | '/$orgSlug/chat'
+    | '/$orgSlug/chat/'
     | '/$orgSlug/my-settings/'
     | '/$orgSlug/notifications/'
     | '/$orgSlug/settings/'
@@ -526,7 +526,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/channels/$channelId/settings/overview'
     | '/$orgSlug/chat/$id/files/media'
     | '/$orgSlug/channels/$channelId/settings/'
-    | '/$orgSlug/chat/$id/files'
+    | '/$orgSlug/chat/$id/files/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth/callback'
@@ -642,7 +642,7 @@ declare module '@tanstack/react-router' {
     '/_app': {
       id: '/_app'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AppLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -698,21 +698,21 @@ declare module '@tanstack/react-router' {
     '/dev/embeds/': {
       id: '/dev/embeds/'
       path: '/dev/embeds'
-      fullPath: '/dev/embeds'
+      fullPath: '/dev/embeds/'
       preLoaderRoute: typeof DevEmbedsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/select-organization/': {
       id: '/_app/select-organization/'
       path: '/select-organization'
-      fullPath: '/select-organization'
+      fullPath: '/select-organization/'
       preLoaderRoute: typeof AppSelectOrganizationIndexRouteImport
       parentRoute: typeof AppLayoutRoute
     }
     '/_app/onboarding/': {
       id: '/_app/onboarding/'
       path: '/onboarding'
-      fullPath: '/onboarding'
+      fullPath: '/onboarding/'
       preLoaderRoute: typeof AppOnboardingIndexRouteImport
       parentRoute: typeof AppLayoutRoute
     }
@@ -803,7 +803,7 @@ declare module '@tanstack/react-router' {
     '/_app/$orgSlug/chat/': {
       id: '/_app/$orgSlug/chat/'
       path: '/chat'
-      fullPath: '/$orgSlug/chat'
+      fullPath: '/$orgSlug/chat/'
       preLoaderRoute: typeof AppOrgSlugChatIndexRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
     }
@@ -950,7 +950,7 @@ declare module '@tanstack/react-router' {
     '/_app/$orgSlug/chat/$id/files/': {
       id: '/_app/$orgSlug/chat/$id/files/'
       path: '/files'
-      fullPath: '/$orgSlug/chat/$id/files'
+      fullPath: '/$orgSlug/chat/$id/files/'
       preLoaderRoute: typeof AppOrgSlugChatIdFilesIndexRouteImport
       parentRoute: typeof AppOrgSlugChatIdRoute
     }

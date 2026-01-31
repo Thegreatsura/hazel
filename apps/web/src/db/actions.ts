@@ -609,7 +609,7 @@ export const deleteChannelAction = optimisticAction({
 })
 
 export const joinChannelAction = optimisticAction({
-	collections: [channelMemberCollection],
+	collections: [],
 	runtime: runtime,
 
 	onMutate: (props: { channelId: ChannelId; userId: UserId }) => {
