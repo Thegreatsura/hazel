@@ -1,5 +1,6 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { type ChannelId, type OrganizationId, policyRequire, type RssSubscriptionId } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { RssSubscription } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 

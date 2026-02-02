@@ -5,7 +5,7 @@
  * for type-safe error handling with catchTag/catchTags.
  */
 
-import type { ChannelId, MessageId } from "@hazel/domain/ids"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
 import type { ActorOperationError, MessageCreateError, StreamProcessingError } from "./errors.ts"
 

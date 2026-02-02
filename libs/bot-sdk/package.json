@@ -26,6 +26,7 @@
 		"@hazel/actors": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",
+		"@hazel/schema": "workspace:*",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

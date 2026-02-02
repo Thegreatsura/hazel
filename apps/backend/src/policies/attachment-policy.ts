@@ -5,7 +5,8 @@ import {
 	MessageRepo,
 	OrganizationMemberRepo,
 } from "@hazel/backend-core"
-import { type AttachmentId, ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { AttachmentId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

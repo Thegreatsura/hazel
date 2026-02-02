@@ -6,10 +6,8 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./ids": "./src/ids.ts",
 		"./errors": "./src/errors.ts",
 		"./current-user": "./src/current-user.ts",
-		"./transaction-id": "./src/transaction-id.ts",
 		"./rpc": "./src/rpc/index.ts",
 		"./http": "./src/http/index.ts",
 		"./policy": "./src/policy/index.ts",

@@ -1,11 +1,6 @@
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import {
-	ErrorUtils,
-	type NotificationId,
-	type OrganizationMemberId,
-	policy,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

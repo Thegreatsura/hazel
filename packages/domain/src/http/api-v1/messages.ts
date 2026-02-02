@@ -1,11 +1,11 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../../errors"
-import { AttachmentId, ChannelId, MessageId } from "../../ids"
+import { AttachmentId, ChannelId, MessageId } from "@hazel/schema"
 import { Message, MessageReaction } from "../../models"
 import { MessageEmbeds } from "../../models/message-embed-schema"
 import { RateLimitExceededError } from "../../rate-limit-errors"
-import { TransactionId } from "../../transaction-id"
+import { TransactionId } from "@hazel/schema"
 
 // ============ PAGINATION SCHEMAS (Stripe-style) ============
 

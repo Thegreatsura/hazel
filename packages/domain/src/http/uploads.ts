@@ -1,7 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
-import { AttachmentId, BotId, ChannelId, OrganizationId } from "../ids"
+import { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { RateLimitExceededError } from "../rate-limit-errors"
 
 // ============ Constants ============

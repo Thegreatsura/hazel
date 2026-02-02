@@ -10,7 +10,7 @@
  * - Specific error types for each failure mode
  */
 
-import type { ChannelId, MessageId } from "@hazel/domain/ids"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { Effect, Ref, Stream } from "effect"
 import type { ActorsClientService, MessageActor } from "./actors-client.ts"
 import { ActorOperationError, MessageCreateError, StreamProcessingError } from "./errors.ts"

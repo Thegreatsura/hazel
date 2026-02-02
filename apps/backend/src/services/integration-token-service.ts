@@ -1,5 +1,6 @@
 import { IntegrationConnectionRepo, IntegrationTokenRepo } from "@hazel/backend-core"
-import { type IntegrationConnectionId, type IntegrationTokenId, withSystemActor } from "@hazel/domain"
+import { withSystemActor } from "@hazel/domain"
+import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
 import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"

@@ -1,13 +1,6 @@
 import { ChannelRepo, GitHubSubscriptionRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import {
-	type ChannelId,
-	ErrorUtils,
-	type GitHubSubscriptionId,
-	type OrganizationId,
-	policy,
-	type UserId,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { ChannelId, GitHubSubscriptionId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

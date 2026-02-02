@@ -1,5 +1,6 @@
 import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { type ChannelId, type MessageId, type OrganizationMemberId, policyRequire } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
 import { Effect } from "effect"
 

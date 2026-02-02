@@ -1,7 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import { InternalServerError } from "../errors"
-import { UserId } from "../ids"
+import { UserId } from "@hazel/schema"
 
 // Payload for marking user offline
 export class MarkOfflinePayload extends Schema.Class<MarkOfflinePayload>("MarkOfflinePayload")({

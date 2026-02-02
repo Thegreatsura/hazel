@@ -1,13 +1,7 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
-import {
-	CurrentUser,
-	InternalServerError,
-	type OrganizationId,
-	UnauthorizedError,
-	type UserId,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import type { OrganizationId, UserId } from "@hazel/schema"
 import {
 	ConnectionStatusResponse,
 	IntegrationNotConnectedError,

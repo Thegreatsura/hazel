@@ -2,10 +2,10 @@ import { RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { UserPresenceStatusId } from "../ids"
+import { UserPresenceStatusId } from "@hazel/schema"
 import { UserPresenceStatus } from "../models"
 import { JsonDate } from "../models/utils"
-import { TransactionId } from "../transaction-id"
+import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 
 /**

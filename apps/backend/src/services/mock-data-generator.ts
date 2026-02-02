@@ -13,7 +13,7 @@ import type {
 	MessageId,
 	OrganizationId,
 	UserId,
-} from "@hazel/domain/ids"
+} from "@hazel/schema"
 import { Effect } from "effect"
 import { DatabaseLive } from "./database"
 

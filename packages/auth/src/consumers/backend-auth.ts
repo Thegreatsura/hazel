@@ -2,12 +2,11 @@ import {
 	CurrentUser,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
-	type OrganizationId,
 	SessionLoadError,
 	withSystemActor,
 } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
-import type { UserId } from "@hazel/schema"
+import type { OrganizationId, UserId } from "@hazel/schema"
 import { Config, Effect, Layer, Option } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import type { BackendAuthResult } from "../types.ts"

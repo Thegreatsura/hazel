@@ -3,9 +3,9 @@ import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { UserId } from "../ids"
+import { UserId } from "@hazel/schema"
 import { User } from "../models"
-import { TransactionId } from "../transaction-id"
+import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 
 /**

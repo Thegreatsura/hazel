@@ -18,9 +18,9 @@ import {
 } from "../errors"
 
 export { NestedThreadError } from "../errors"
-import { ChannelId, MessageId, OrganizationId, UserId } from "../ids"
+import { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Channel } from "../models"
-import { TransactionId } from "../transaction-id"
+import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 
 /**

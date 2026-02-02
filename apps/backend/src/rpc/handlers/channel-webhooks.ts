@@ -1,13 +1,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import {
-	type ChannelWebhookId,
-	CurrentUser,
-	policyUse,
-	withRemapDbErrors,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import type { ChannelWebhookId } from "@hazel/schema"
 import {
 	ChannelNotFoundError,
 	ChannelWebhookCreatedResponse,

@@ -145,12 +145,27 @@ The project uses OXC for consistent formatting:
 
 Run `bun run format:fix` to apply formatting and fix linting issues automatically.
 
+### Package Import Guide
+
+**`@hazel/schema`** - Branded ID types (foundational, minimal dependencies):
+
+```typescript
+import type { OrganizationId, ChannelId, UserId, MessageId } from "@hazel/schema"
+```
+
+**`@hazel/domain`** - RPC, HTTP, Cluster contracts, and models:
+
+```typescript
+import { Cluster, Rpc, Http } from "@hazel/domain"
+import { Message, Channel, User } from "@hazel/domain/models"
+```
+
 ### Branded Types for IDs
 
 **ALWAYS** use the branded ID types from `@hazel/schema` instead of plain strings or `as any` casts. This ensures type safety across the codebase.
 
 ```typescript
-// ✅ CORRECT - Use branded types
+// ✅ CORRECT - Use branded types from @hazel/schema
 import type { OrganizationId, ChannelId, UserId } from "@hazel/schema"
 
 function getChannel(channelId: ChannelId) { ... }
@@ -163,7 +178,7 @@ function getChannel(channelId: string) { ... }
 payload: { id: organizationId as any }  // Never do this!
 ```
 
-Available branded types in `@hazel/schema`: `OrganizationId`, `ChannelId`, `UserId`, `MessageId`, `BotId`, `InvitationId`, `ChannelMemberId`, `OrganizationMemberId`, and many more. See `packages/schema/src/ids.ts` for the full list.
+Available branded types in `@hazel/schema`: `OrganizationId`, `ChannelId`, `UserId`, `MessageId`, `BotId`, `InvitationId`, `ChannelMemberId`, `OrganizationMemberId`, `TransactionId`, and many more. See `packages/schema/src/ids.ts` for the full list.
 
 ## Database
 

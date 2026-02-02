@@ -4,12 +4,12 @@ import { Database } from "@hazel/db"
 import {
 	CurrentUser,
 	InternalServerError,
-	type MessageId,
 	policyUse,
 	UnauthorizedError,
 	withRemapDbErrors,
 	withSystemActor,
 } from "@hazel/domain"
+import type { MessageId } from "@hazel/schema"
 import {
 	ChannelNotFoundError,
 	DeleteMessageResponse,
@@ -75,7 +75,7 @@ const authenticateBotFromToken = Effect.gen(function* () {
  * Create a CurrentUser context for the bot
  * Bots act as their associated user account
  */
-const createBotUserContext = (bot: { userId: typeof import("@hazel/domain").UserId.Type; name: string }) =>
+const createBotUserContext = (bot: { userId: typeof import("@hazel/schema").UserId.Type; name: string }) =>
 	new CurrentUser.Schema({
 		id: bot.userId,
 		role: "member",

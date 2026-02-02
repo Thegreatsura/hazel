@@ -1,6 +1,7 @@
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, inArray, isNull, ne, or, schema, sql } from "@hazel/db"
-import { Cluster, type NotificationId, type UserId } from "@hazel/domain"
+import { Cluster } from "@hazel/domain"
+import type { NotificationId, UserId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
 
 export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkflow.toLayer(

@@ -1,13 +1,6 @@
 import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import {
-	ErrorUtils,
-	type InvitationId,
-	type OrganizationId,
-	policy,
-	policyCompose,
-	type UserId,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, policyCompose, withSystemActor } from "@hazel/domain"
+import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option, pipe } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

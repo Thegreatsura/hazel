@@ -1,5 +1,5 @@
 import { Database } from "@hazel/db"
-import { TransactionIdFromString } from "@hazel/domain"
+import { TransactionIdFromString } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
 
 export const generateTransactionId = Effect.fn("generateTransactionId")(function* (

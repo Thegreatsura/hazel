@@ -1,5 +1,6 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { type OrganizationId, policyRequire, type UserId, withSystemActor } from "@hazel/domain"
+import { policyRequire, withSystemActor } from "@hazel/domain"
+import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
 import { ChannelMemberRepo } from "./channel-member-repo"

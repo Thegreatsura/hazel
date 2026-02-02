@@ -1,5 +1,6 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, type OrganizationId, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { OrganizationId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

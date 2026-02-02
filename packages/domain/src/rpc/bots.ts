@@ -5,7 +5,7 @@ import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { Bot, BotCommand } from "../models"
 import { RateLimitExceededError } from "../rate-limit-errors"
-import { TransactionId } from "../transaction-id"
+import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 
 /**

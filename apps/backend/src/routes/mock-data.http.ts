@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors, withSystemActor } from "@hazel/domain"
-import { OrganizationId, UserId } from "@hazel/domain/ids"
+import { OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"

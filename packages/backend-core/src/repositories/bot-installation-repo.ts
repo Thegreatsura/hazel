@@ -1,5 +1,6 @@
 import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { type BotId, type BotInstallationId, type OrganizationId, policyRequire } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 

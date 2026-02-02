@@ -1,5 +1,6 @@
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { type ChannelWebhookId, type OrganizationId, type UserId, withSystemActor } from "@hazel/domain"
+import { withSystemActor } from "@hazel/domain"
+import type { ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 
 /**

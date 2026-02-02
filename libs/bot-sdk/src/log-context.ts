@@ -5,7 +5,7 @@
  * Uses FiberRef for fiber-local context propagation across Effect operations.
  */
 
-import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, FiberRef } from "effect"
 import type { EventOperation, EventType } from "./types/events.ts"
 

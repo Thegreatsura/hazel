@@ -1,5 +1,6 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire, type UserId } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { UserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
 

@@ -11,7 +11,8 @@ import {
 	sql,
 	type TransactionClient,
 } from "@hazel/db"
-import { type BotId, policyRequire, type UserId } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
 

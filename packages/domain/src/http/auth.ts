@@ -1,7 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "../errors"
-import { OrganizationId } from "../ids"
+import { OrganizationId } from "@hazel/schema"
 
 export class AuthCallbackRequest extends Schema.Class<AuthCallbackRequest>("AuthCallbackRequest")({
 	code: Schema.String,

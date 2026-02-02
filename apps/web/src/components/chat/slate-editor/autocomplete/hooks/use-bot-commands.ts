@@ -1,4 +1,4 @@
-import type { OrganizationId } from "@hazel/domain/ids"
+import type { OrganizationId } from "@hazel/schema"
 import { and, eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import {

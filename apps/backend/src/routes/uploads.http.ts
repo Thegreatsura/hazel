@@ -7,7 +7,7 @@ import {
 	OrganizationNotFoundForUploadError,
 	UploadError,
 } from "@hazel/domain/http"
-import { AttachmentId } from "@hazel/domain/ids"
+import { AttachmentId } from "@hazel/schema"
 import { S3 } from "@hazel/effect-bun"
 import { randomUUIDv7 } from "bun"
 import { Effect, Match, Option } from "effect"

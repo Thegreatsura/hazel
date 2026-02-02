@@ -1,6 +1,7 @@
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, isNull, lt, schema } from "@hazel/db"
-import { type AttachmentId, Cluster } from "@hazel/domain"
+import { Cluster } from "@hazel/domain"
+import type { AttachmentId } from "@hazel/schema"
 import { Effect } from "effect"
 
 const DEFAULT_MAX_AGE_MINUTES = 10

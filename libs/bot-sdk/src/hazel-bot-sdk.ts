@@ -14,7 +14,7 @@ import type {
 	OrganizationId,
 	TypingIndicatorId,
 	UserId,
-} from "@hazel/domain/ids"
+} from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"

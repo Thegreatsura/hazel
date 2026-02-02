@@ -9,7 +9,8 @@ import {
 	schema,
 	type TransactionClient,
 } from "@hazel/db"
-import { type ChannelId, policyRequire, type UserId } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
 

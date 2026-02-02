@@ -2,7 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { OrganizationId } from "../ids"
+import { OrganizationId } from "@hazel/schema"
 import { IntegrationConnection } from "../models"
 
 // Provider type from the model

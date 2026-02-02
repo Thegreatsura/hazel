@@ -1,6 +1,6 @@
 import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
-import { ChannelId, MessageId } from "./ids"
+import { ChannelId, MessageId } from "@hazel/schema"
 
 export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",

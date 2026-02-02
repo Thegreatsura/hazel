@@ -2,7 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvalidBearerTokenError } from "../session-errors"
-import { BotId, OrganizationId, UserId } from "../ids"
+import { BotId, OrganizationId, UserId } from "@hazel/schema"
 
 // ============================================================================
 // Bot Token Validation (for Actor authentication)

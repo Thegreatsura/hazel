@@ -1,5 +1,5 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { OrganizationId } from "@hazel/domain/ids"
+import type { OrganizationId } from "@hazel/schema"
 import type { GitHubSubscription } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { useState } from "react"

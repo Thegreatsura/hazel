@@ -1,5 +1,6 @@
 import { ChannelSectionRepo } from "@hazel/backend-core"
-import { type ChannelSectionId, ErrorUtils, type OrganizationId, policy, policyCompose } from "@hazel/domain"
+import { ErrorUtils, policy, policyCompose } from "@hazel/domain"
+import type { ChannelSectionId, OrganizationId } from "@hazel/schema"
 import { Effect, pipe } from "effect"
 import { OrganizationPolicy } from "./organization-policy"
 

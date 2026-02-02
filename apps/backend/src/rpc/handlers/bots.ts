@@ -1,16 +1,8 @@
 import { createHash, randomUUID } from "node:crypto"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, UserRepo } from "@hazel/backend-core"
 import { and, Database, eq, schema } from "@hazel/db"
-import {
-	type BotId,
-	type BotInstallationId,
-	CurrentUser,
-	type OrganizationMemberId,
-	policyUse,
-	type UserId,
-	withRemapDbErrors,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import type { BotId, BotInstallationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import {
 	BotAlreadyInstalledError,
 	BotCommandListResponse,

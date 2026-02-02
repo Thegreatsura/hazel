@@ -1,6 +1,7 @@
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
-import { Cluster, type MessageId } from "@hazel/domain"
+import { Cluster } from "@hazel/domain"
+import type { MessageId } from "@hazel/schema"
 import { GitHub } from "@hazel/integrations"
 import { Effect, Option, Schema } from "effect"
 import { BotUserService } from "../services/bot-user-service.ts"

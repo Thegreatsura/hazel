@@ -1,4 +1,5 @@
-import { ErrorUtils, policy, type UserId } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
+import type { UserId } from "@hazel/schema"
 import { Effect } from "effect"
 
 export class UserPolicy extends Effect.Service<UserPolicy>()("UserPolicy/Policy", {

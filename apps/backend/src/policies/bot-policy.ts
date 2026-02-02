@@ -1,12 +1,6 @@
 import { BotRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import {
-	type BotId,
-	ErrorUtils,
-	type OrganizationId,
-	policy,
-	type UserId,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { BotId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

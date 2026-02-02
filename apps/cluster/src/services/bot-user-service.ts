@@ -1,5 +1,6 @@
 import { Database, eq, schema } from "@hazel/db"
-import { Cluster, Integrations, type UserId } from "@hazel/domain"
+import { Cluster, Integrations } from "@hazel/domain"
+import type { UserId } from "@hazel/schema"
 import { Effect, Layer, Option } from "effect"
 
 /**

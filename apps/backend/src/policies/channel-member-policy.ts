@@ -1,5 +1,6 @@
 import { ChannelMemberRepo, ChannelRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { type ChannelId, type ChannelMemberId, ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { ChannelId, ChannelMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 

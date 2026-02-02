@@ -17,7 +17,7 @@ import {
 	withSystemActor,
 	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
-import { OrganizationId } from "@hazel/domain/ids"
+import { OrganizationId } from "@hazel/schema"
 import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
 import { eq } from "drizzle-orm"
 import { Config, Effect, Option } from "effect"

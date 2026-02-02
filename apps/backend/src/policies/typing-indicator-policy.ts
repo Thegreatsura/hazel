@@ -1,12 +1,6 @@
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
-import {
-	type ChannelId,
-	type ChannelMemberId,
-	ErrorUtils,
-	policy,
-	type TypingIndicatorId,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { Effect, Option, pipe } from "effect"
 
 export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>()(

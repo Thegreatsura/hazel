@@ -5,7 +5,7 @@
  * full type safety for command names and arguments.
  */
 
-import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 
 /**

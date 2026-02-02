@@ -2,9 +2,9 @@ import { RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { IntegrationRequestId, OrganizationId } from "../ids"
+import { IntegrationRequestId, OrganizationId } from "@hazel/schema"
 import { IntegrationRequest } from "../models"
-import { TransactionId } from "../transaction-id"
+import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 
 /**

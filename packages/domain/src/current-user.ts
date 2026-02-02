@@ -1,7 +1,7 @@
 import { HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
 import { Context as C, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
-import { OrganizationId, UserId } from "./ids"
+import { OrganizationId, UserId } from "@hazel/schema"
 import { User } from "./models"
 import {
 	InvalidBearerTokenError,

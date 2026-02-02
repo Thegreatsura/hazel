@@ -11,7 +11,8 @@ import {
 	schema,
 	type TransactionClient,
 } from "@hazel/db"
-import { type ChannelId, type MessageId, policyRequire } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 

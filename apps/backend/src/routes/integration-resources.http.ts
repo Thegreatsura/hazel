@@ -1,6 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { IntegrationConnectionRepo } from "@hazel/backend-core"
-import { InternalServerError, type OrganizationId, withSystemActor } from "@hazel/domain"
+import { InternalServerError, withSystemActor } from "@hazel/domain"
+import type { OrganizationId } from "@hazel/schema"
 import {
 	GitHubPRResourceResponse,
 	GitHubRepositoriesResponse,

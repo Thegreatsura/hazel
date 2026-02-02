@@ -1,5 +1,6 @@
 import { Database, eq, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { type IntegrationConnectionId, type IntegrationTokenId, policyRequire } from "@hazel/domain"
+import { policyRequire } from "@hazel/domain"
+import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 

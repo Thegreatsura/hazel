@@ -9,7 +9,7 @@
 
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Sse } from "@effect/experimental"
-import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Metric, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
 import { generateCorrelationId } from "../log-context.ts"

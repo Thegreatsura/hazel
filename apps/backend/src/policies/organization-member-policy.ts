@@ -1,13 +1,6 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
-import {
-	ErrorUtils,
-	type OrganizationId,
-	type OrganizationMemberId,
-	policy,
-	policyCompose,
-	type UserId,
-	withSystemActor,
-} from "@hazel/domain"
+import { ErrorUtils, policy, policyCompose, withSystemActor } from "@hazel/domain"
+import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Effect, Option, pipe } from "effect"
 
 export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberPolicy>()(
