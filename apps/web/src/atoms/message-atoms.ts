@@ -120,3 +120,26 @@ export const threadMessageCountAtomFamily = Atom.family((threadChannelId: Channe
 			})),
 	),
 )
+
+/**
+ * Atom family for fetching thread messages with their authors
+ * Returns messages in chronological order with author data joined
+ * Used by ThreadMessageItem to display full message features
+ */
+export const threadMessagesWithAuthorAtomFamily = Atom.family(
+	({ threadChannelId }: { threadChannelId: ChannelId }) =>
+		makeQuery((q) =>
+			q
+				.from({ message: messageCollection })
+				.leftJoin({ author: userCollection }, ({ message, author }) =>
+					eq(message.authorId, author.id),
+				)
+				.where(({ message }) => eq(message.channelId, threadChannelId))
+				.select(({ message, author }) => ({
+					...message,
+					author,
+					pinnedMessage: null,
+				}))
+				.orderBy(({ message }) => message.createdAt, "asc"),
+		),
+)

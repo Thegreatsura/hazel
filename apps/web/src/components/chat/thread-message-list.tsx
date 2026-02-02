@@ -1,22 +1,110 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { Message } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
-import { format } from "date-fns"
-import { threadMessagesAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
-import { useAuth } from "~/lib/auth"
-import { Avatar } from "../ui/avatar"
-import { MessageContent } from "./message-content"
+import { useMemo, useRef } from "react"
+import { useOverlayPosition } from "react-aria"
+import { createPortal } from "react-dom"
+import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
+import { threadMessagesWithAuthorAtomFamily } from "~/atoms/message-atoms"
+import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
+import type { MessageGroupPosition } from "./message"
+import { MessageToolbar } from "./message-toolbar"
+import { ThreadMessageItem } from "./thread-message-item"
 
 interface ThreadMessageListProps {
 	threadChannelId: ChannelId
 }
 
+/**
+ * ThreadMessageList displays messages within a thread with full feature parity
+ * to the main chat window, including:
+ * - Right-click context menu
+ * - Hover toolbar with quick actions
+ * - Reactions display and quick reactions
+ * - Message grouping
+ * - User profile popovers
+ *
+ * Uses the composition pattern via ThreadMessageItem (which uses Message.* compound components)
+ * to share the same building blocks as the main MessageItem.
+ */
 export function ThreadMessageList({ threadChannelId }: ThreadMessageListProps) {
-	// Query thread messages using the atom (queries by channelId = threadChannelId)
-	const messagesResult = useAtomValue(
-		threadMessagesAtomFamily({ threadChannelId, maxPreviewMessages: 100 }),
+	return (
+		<MessageHoverProvider>
+			<ThreadMessageListContent threadChannelId={threadChannelId} />
+		</MessageHoverProvider>
 	)
-	const messages = Result.getOrElse(messagesResult, () => [])
+}
+
+interface ProcessedThreadMessage {
+	message: MessageWithPinned
+	groupPosition: MessageGroupPosition
+}
+
+function ThreadMessageListContent({ threadChannelId }: ThreadMessageListProps) {
+	const { state, actions, meta } = useMessageHover()
+	const overlayRef = useRef<HTMLDivElement>(null)
+	const targetRef = useRef<HTMLDivElement | null>(null)
+
+	// Keep targetRef in sync with context state
+	if (state.targetRef) {
+		targetRef.current = state.targetRef
+	}
+
+	// Query thread messages with author data using the new atom
+	const messagesResult = useAtomValue(threadMessagesWithAuthorAtomFamily({ threadChannelId }))
+	const messages = Result.getOrElse(messagesResult, () => []) as MessageWithPinned[]
+
+	// Find the hovered message for the toolbar
+	const hoveredMessage = useMemo(
+		() => messages.find((m) => m.id === state.hoveredMessageId) || null,
+		[messages, state.hoveredMessageId],
+	)
+
+	// Position the toolbar relative to the hovered message
+	const { overlayProps } = useOverlayPosition({
+		targetRef,
+		overlayRef,
+		placement: "top end",
+		offset: -6,
+		shouldFlip: true,
+		isOpen: state.hoveredMessageId !== null,
+	})
+
+	// Process messages with grouping logic
+	const processedMessages = useMemo((): ProcessedThreadMessage[] => {
+		const timeThreshold = 3 * 60 * 1000 // 3 minutes
+
+		return messages.map((message, index): ProcessedThreadMessage => {
+			const prevMessage = index > 0 ? messages[index - 1] : null
+			const isGroupStart =
+				!prevMessage ||
+				message.authorId !== prevMessage.authorId ||
+				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
+				!!prevMessage.replyToMessageId
+
+			const nextMessage = index < messages.length - 1 ? messages[index + 1] : null
+			const isGroupEnd =
+				!nextMessage ||
+				message.authorId !== nextMessage.authorId ||
+				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
+
+			// Determine group position
+			let groupPosition: MessageGroupPosition
+			if (isGroupStart && isGroupEnd) {
+				groupPosition = "standalone"
+			} else if (isGroupStart) {
+				groupPosition = "start"
+			} else if (isGroupEnd) {
+				groupPosition = "end"
+			} else {
+				groupPosition = "middle"
+			}
+
+			return {
+				message,
+				groupPosition,
+			}
+		})
+	}, [messages])
 
 	if (messages.length === 0) {
 		return (
@@ -27,51 +115,43 @@ export function ThreadMessageList({ threadChannelId }: ThreadMessageListProps) {
 	}
 
 	return (
-		<div className="flex h-full flex-col gap-2 overflow-y-auto p-4">
-			{messages.map((message) => (
-				<ThreadMessage key={message.id} message={message} />
+		<div className="flex h-full flex-col overflow-y-auto px-2 py-2">
+			{/* Apply highlight style to hovered message */}
+			{state.hoveredMessageId && (
+				<style>{`#message-${state.hoveredMessageId} { background-color: var(--color-secondary) !important; }`}</style>
+			)}
+
+			{processedMessages.map(({ message, groupPosition }) => (
+				<ThreadMessageItem
+					key={message.id}
+					message={message}
+					variants={{ groupPosition, highlight: "none" }}
+				/>
 			))}
-		</div>
-	)
-}
 
-function ThreadMessage({ message }: { message: typeof Message.Model.Type }) {
-	const userResult = useAtomValue(userWithPresenceAtomFamily(message.authorId))
-	const userData = Result.getOrElse(userResult, () => [])
-	const user = userData[0]?.user
-	const { user: currentUser } = useAuth()
-
-	// Adapt message to MessageWithPinned type (thread messages don't have pinned state)
-	const messageWithPinned = {
-		...message,
-		author: user ?? null,
-		pinnedMessage: null,
-	}
-
-	return (
-		<div className="flex gap-3 rounded-lg px-2 py-2 hover:bg-secondary">
-			<Avatar
-				src={user?.avatarUrl}
-				initials={user ? `${user.firstName} ${user.lastName}` : "?"}
-				className="size-8"
-			/>
-			<div className="min-w-0 flex-1">
-				<div className="flex items-baseline gap-2">
-					<span className="font-medium text-fg text-sm">
-						{user ? `${user.firstName} ${user.lastName}` : "Unknown"}
-					</span>
-					<span className="text-muted-fg text-xs">{format(message.createdAt, "HH:mm")}</span>
-				</div>
-				<div className="mt-0.5">
-					<MessageContent.Provider
-						message={messageWithPinned}
-						organizationId={currentUser?.organizationId ?? undefined}
+			{/* Toolbar portal - renders floating toolbar when hovering a message */}
+			{(state.hoveredMessageId || meta.isToolbarMenuOpen) &&
+				hoveredMessage &&
+				createPortal(
+					<div
+						ref={overlayRef}
+						{...overlayProps}
+						style={{ ...overlayProps.style, zIndex: 50 }}
+						role="group"
+						onMouseEnter={() => {
+							actions.setToolbarHovered(true)
+						}}
+						onMouseLeave={() => {
+							actions.setToolbarHovered(false)
+						}}
 					>
-						<MessageContent.Text />
-						<MessageContent.Embeds />
-					</MessageContent.Provider>
-				</div>
-			</div>
+						{/* Invisible padding for larger hitbox */}
+						<div className="-m-3 p-3">
+							<MessageToolbar message={hoveredMessage} />
+						</div>
+					</div>,
+					document.body,
+				)}
 		</div>
 	)
 }
