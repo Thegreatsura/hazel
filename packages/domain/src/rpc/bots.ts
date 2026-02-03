@@ -312,6 +312,30 @@ export class BotRpcs extends RpcGroup.make(
 	}).middleware(AuthMiddleware),
 
 	/**
+	 * bot.installById
+	 *
+	 * Installs a bot by ID, regardless of whether it's public or private.
+	 * This allows users to install apps by sharing their bot ID.
+	 *
+	 * @param payload - Bot ID
+	 * @returns Transaction ID
+	 * @throws BotNotFoundError if bot doesn't exist
+	 * @throws BotAlreadyInstalledError if bot is already installed
+	 * @throws UnauthorizedError if user is not org admin
+	 */
+	Rpc.mutation("bot.installById", {
+		payload: Schema.Struct({ botId: BotId }),
+		success: Schema.Struct({ transactionId: TransactionId }),
+		error: Schema.Union(
+			BotNotFoundError,
+			BotAlreadyInstalledError,
+			UnauthorizedError,
+			InternalServerError,
+			RateLimitExceededError,
+		),
+	}).middleware(AuthMiddleware),
+
+	/**
 	 * bot.updateAvatar
 	 *
 	 * Updates the bot's avatar URL.

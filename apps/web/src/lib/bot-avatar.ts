@@ -45,29 +45,17 @@ export interface BotAvatarData {
  *
  * Resolution order:
  * 1. Machine user's avatarUrl if set
- * 2. Brandfetch icon if bot has exactly one allowedIntegration
- * 3. null (component should show robot icon fallback)
+ * 2. null (component should show robot icon fallback)
  *
  * @param bot - Bot data with user (containing avatarUrl) and allowedIntegrations
  * @param theme - Theme for Brandfetch icons ("light" or "dark")
  * @returns Avatar URL or null
  */
-export function resolveBotAvatarUrl(bot: BotAvatarData, theme: "light" | "dark" = "dark"): string | null {
-	// 1. Use machine user's avatar if set
+export function resolveBotAvatarUrl(bot: BotAvatarData, _theme: "light" | "dark" = "dark"): string | null {
+	// Use machine user's avatar if set, otherwise fallback to robot icon
 	if (bot.user?.avatarUrl) {
 		return bot.user.avatarUrl
 	}
 
-	// 2. Use Brandfetch for single-integration bots
-	if (bot.allowedIntegrations?.length === 1) {
-		const provider = bot.allowedIntegrations[0]!
-		const domain = INTEGRATION_DOMAINS[provider]
-		if (domain) {
-			const logoType = INTEGRATION_LOGO_TYPE[provider] ?? "symbol"
-			return getBrandfetchIcon(domain, { theme, size: 64, type: logoType })
-		}
-	}
-
-	// 3. No avatar available
 	return null
 }

@@ -1,10 +1,12 @@
 import { useAtomSet } from "@effect-atom/atom-react"
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { useState } from "react"
+
+type IntegrationProvider = IntegrationConnection.IntegrationProvider
 import { deleteBotMutation, regenerateBotTokenMutation } from "~/atoms/bot-atoms"
 import { BotAvatar } from "~/components/bots/bot-avatar"
 import { BotTokenDisplay } from "~/components/bots/bot-token-display"
 import IconArrowPath from "~/components/icons/icon-arrow-path"
-import IconCode from "~/components/icons/icon-code"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconEdit from "~/components/icons/icon-edit"
 import IconTrash from "~/components/icons/icon-trash"
@@ -22,6 +24,7 @@ import {
 	ModalHeader,
 	ModalTitle,
 } from "~/components/ui/modal"
+import { getIntegrationIconUrl, groupScopesByResource, INTEGRATION_PROVIDERS } from "~/lib/bot-scopes"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 // Discriminated union for modal state - eliminates 6 separate useState calls
@@ -105,26 +108,30 @@ export function BotCard({
 	const isRegenerating = modalState.type === "regenerate-confirm" && modalState.isRegenerating
 	const regeneratedToken = modalState.type === "regenerate-confirm" ? modalState.token : null
 
-	const scopeCount = bot.scopes?.length ?? 0
+	const scopes = bot.scopes ?? []
+	const scopeGroups = groupScopesByResource(scopes)
+	const integrations = ((bot.allowedIntegrations ?? []) as IntegrationProvider[]).filter(
+		(p) => INTEGRATION_PROVIDERS[p],
+	)
 
 	return (
 		<>
-			<div className="flex flex-col overflow-hidden rounded-xl border border-border bg-bg transition-all duration-200 hover:border-border-hover hover:shadow-md">
+			<div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-bg transition-all duration-200 hover:border-border-hover hover:shadow-md">
 				{/* Header */}
 				<div className="flex items-start gap-3 p-4">
-					<BotAvatar size="md" bot={bot} className="bg-primary/10" />
-					<div className="flex flex-1 flex-col gap-0.5">
+					<BotAvatar size="md" bot={bot} className="shrink-0" />
+					<div className="flex flex-1 flex-col gap-0.5 min-w-0">
 						<div className="flex items-center gap-2">
-							<h3 className="font-semibold text-fg text-sm">{bot.name}</h3>
+							<h3 className="font-semibold text-fg text-sm truncate">{bot.name}</h3>
 							{bot.isPublic && (
 								<Badge intent="secondary" size="sm">
 									Public
 								</Badge>
 							)}
 						</div>
-						{bot.description && (
-							<p className="line-clamp-2 text-muted-fg text-xs">{bot.description}</p>
-						)}
+						<p className="line-clamp-2 text-muted-fg text-xs min-h-[2rem]">
+							{bot.description || "No description"}
+						</p>
 					</div>
 
 					{/* Actions */}
@@ -172,21 +179,46 @@ export function BotCard({
 					)}
 				</div>
 
-				{/* Footer */}
-				<div className="flex items-center justify-between border-border border-t bg-muted/30 px-4 py-3">
-					<div className="flex items-center gap-3 text-muted-fg text-xs">
-						<span className="flex items-center gap-1">
-							<IconCode className="size-3.5" />
-							{scopeCount} {scopeCount === 1 ? "scope" : "scopes"}
-						</span>
-					</div>
+				{/* Permissions */}
+				<div className="px-4 pb-4">
+					{scopes.length > 0 && (
+						<div className="flex flex-wrap gap-1">
+							{Object.entries(scopeGroups).map(([resource, actions]) => (
+								<span
+									key={resource}
+									className="inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-fg"
+								>
+									<span className="capitalize">{resource}</span>
+									<span className="mx-0.5 opacity-50">·</span>
+									<span className="capitalize">{actions.join(", ")}</span>
+								</span>
+							))}
+							{integrations.length > 0 &&
+								integrations.map((provider) => (
+									<span
+										key={provider}
+										className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5"
+									>
+										<img
+											src={getIntegrationIconUrl(provider, 32)}
+											alt={INTEGRATION_PROVIDERS[provider].label}
+											title={INTEGRATION_PROVIDERS[provider].label}
+											className="size-3 rounded-sm"
+										/>
+									</span>
+								))}
+						</div>
+					)}
+				</div>
 
-					{showUninstall && (
+				{/* Footer - only show when there's an action */}
+				{showUninstall && (
+					<div className="flex items-center justify-end border-border border-t bg-muted/20 px-4 py-2.5 mt-auto">
 						<Button size="sm" intent="outline" onPress={onUninstall}>
 							Uninstall
 						</Button>
-					)}
-				</div>
+					</div>
+				)}
 			</div>
 
 			{/* Edit Modal */}

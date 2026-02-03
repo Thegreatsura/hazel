@@ -530,6 +530,87 @@ export const BotRpcLive = BotRpcs.toLayer(
 						.pipe(withRemapDbErrors("BotInstallation", "delete"))
 				}),
 
+			"bot.installById": ({ botId }) =>
+				Effect.gen(function* () {
+					const currentUser = yield* CurrentUser.Context
+
+					// Rate limit bot operations
+					yield* checkBotOperationRateLimit(currentUser.id)
+
+					if (!currentUser.organizationId) {
+						return yield* Effect.die(new Error("User must belong to an organization"))
+					}
+
+					const organizationId = currentUser.organizationId
+
+					return yield* db
+						.transaction(
+							Effect.gen(function* () {
+								const botRepo = yield* BotRepo
+								const installationRepo = yield* BotInstallationRepo
+
+								// Check bot exists (no public check - allows private bots by ID)
+								const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+								if (Option.isNone(botOption)) {
+									return yield* Effect.fail(new BotNotFoundError({ botId }))
+								}
+
+								const bot = botOption.value
+
+								// Check if already installed
+								const isInstalled = yield* installationRepo
+									.isInstalled(botId, organizationId)
+									.pipe(withSystemActor)
+								if (isInstalled) {
+									return yield* Effect.fail(new BotAlreadyInstalledError({ botId }))
+								}
+
+								// Create installation
+								const installationId = randomUUID() as BotInstallationId
+								yield* db
+									.execute((client) =>
+										client.insert(schema.botInstallationsTable).values({
+											id: installationId,
+											botId,
+											organizationId,
+											installedBy: currentUser.id,
+										}),
+									)
+									.pipe(withSystemActor)
+
+								// Add bot user to the organization as a member (reactivate if soft-deleted)
+								const membershipId = randomUUID() as OrganizationMemberId
+								yield* db
+									.execute((client) =>
+										client
+											.insert(schema.organizationMembersTable)
+											.values({
+												id: membershipId,
+												organizationId,
+												userId: bot.userId,
+												role: "member",
+											})
+											.onConflictDoUpdate({
+												target: [
+													schema.organizationMembersTable.organizationId,
+													schema.organizationMembersTable.userId,
+												],
+												set: { deletedAt: null },
+											}),
+									)
+									.pipe(withSystemActor)
+
+								// Increment install count
+								yield* botRepo.incrementInstallCount(botId).pipe(withSystemActor)
+
+								const txid = yield* generateTransactionId()
+
+								return { transactionId: txid }
+							}).pipe(policyUse(BotPolicy.canInstall(organizationId))),
+						)
+						.pipe(withRemapDbErrors("BotInstallation", "create"))
+				}),
+
 			"bot.updateAvatar": ({ id, avatarUrl }) =>
 				db
 					.transaction(

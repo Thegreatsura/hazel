@@ -27,7 +27,6 @@ import { exitToastAsync } from "~/lib/toast-exit"
 const botSchema = type({
 	name: "1<string<101",
 	"description?": "string",
-	"webhookUrl?": "string",
 	scopes: "string[]",
 	isPublic: "boolean",
 })
@@ -49,7 +48,6 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 		defaultValues: {
 			name: "",
 			description: "",
-			webhookUrl: "",
 			scopes: ["messages:read", "messages:write"] as string[],
 			isPublic: false,
 		},
@@ -66,7 +64,6 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 					payload: {
 						name: value.name,
 						description: value.description || undefined,
-						webhookUrl: value.webhookUrl || undefined,
 						scopes: value.scopes as BotScope[],
 						isPublic: value.isPublic,
 					},
@@ -232,22 +229,6 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 						{/* Advanced Options */}
 						<div className="flex flex-col gap-4 border-border border-t pt-4">
 							<div className="font-medium text-fg text-sm">Advanced</div>
-
-							<form.AppField
-								name="webhookUrl"
-								children={(field) => (
-									<TextField>
-										<Label>Webhook URL (Optional)</Label>
-										<Description>URL to receive bot events</Description>
-										<Input
-											placeholder="https://example.com/webhook"
-											value={field.state.value}
-											onChange={(e) => field.handleChange(e.target.value)}
-											onBlur={field.handleBlur}
-										/>
-									</TextField>
-								)}
-							/>
 
 							<form.AppField
 								name="isPublic"

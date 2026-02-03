@@ -28,7 +28,6 @@ import { exitToastAsync } from "~/lib/toast-exit"
 const botSchema = type({
 	name: "1<string<101",
 	"description?": "string",
-	"webhookUrl?": "string",
 	scopes: "string[]",
 	isPublic: "boolean",
 })
@@ -48,7 +47,6 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 		defaultValues: {
 			name: bot.name,
 			description: bot.description ?? "",
-			webhookUrl: bot.webhookUrl ?? "",
 			scopes: (bot.scopes ?? []) as string[],
 			isPublic: bot.isPublic ?? false,
 		},
@@ -66,7 +64,6 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 						id: bot.id,
 						name: value.name,
 						description: value.description || null,
-						webhookUrl: value.webhookUrl || null,
 						scopes: value.scopes as BotScope[],
 						isPublic: value.isPublic,
 					},
@@ -99,7 +96,6 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 			form.reset({
 				name: bot.name,
 				description: bot.description ?? "",
-				webhookUrl: bot.webhookUrl ?? "",
 				scopes: (bot.scopes ?? []) as string[],
 				isPublic: bot.isPublic ?? false,
 			})
@@ -217,22 +213,6 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 						{/* Advanced Options */}
 						<div className="flex flex-col gap-4 border-border border-t pt-4">
 							<div className="font-medium text-fg text-sm">Advanced</div>
-
-							<form.AppField
-								name="webhookUrl"
-								children={(field) => (
-									<TextField>
-										<Label>Webhook URL (Optional)</Label>
-										<Description>URL to receive bot events</Description>
-										<Input
-											placeholder="https://example.com/webhook"
-											value={field.state.value}
-											onChange={(e) => field.handleChange(e.target.value)}
-											onBlur={field.handleBlur}
-										/>
-									</TextField>
-								)}
-							/>
 
 							<form.AppField
 								name="isPublic"

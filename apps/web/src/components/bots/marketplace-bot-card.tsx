@@ -1,11 +1,13 @@
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { useState } from "react"
 import { BotAvatar } from "~/components/bots/bot-avatar"
 import type { BotWithUser } from "~/db/hooks"
 import IconCheck from "~/components/icons/icon-check"
-import IconCode from "~/components/icons/icon-code"
 import IconDownload from "~/components/icons/icon-download"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { getIntegrationIconUrl, groupScopesByResource, INTEGRATION_PROVIDERS } from "~/lib/bot-scopes"
+
+type IntegrationProvider = IntegrationConnection.IntegrationProvider
 
 export interface PublicBotWithUser extends BotWithUser {
 	isInstalled: boolean
@@ -26,65 +28,77 @@ export function MarketplaceBotCard({ bot, onInstall }: MarketplaceBotCardProps) 
 		setIsInstalling(false)
 	}
 
-	const scopeCount = bot.scopes?.length ?? 0
+	const scopes = bot.scopes ?? []
+	const scopeGroups = groupScopesByResource(scopes)
+	const integrations = ((bot.allowedIntegrations ?? []) as IntegrationProvider[]).filter(
+		(p) => INTEGRATION_PROVIDERS[p],
+	)
 
 	return (
-		<div className="flex flex-col overflow-hidden rounded-xl border border-border bg-bg transition-all duration-200 hover:border-border-hover hover:shadow-md">
+		<div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-bg transition-all duration-200 hover:border-border-hover hover:shadow-md">
 			{/* Header */}
-			<div className="flex flex-1 flex-col gap-4 p-4">
-				<div className="flex items-start gap-3">
-					<BotAvatar size="lg" bot={bot} className="bg-primary/10 shrink-0" />
-					<div className="flex flex-1 flex-col gap-0.5">
-						<h3 className="font-semibold text-fg text-sm">{bot.name}</h3>
-						<p className="text-muted-fg text-xs">by {bot.creatorName}</p>
-					</div>
+			<div className="flex items-start gap-3 p-4">
+				<BotAvatar size="lg" bot={bot} className="shrink-0" />
+				<div className="flex flex-1 flex-col gap-0.5 min-w-0">
+					<h3 className="font-semibold text-fg text-sm truncate">{bot.name}</h3>
+					<p className="text-muted-fg text-xs truncate">by {bot.creatorName}</p>
 				</div>
+			</div>
 
-				{/* Description */}
-				<p className="line-clamp-2 text-muted-fg text-sm">
+			{/* Description - fixed min height */}
+			<div className="px-4">
+				<p className="line-clamp-2 text-muted-fg text-sm leading-relaxed min-h-[2.5rem]">
 					{bot.description || "No description provided"}
 				</p>
+			</div>
 
-				{/* Stats */}
-				<div className="flex items-center gap-4 text-muted-fg text-xs">
-					<span className="flex items-center gap-1">
-						<IconDownload className="size-3" />
-						{bot.installCount} {bot.installCount === 1 ? "install" : "installs"}
-					</span>
-					<span className="flex items-center gap-1">
-						<IconCode className="size-3" />
-						{scopeCount} {scopeCount === 1 ? "scope" : "scopes"}
-					</span>
-				</div>
-
-				{/* Scopes Preview */}
-				{bot.scopes && bot.scopes.length > 0 && (
+			{/* Permissions */}
+			<div className="flex-1 px-4 py-3">
+				{scopes.length > 0 && (
 					<div className="flex flex-wrap gap-1">
-						{bot.scopes.slice(0, 3).map((scope) => (
-							<Badge key={scope} intent="secondary" size="sm">
-								{scope.split(":")[0]}
-							</Badge>
+						{Object.entries(scopeGroups).map(([resource, actions]) => (
+							<span
+								key={resource}
+								className="inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-fg"
+							>
+								<span className="capitalize">{resource}</span>
+								<span className="mx-0.5 opacity-50">·</span>
+								<span className="capitalize">{actions.join(", ")}</span>
+							</span>
 						))}
-						{bot.scopes.length > 3 && (
-							<Badge intent="secondary" size="sm">
-								+{bot.scopes.length - 3}
-							</Badge>
-						)}
+						{integrations.length > 0 &&
+							integrations.map((provider) => (
+								<span
+									key={provider}
+									className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5"
+								>
+									<img
+										src={getIntegrationIconUrl(provider, 32)}
+										alt={INTEGRATION_PROVIDERS[provider].label}
+										title={INTEGRATION_PROVIDERS[provider].label}
+										className="size-3 rounded-sm"
+									/>
+								</span>
+							))}
 					</div>
 				)}
 			</div>
 
-			{/* Footer */}
-			<div className="border-border border-t bg-muted/30 px-4 py-3">
+			{/* Footer - always at bottom */}
+			<div className="flex items-center justify-between border-border border-t bg-muted/20 px-4 py-3 mt-auto">
+				<span className="flex items-center gap-1.5 text-muted-fg text-xs">
+					<IconDownload className="size-3.5" />
+					{bot.installCount.toLocaleString()}
+				</span>
 				{bot.isInstalled ? (
-					<Button intent="outline" className="w-full" isDisabled>
-						<IconCheck className="size-4" />
+					<Button intent="outline" size="sm" isDisabled className="gap-1.5">
+						<IconCheck className="size-3.5" />
 						Installed
 					</Button>
 				) : (
 					<Button
 						intent="primary"
-						className="w-full"
+						size="sm"
 						onPress={handleInstall}
 						isDisabled={isInstalling}
 					>

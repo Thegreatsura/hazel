@@ -77,6 +77,11 @@ export const listInstalledBotsMutation = HazelRpcClient.mutation("bot.listInstal
 export const installBotMutation = HazelRpcClient.mutation("bot.install")
 
 /**
+ * Mutation atom for installing a bot by ID (public or private).
+ */
+export const installBotByIdMutation = HazelRpcClient.mutation("bot.installById")
+
+/**
  * Mutation atom for uninstalling a bot.
  */
 export const uninstallBotMutation = HazelRpcClient.mutation("bot.uninstall")
