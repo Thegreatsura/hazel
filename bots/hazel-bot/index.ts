@@ -46,59 +46,6 @@ const baseTools = {
 		execute: async () => new Date().toISOString(),
 	}),
 
-	search_codebase: tool({
-		description: "Search the codebase for files matching a query",
-		inputSchema: effectSchemaToJsonSchema(
-			Schema.Struct({
-				query: Schema.String.annotations({ description: "The search query to find files" }),
-				fileTypes: Schema.optional(
-					Schema.Array(Schema.String).annotations({
-						description: "File extensions to filter by (e.g., ts, tsx)",
-					}),
-				),
-			}),
-		),
-		execute: async ({ query, fileTypes }) => {
-			const slug = query.toLowerCase().replace(/\s+/g, "-")
-			const extensions = fileTypes ?? ["ts", "tsx"]
-			const ext = extensions[0] ?? "ts"
-			return {
-				matches: 3,
-				files: [
-					`src/hooks/use-${slug}.${ext}`,
-					`src/utils/${slug}.${ext}`,
-					`src/components/${query.split(" ")[0]}.tsx`,
-				],
-			}
-		},
-	}),
-
-	read_file: tool({
-		description: "Read the contents of a file at the given path",
-		inputSchema: effectSchemaToJsonSchema(
-			Schema.Struct({
-				path: Schema.String.annotations({ description: "The path to the file to read" }),
-				lines: Schema.optional(
-					Schema.String.annotations({ description: 'Line range to read (e.g., "1-50")' }),
-				),
-			}),
-		),
-		execute: async ({ path, lines }) => {
-			const lineRange = lines ?? "1-20"
-			return (
-				`// Contents of ${path} (lines ${lineRange})\n` +
-				`// This is simulated file content for demonstration\n` +
-				`\n` +
-				`import { Effect } from "effect"\n` +
-				`\n` +
-				`export const example = Effect.gen(function* () {\n` +
-				`  yield* Effect.log("Hello from ${path}")\n` +
-				`  return "success"\n` +
-				`})\n`
-			)
-		},
-	}),
-
 	calculate: tool({
 		description: "Perform basic arithmetic calculations",
 		inputSchema: effectSchemaToJsonSchema(
@@ -675,23 +622,26 @@ runHazelBot({
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
 					// Build dynamic system instructions
-					const systemInstructions = `You are a helpful AI assistant with access to codebase exploration tools.
+					const systemInstructions = `You are Hazel, an AI assistant in a team chat app alongside human teammates.
 
-Your core capabilities:
-- Search the codebase for files matching queries
-- Read file contents
+Your capabilities:
 - Get current date/time
-- Perform arithmetic calculations
+- Perform arithmetic
 ${integrationInstructions}
 
-Rules:
-- Never reveal secrets (tokens, API keys, credentials). You can mention that you used a token, but never output it.
-- When answering questions about code:
-  1. First search for relevant files
-  2. Read the most relevant files
-  3. Provide a clear, helpful response based on what you found
+Formatting (GFM markdown supported):
+- **bold**, *italic*, \`inline code\`
+- Code blocks with \`\`\`language
+- Lists (- or 1.), blockquotes (>)
+- Tables, headings (#, ##, ###)
 
-Be concise and helpful. Format code in markdown code blocks.`
+Rules:
+- Keep responses SHORT and conversational - you're in a chat, not writing documentation
+- Answer in 1-3 sentences when possible. Only elaborate if truly necessary
+- Never reveal secrets (tokens, API keys, credentials)
+- Use formatting sparingly to highlight key info
+
+Remember: This is a team chat with real humans. Be helpful but don't dominate the conversation.`
 
 					// Create the ToolLoopAgent instance with dynamic tools
 					const codebaseAgent = new ToolLoopAgent({
