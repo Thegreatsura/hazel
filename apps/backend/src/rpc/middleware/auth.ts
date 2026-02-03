@@ -108,7 +108,7 @@ export const AuthMiddlewareLive = Layer.effect(
 						email: user.email,
 						firstName: user.firstName,
 						lastName: user.lastName,
-						avatarUrl: user.avatarUrl,
+						avatarUrl: user.avatarUrl ?? undefined,
 						role: "member",
 						isOnboarded: true,
 						timezone: user.timezone,

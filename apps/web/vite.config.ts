@@ -168,6 +168,10 @@ export default defineConfig({
 							],
 						},
 						workbox: {
+							// Workbox uses Rollup + Terser when mode="production". Under Bun this can
+							// intermittently fail with "Unexpected early exit" in the terser renderChunk hook.
+							// Running in development mode avoids Terser while still generating a valid SW.
+							mode: "development",
 							globPatterns: ["**/*.{js,css,html,svg,ico,woff2}"],
 							globIgnores: ["**/images/onboarding/**"],
 							maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB

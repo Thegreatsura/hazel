@@ -32,7 +32,7 @@ export class Model extends M.Class<Model>("User")({
 	email: Schema.String,
 	firstName: Schema.String,
 	lastName: Schema.String,
-	avatarUrl: Schema.NonEmptyTrimmedString,
+	avatarUrl: Schema.NullishOr(Schema.NonEmptyTrimmedString),
 	userType: UserType,
 	settings: Schema.NullOr(UserSettingsSchema),
 	isOnboarded: Schema.Boolean,

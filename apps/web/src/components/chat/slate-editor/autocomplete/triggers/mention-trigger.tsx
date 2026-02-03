@@ -3,8 +3,8 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import { Avatar } from "~/components/ui/avatar"
 import { channelMemberCollection, userCollection, userPresenceStatusCollection } from "~/db/collections"
-import { cx } from "~/utils/cx"
 import { AutocompleteListBox } from "../autocomplete-listbox"
 import type { AutocompleteOption, AutocompleteState, MentionData } from "../types"
 
@@ -46,26 +46,14 @@ function MentionItem({ option }: MentionItemProps) {
 
 	return (
 		<div className="flex items-center gap-2">
-			{data.type === "user" && data.avatarUrl ? (
-				<div className="relative shrink-0">
-					<img
-						src={data.avatarUrl}
-						alt={data.displayName}
-						className="size-6 rounded-md object-cover"
-					/>
-					{data.status && (
-						<div
-							className={cx(
-								"absolute right-0 bottom-0 size-2 rounded-full border border-bg",
-								data.status === "online" && "bg-success",
-								data.status === "away" && "bg-warning",
-								data.status === "offline" && "bg-muted",
-								data.status === "busy" && "bg-danger",
-								data.status === "dnd" && "bg-danger",
-							)}
-						/>
-					)}
-				</div>
+			{data.type === "user" ? (
+				<Avatar
+					size="xs"
+					src={data.avatarUrl ?? undefined}
+					seed={data.displayName}
+					alt={data.displayName}
+					status={data.status}
+				/>
 			) : (
 				<div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary font-medium text-primary-fg text-xs">
 					@

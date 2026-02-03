@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -6,6 +6,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { useModal } from "~/atoms/modal-atoms"
+import { presenceNowSignal } from "~/atoms/presence-atoms"
 import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconMessage from "~/components/icons/icon-msgs"
@@ -33,6 +34,7 @@ import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { exitToastAsync } from "~/lib/toast-exit"
 import { cn } from "~/lib/utils"
+import { getEffectivePresenceStatus } from "~/utils/presence"
 import { getStatusBadgeColor, getStatusLabel } from "~/utils/status"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
@@ -46,6 +48,7 @@ function TeamSettings() {
 	const navigate = useNavigate()
 	const { organizationId, slug: orgSlug } = useOrganization()
 	const { user } = useAuth()
+	const nowMs = useAtomValue(presenceNowSignal)
 
 	// Modal hooks
 	const changeRoleModal = useModal("change-role")
@@ -188,116 +191,123 @@ function TeamSettings() {
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
-								{teamMembers?.map((member) => (
-									<tr key={member.id} className="hover:bg-secondary/50">
-										<td className="px-4 py-4">
-											<div className="flex items-center gap-3">
-												<Avatar
-													src={member.user.avatarUrl}
-													initials={getInitials(
-														`${member.user.firstName} ${member.user.lastName}`,
-													)}
-													className="size-9"
-												/>
-												<div className="flex flex-col">
-													<span className="font-medium text-fg text-sm">
-														{`${member.user.firstName} ${member.user.lastName}`}
-													</span>
-													<span className="text-muted-fg text-xs">
-														{member.user.email}
-													</span>
-												</div>
-											</div>
-										</td>
-										<td className="px-4 py-4">
-											<span
-												className={cn(
-													"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs",
-													getStatusBadgeColor(member.presence?.status),
-												)}
-											>
-												<span className="size-1.5 rounded-full bg-current" />
-												{getStatusLabel(member.presence?.status)}
-											</span>
-										</td>
-										<td className="px-4 py-4">
-											<span
-												className={cn(
-													"inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
-													roleToBadgeColors[
-														member.role as keyof typeof roleToBadgeColors
-													] || "bg-secondary text-fg",
-												)}
-											>
-												{member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-											</span>
-										</td>
-										<td className="px-4 py-4">
-											{user &&
-												member.userId !== user.id &&
-												canManageUser(member.role) && (
-													<div className="flex justify-end">
-														<Menu>
-															<MenuTrigger
-																aria-label="Actions"
-																className="inline-flex size-8 items-center justify-center rounded-lg hover:bg-secondary"
-															>
-																<IconDotsVertical className="size-5 text-muted-fg" />
-															</MenuTrigger>
-															<MenuContent placement="bottom end">
-																<MenuItem
-																	onAction={() =>
-																		handleMessageUser(
-																			member.userId,
-																			`${member.user.firstName} ${member.user.lastName}`,
-																		)
-																	}
-																>
-																	<IconMessage data-slot="icon" />
-																	<DropdownLabel>
-																		Send message
-																	</DropdownLabel>
-																</MenuItem>
-																<DropdownSeparator />
-																<MenuItem
-																	onAction={() => {
-																		const currentUserMember =
-																			teamMembers?.find(
-																				(m) => m.userId === user?.id,
-																			)
-																		changeRoleModal.open({
-																			userId: member.userId,
-																			name: `${member.user.firstName} ${member.user.lastName}`,
-																			memberId: member.id,
-																			role: member.role,
-																			currentUserRole:
-																				currentUserMember?.role ||
-																				"member",
-																		})
-																	}}
-																>
-																	<IconCircleDottedUser data-slot="icon" />
-																	<DropdownLabel>Change role</DropdownLabel>
-																</MenuItem>
-																<DropdownSeparator />
-																<MenuItem
-																	intent="danger"
-																	onAction={() =>
-																		setRemoveUserId(member.userId)
-																	}
-																>
-																	<IconTrash data-slot="icon" />
-																	<DropdownLabel>
-																		Remove from team
-																	</DropdownLabel>
-																</MenuItem>
-															</MenuContent>
-														</Menu>
+								{teamMembers?.map((member) => {
+									const status = getEffectivePresenceStatus(member.presence ?? null, nowMs)
+									return (
+										<tr key={member.id} className="hover:bg-secondary/50">
+											<td className="px-4 py-4">
+												<div className="flex items-center gap-3">
+													<Avatar
+														src={member.user.avatarUrl}
+														initials={getInitials(
+															`${member.user.firstName} ${member.user.lastName}`,
+														)}
+														className="size-9"
+													/>
+													<div className="flex flex-col">
+														<span className="font-medium text-fg text-sm">
+															{`${member.user.firstName} ${member.user.lastName}`}
+														</span>
+														<span className="text-muted-fg text-xs">
+															{member.user.email}
+														</span>
 													</div>
-												)}
-										</td>
-									</tr>
-								))}
+												</div>
+											</td>
+											<td className="px-4 py-4">
+												<span
+													className={cn(
+														"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs",
+														getStatusBadgeColor(status),
+													)}
+												>
+													<span className="size-1.5 rounded-full bg-current" />
+													{getStatusLabel(status)}
+												</span>
+											</td>
+											<td className="px-4 py-4">
+												<span
+													className={cn(
+														"inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
+														roleToBadgeColors[
+															member.role as keyof typeof roleToBadgeColors
+														] || "bg-secondary text-fg",
+													)}
+												>
+													{member.role.charAt(0).toUpperCase() +
+														member.role.slice(1)}
+												</span>
+											</td>
+											<td className="px-4 py-4">
+												{user &&
+													member.userId !== user.id &&
+													canManageUser(member.role) && (
+														<div className="flex justify-end">
+															<Menu>
+																<MenuTrigger
+																	aria-label="Actions"
+																	className="inline-flex size-8 items-center justify-center rounded-lg hover:bg-secondary"
+																>
+																	<IconDotsVertical className="size-5 text-muted-fg" />
+																</MenuTrigger>
+																<MenuContent placement="bottom end">
+																	<MenuItem
+																		onAction={() =>
+																			handleMessageUser(
+																				member.userId,
+																				`${member.user.firstName} ${member.user.lastName}`,
+																			)
+																		}
+																	>
+																		<IconMessage data-slot="icon" />
+																		<DropdownLabel>
+																			Send message
+																		</DropdownLabel>
+																	</MenuItem>
+																	<DropdownSeparator />
+																	<MenuItem
+																		onAction={() => {
+																			const currentUserMember =
+																				teamMembers?.find(
+																					(m) =>
+																						m.userId === user?.id,
+																				)
+																			changeRoleModal.open({
+																				userId: member.userId,
+																				name: `${member.user.firstName} ${member.user.lastName}`,
+																				memberId: member.id,
+																				role: member.role,
+																				currentUserRole:
+																					currentUserMember?.role ||
+																					"member",
+																			})
+																		}}
+																	>
+																		<IconCircleDottedUser data-slot="icon" />
+																		<DropdownLabel>
+																			Change role
+																		</DropdownLabel>
+																	</MenuItem>
+																	<DropdownSeparator />
+																	<MenuItem
+																		intent="danger"
+																		onAction={() =>
+																			setRemoveUserId(member.userId)
+																		}
+																	>
+																		<IconTrash data-slot="icon" />
+																		<DropdownLabel>
+																			Remove from team
+																		</DropdownLabel>
+																	</MenuItem>
+																</MenuContent>
+															</Menu>
+														</div>
+													)}
+											</td>
+										</tr>
+									)
+								})}
 							</tbody>
 						</table>
 					</div>

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import { presenceNowSignal } from "~/atoms/presence-atoms"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconPhone from "~/components/icons/icon-phone"
 import { IconStar } from "~/components/icons/icon-star"
@@ -25,6 +26,7 @@ import {
 	getStatusLabel,
 } from "~/utils/status"
 import { formatUserLocalTime, getTimezoneAbbreviation } from "~/utils/timezone"
+import { getEffectivePresenceStatus } from "~/utils/presence"
 
 interface UserProfilePopoverProps {
 	userId: UserId
@@ -34,12 +36,14 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 	const { user: currentUser } = useAuth()
 	const navigate = useNavigate()
 	const { slug: orgSlug } = useOrganization()
+	const nowMs = useAtomValue(presenceNowSignal)
 
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(userId))
 	const data = Result.getOrElse(userPresenceResult, () => [])
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence
+	const effectiveStatus = getEffectivePresenceStatus(presence ?? null, nowMs)
 
 	const [isFavorite, setIsFavorite] = useState(false)
 	const [isMuted, setIsMuted] = useState(false)
@@ -102,7 +106,7 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 	return (
 		<Popover>
 			<PrimitiveButton className="size-fit outline-hidden">
-				<Avatar size="md" alt={fullName} src={user.avatarUrl} />
+				<Avatar size="md" alt={fullName} src={user.avatarUrl} seed={fullName} />
 			</PrimitiveButton>
 			<PopoverContent placement="right top" className="w-72 p-0 lg:w-80">
 				<div className="relative h-32 rounded-t-xl bg-gradient-to-br from-primary/10 to-accent/10">
@@ -157,30 +161,27 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 								className="ring-4 ring-bg"
 								alt={fullName}
 								src={user.avatarUrl}
+								seed={fullName}
 							/>
-							{presence?.status && (
-								<span
-									className={cn(
-										"absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-bg",
-										getStatusDotColor(presence.status),
-									)}
-								/>
-							)}
+							<span
+								className={cn(
+									"absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-bg",
+									getStatusDotColor(effectiveStatus),
+								)}
+							/>
 						</div>
 						<div className="mt-3 flex flex-col gap-1">
 							<span className="font-semibold text-fg">{user ? fullName : "Unknown"}</span>
 							<span className="text-muted-fg text-xs">{user?.email}</span>
-							{presence?.status && (
-								<span
-									className={cn(
-										"mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-										getStatusBadgeColor(presence.status),
-									)}
-								>
-									<span className="size-1.5 rounded-full bg-current" />
-									{getStatusLabel(presence.status)}
-								</span>
-							)}
+							<span
+								className={cn(
+									"mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
+									getStatusBadgeColor(effectiveStatus),
+								)}
+							>
+								<span className="size-1.5 rounded-full bg-current" />
+								{getStatusLabel(effectiveStatus)}
+							</span>
 							{(presence?.statusEmoji || presence?.customMessage) && (
 								<div className="mt-1 flex flex-col gap-0.5 text-sm">
 									<div className="flex items-center gap-1.5 text-muted-fg">

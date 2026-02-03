@@ -25,7 +25,7 @@ export interface UserRepoLike {
 			email: string
 			firstName: string
 			lastName: string
-			avatarUrl: string
+			avatarUrl: string | null
 			isOnboarded: boolean
 			timezone: string | null
 			settings: User.UserSettings | null
@@ -38,7 +38,7 @@ export interface UserRepoLike {
 		email: string
 		firstName: string
 		lastName: string
-		avatarUrl: string
+		avatarUrl: string | null
 		userType: "user" | "machine"
 		settings: null
 		isOnboarded: boolean
@@ -50,7 +50,7 @@ export interface UserRepoLike {
 			email: string
 			firstName: string
 			lastName: string
-			avatarUrl: string
+			avatarUrl: string | null
 			isOnboarded: boolean
 			timezone: string | null
 			settings: User.UserSettings | null
@@ -62,14 +62,14 @@ export interface UserRepoLike {
 		id: UserId
 		firstName?: string
 		lastName?: string
-		avatarUrl?: string
+		avatarUrl?: string | null
 	}) => Effect.Effect<
 		{
 			id: UserId
 			email: string
 			firstName: string
 			lastName: string
-			avatarUrl: string
+			avatarUrl: string | null
 			isOnboarded: boolean
 			timezone: string | null
 			settings: User.UserSettings | null
@@ -94,13 +94,17 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 
 		/**
+		 * Normalize avatar URLs (treat empty/whitespace as missing).
+		 */
+		const normalizeAvatarUrl = (avatarUrl: string | null | undefined): string | null =>
+			avatarUrl?.trim() ? avatarUrl : null
+
+		/**
 		 * Check if an avatar URL is a Vercel fallback avatar.
 		 * These are placeholder avatars that should be replaced with real OAuth avatars.
 		 */
-		const isVercelFallbackAvatar = (avatarUrl: string | null | undefined): boolean => {
-			if (!avatarUrl) return true
-			return avatarUrl.startsWith("https://avatar.vercel.sh/")
-		}
+		const isVercelFallbackAvatar = (avatarUrl: string | null | undefined): boolean =>
+			typeof avatarUrl === "string" && avatarUrl.startsWith("https://avatar.vercel.sh/")
 
 		/**
 		 * Sync a WorkOS user to the database (find or create).
@@ -135,7 +139,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								email: email,
 								firstName: firstName || "",
 								lastName: lastName || "",
-								avatarUrl: avatarUrl || `https://avatar.vercel.sh/${workOsUserId}.svg`,
+								avatarUrl: normalizeAvatarUrl(avatarUrl),
 								userType: "user",
 								settings: null,
 								isOnboarded: false,
@@ -160,20 +164,34 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 							const needsNameUpdate =
 								(!existingUser.firstName && firstName) || (!existingUser.lastName && lastName)
 
-							// If existing user has a Vercel fallback avatar and OAuth provides a real one, update it
-							// This preserves custom R2-uploaded avatars while fixing initial sync issues
-							const needsAvatarUpdate =
-								isVercelFallbackAvatar(existingUser.avatarUrl) &&
-								avatarUrl &&
-								!isVercelFallbackAvatar(avatarUrl)
+							const workosAvatarUrl = normalizeAvatarUrl(avatarUrl)
+							const existingAvatarUrl = normalizeAvatarUrl(existingUser.avatarUrl)
 
-							if (needsNameUpdate || needsAvatarUpdate) {
+							// If OAuth provides a real avatar and the user has no avatar (or a Vercel fallback), update it.
+							// This preserves custom R2-uploaded avatars while fixing initial sync issues.
+							const needsAvatarUpdate =
+								workosAvatarUrl !== null &&
+								(existingAvatarUrl === null || isVercelFallbackAvatar(existingAvatarUrl))
+
+							// If the user still has a Vercel fallback avatar and WorkOS has no picture, clear it.
+							const needsAvatarClear =
+								workosAvatarUrl === null && isVercelFallbackAvatar(existingAvatarUrl)
+
+							const avatarUrlUpdate = needsAvatarUpdate
+								? workosAvatarUrl
+								: needsAvatarClear
+									? null
+									: undefined
+
+							if (needsNameUpdate || avatarUrlUpdate !== undefined) {
 								const updated = yield* userRepo
 									.update({
 										id: existingUser.id,
 										firstName: existingUser.firstName || firstName || "",
 										lastName: existingUser.lastName || lastName || "",
-										...(needsAvatarUpdate ? { avatarUrl } : {}),
+										...(avatarUrlUpdate !== undefined
+											? { avatarUrl: avatarUrlUpdate }
+											: {}),
 									})
 									.pipe(
 										Effect.catchTags({
@@ -227,7 +245,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					id: user.id,
 					role: (session.role as "admin" | "member" | "owner") || "member",
 					organizationId: session.internalOrganizationId as OrganizationId | undefined,
-					avatarUrl: user.avatarUrl,
+					avatarUrl: user.avatarUrl ?? undefined,
 					firstName: user.firstName,
 					lastName: user.lastName,
 					email: user.email,
@@ -339,7 +357,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					id: user.id,
 					role: (payload.role as "admin" | "member" | "owner") || "member",
 					organizationId: internalOrgId,
-					avatarUrl: user.avatarUrl,
+					avatarUrl: user.avatarUrl ?? undefined,
 					firstName: user.firstName,
 					lastName: user.lastName,
 					email: user.email,
@@ -366,7 +384,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		email: "test@example.com",
 		firstName: "Test",
 		lastName: "User",
-		avatarUrl: "https://avatar.vercel.sh/test.svg",
+		avatarUrl: null,
 		isOnboarded: true,
 		timezone: "UTC" as string | null,
 		settings: null as User.UserSettings | null,
@@ -378,7 +396,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			id: BackendAuth.mockUserId,
 			role: "member",
 			organizationId: undefined,
-			avatarUrl: "https://avatar.vercel.sh/test.svg",
+			avatarUrl: undefined,
 			firstName: "Test",
 			lastName: "User",
 			email: "test@example.com",

@@ -96,12 +96,7 @@ export function MarketplaceBotCard({ bot, onInstall }: MarketplaceBotCardProps) 
 						Installed
 					</Button>
 				) : (
-					<Button
-						intent="primary"
-						size="sm"
-						onPress={handleInstall}
-						isDisabled={isInstalling}
-					>
+					<Button intent="primary" size="sm" onPress={handleInstall} isDisabled={isInstalling}>
 						{isInstalling ? "Installing..." : "Install"}
 					</Button>
 				)}

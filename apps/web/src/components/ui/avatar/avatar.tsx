@@ -13,6 +13,7 @@ export interface AvatarProps {
 	className?: string
 	src?: string | null
 	alt?: string
+	seed?: string
 	/**
 	 * Display a contrast border around the avatar.
 	 */
@@ -80,6 +81,7 @@ export const Avatar = ({
 	size = "md",
 	src,
 	alt,
+	seed,
 	initials,
 	placeholder,
 	placeholderIcon,
@@ -98,6 +100,7 @@ export const Avatar = ({
 			focusable={focusable}
 			className={className}
 			src={src}
+			seed={seed}
 		>
 			<AvatarImage src={src} alt={alt} />
 			<AvatarFallback icon={placeholderIcon}>{initials || placeholder}</AvatarFallback>

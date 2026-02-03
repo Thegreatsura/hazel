@@ -225,6 +225,7 @@
         "effect": "catalog:effect",
         "effect-rpc-tanstack-devtools": "0.1.1",
         "embla-carousel-react": "^8.6.0",
+        "facehash": "^0.0.5",
         "frimousse": "^0.3.0",
         "input-otp": "^1.4.2",
         "marked": "^17.0.0",
@@ -2497,6 +2498,8 @@
     "exsolve": ["exsolve@1.0.8", "", {}, "sha512-LmDxfWXwcTArk8fUEnOfSZpHOJ6zOMUJKOtFLFqJLoKJetuQG874Uc7/Kki7zFLzYybmZhp1M7+98pfMqeX8yA=="],
 
     "extend": ["extend@3.0.2", "", {}, "sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g=="],
+
+    "facehash": ["facehash@0.0.5", "", { "peerDependencies": { "@types/react": "", "next": ">=15", "react": ">=18 <20", "react-dom": ">=18 <20" }, "optionalPeers": ["@types/react", "next"] }, "sha512-txM9veJ9IPNWsimpHD+Qqr5aFcSdgJPBY2oTRzRgIfSPcLxwZQY4++7vv9fHjco25ErUxC9pdq9tPB9NK1UhTQ=="],
 
     "fast-check": ["fast-check@3.23.2", "", { "dependencies": { "pure-rand": "^6.1.0" } }, "sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A=="],
 

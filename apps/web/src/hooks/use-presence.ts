@@ -1,53 +1,136 @@
 import { Atom, Result, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
-import { DateTime, Duration, Effect, Schedule, Stream } from "effect"
+import { DateTime, Duration, Effect } from "effect"
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { isInQuietHours } from "~/atoms/notification-sound-atoms"
+import { presenceNowSignal } from "~/atoms/presence-atoms"
 import { userCollection, userPresenceStatusCollection } from "~/db/collections"
 import { useAuth, userAtom } from "~/lib/auth"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { router } from "~/main"
+import { getEffectivePresenceStatus, isEffectivelyOnline } from "~/utils/presence"
 import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
 type PresenceStatus = "online" | "away" | "busy" | "dnd" | "offline"
 
-const AFK_TIMEOUT = Duration.minutes(5)
-const HEARTBEAT_INTERVAL = Duration.seconds(30)
+const AFK_TIMEOUT = Duration.minutes(15)
+const HEARTBEAT_INTERVAL_MS = 15_000
+const ACTIVITY_BROADCAST_THROTTLE_MS = 1_000
 
 /**
  * Atom that tracks the last user activity timestamp
  * Updates on mousemove, keydown, scroll, click, touchstart, and visibility changes
  */
 const lastActivityAtom = Atom.make((get) => {
-	let lastActivity = DateTime.unsafeMake(new Date())
+	let lastActivityMs = Date.now()
+	let lastActivity = DateTime.unsafeMake(new Date(lastActivityMs))
+	let lastBroadcastAtMs = 0
 
-	const handleActivity = () => {
-		lastActivity = DateTime.unsafeMake(new Date())
+	const tabId =
+		typeof crypto !== "undefined" && "randomUUID" in crypto
+			? crypto.randomUUID()
+			: `${Date.now()}-${Math.random()}`
+
+	const CHANNEL_NAME = "hazel:presence-activity"
+	const STORAGE_KEY = "hazel:presence-activity:last"
+
+	let channel: BroadcastChannel | null = null
+
+	const broadcastActivity = (at: number) => {
+		// Prefer BroadcastChannel when available.
+		if (channel) {
+			channel.postMessage({ type: "activity", at, tabId })
+			return
+		}
+
+		// Fallback to localStorage + storage event.
+		try {
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({ type: "activity", at, tabId, nonce: Math.random() }),
+			)
+		} catch {
+			// ignore (storage may be disabled)
+		}
+	}
+
+	const applyActivity = (at: number) => {
+		if (!Number.isFinite(at) || at <= lastActivityMs) return
+		lastActivityMs = at
+		lastActivity = DateTime.unsafeMake(new Date(at))
 		get.setSelf(lastActivity)
+	}
+
+	const handleLocalActivity = () => {
+		const at = Date.now()
+		lastActivityMs = at
+		lastActivity = DateTime.unsafeMake(new Date(at))
+		get.setSelf(lastActivity)
+
+		if (at - lastBroadcastAtMs >= ACTIVITY_BROADCAST_THROTTLE_MS) {
+			lastBroadcastAtMs = at
+			broadcastActivity(at)
+		}
 	}
 
 	const handleVisibilityChange = () => {
 		if (document.visibilityState === "visible") {
 			// Reset activity timestamp when user returns to the tab
 			// This ensures users are marked back online when returning to the app
-			handleActivity()
+			handleLocalActivity()
 		}
 	}
 
 	const events = ["mousemove", "keydown", "scroll", "click", "touchstart"]
 	events.forEach((event) => {
-		window.addEventListener(event, handleActivity, { passive: true })
+		window.addEventListener(event, handleLocalActivity, { passive: true })
 	})
 
 	document.addEventListener("visibilitychange", handleVisibilityChange)
 
+	if (typeof BroadcastChannel !== "undefined") {
+		try {
+			channel = new BroadcastChannel(CHANNEL_NAME)
+			channel.addEventListener("message", (event) => {
+				const data = (event as MessageEvent).data as unknown
+				if (!data || typeof data !== "object") return
+				const msg = data as { type?: unknown; at?: unknown; tabId?: unknown }
+				if (msg.type !== "activity") return
+				if (msg.tabId === tabId) return
+				if (typeof msg.at !== "number") return
+				applyActivity(msg.at)
+			})
+		} catch {
+			channel = null
+		}
+	}
+
+	const handleStorage = (event: StorageEvent) => {
+		if (event.key !== STORAGE_KEY || !event.newValue) return
+		try {
+			const msg = JSON.parse(event.newValue) as { type?: unknown; at?: unknown; tabId?: unknown }
+			if (msg.type !== "activity") return
+			if (msg.tabId === tabId) return
+			if (typeof msg.at !== "number") return
+			applyActivity(msg.at)
+		} catch {
+			// ignore
+		}
+	}
+
+	window.addEventListener("storage", handleStorage)
+
 	get.addFinalizer(() => {
 		events.forEach((event) => {
-			window.removeEventListener(event, handleActivity)
+			window.removeEventListener(event, handleLocalActivity)
 		})
 		document.removeEventListener("visibilitychange", handleVisibilityChange)
+		window.removeEventListener("storage", handleStorage)
+		if (channel) {
+			channel.close()
+		}
 	})
 
 	return lastActivity
@@ -70,54 +153,31 @@ const manualStatusAtom = Atom.make<ManualStatus>({
 }).pipe(Atom.keepAlive)
 
 /**
- * Derived atom that determines if the user is AFK
- * Uses a Stream that checks every 10 seconds if activity timeout has been exceeded
+ * Derived atom that determines if the user is AFK.
+ * Re-evaluates on activity changes and on a periodic "now" tick.
  */
-const afkStateAtom = Atom.make((get) =>
-	Stream.fromSchedule(Schedule.spaced(Duration.seconds(10))).pipe(
-		Stream.map(() => {
-			const lastActivity = get(lastActivityAtom)
-			const manualStatus = get(manualStatusAtom)
-			const now = DateTime.unsafeMake(new Date())
-			const timeSinceActivity = DateTime.distance(lastActivity, now)
-
-			const isAFK =
-				Duration.greaterThanOrEqualTo(timeSinceActivity, AFK_TIMEOUT) &&
-				manualStatus.status !== "away"
-
-			return {
-				isAFK,
-				timeSinceActivity,
-				shouldMarkAway: isAFK && manualStatus.status !== "busy" && manualStatus.status !== "dnd",
-			}
-		}),
-	),
-).pipe(Atom.keepAlive)
+const afkStateAtom = Atom.make((get) => {
+	// Periodic tick so we can flip to Away even if the user never triggers another event.
+	const nowMs = get(presenceNowSignal)
+	const lastActivity = get(lastActivityAtom)
+	const timeSinceActivityMs = nowMs - DateTime.toEpochMillis(lastActivity)
+	const isAFK = timeSinceActivityMs >= Duration.toMillis(AFK_TIMEOUT)
+	return { isAFK, timeSinceActivityMs }
+}).pipe(Atom.keepAlive)
 
 /**
- * Derived atom that computes the final presence status
- * Combines manual status and AFK detection
- * Note: Offline status is only set on tab close or via server-side heartbeat timeout
+ * Derived atom that computes the final presence status.
+ * Manual status overrides AFK-derived Away/Online.
+ *
+ * Note: Offline is derived from `lastSeenAt` elsewhere; we don't auto-set Offline from the client.
  */
-const computedPresenceStatusAtom = Atom.make((get) =>
-	Effect.gen(function* () {
-		const manualStatus = get(manualStatusAtom)
-		const afkState = yield* get.result(afkStateAtom)
+const computedPresenceStatusAtom = Atom.make((get) => {
+	const manualStatus = get(manualStatusAtom)
+	if (manualStatus.status !== null) return manualStatus.status
 
-		// Manual status takes precedence
-		if (manualStatus.status !== null) {
-			return manualStatus.status
-		}
-
-		// Mark as away if AFK (works even when window is hidden)
-		if (afkState.shouldMarkAway) {
-			return "away" as PresenceStatus
-		}
-
-		// Default to online
-		return "online" as PresenceStatus
-	}),
-)
+	const afkState = get(afkStateAtom)
+	return afkState.isAFK ? ("away" as const) : ("online" as const)
+})
 
 /**
  * Atom that tracks the current route's channel ID
@@ -156,37 +216,9 @@ export const currentChannelIdAtom = Atom.make((get) => {
 }).pipe(Atom.keepAlive)
 
 /**
- * Atom that manages the beforeunload event listener
- * Reads from userAtom and sends beacon to mark user offline when tab closes
- * Automatically reactive to user changes
- */
-const beforeUnloadAtom = Atom.make((get) => {
-	const user = Result.getOrElse(get(userAtom), () => null)
-
-	// Skip setup if no user
-	if (!user?.id) return null
-
-	const handleBeforeUnload = () => {
-		// Use sendBeacon for reliable delivery even as page unloads
-		const url = `${import.meta.env.VITE_BACKEND_URL}/presence/offline`
-		const blob = new Blob([JSON.stringify({ userId: user.id })], { type: "application/json" })
-		navigator.sendBeacon(url, blob)
-	}
-
-	window.addEventListener("beforeunload", handleBeforeUnload)
-
-	get.addFinalizer(() => {
-		window.removeEventListener("beforeunload", handleBeforeUnload)
-	})
-
-	return user.id
-})
-
-/**
  * Atom that sends periodic heartbeat pings to the server.
  * This enables reliable offline detection - if no heartbeat is received
- * within the timeout period (90s), the server-side cron job marks the user offline.
- * This is more reliable than beforeunload which can fail on crashes, network loss, etc.
+ * within the timeout period, the server-side cron job marks the user offline.
  */
 const heartbeatAtom = Atom.make((get) => {
 	const user = Result.getOrElse(get(userAtom), () => null)
@@ -194,23 +226,35 @@ const heartbeatAtom = Atom.make((get) => {
 	// Skip if no user
 	if (!user?.id) return null
 
-	// Actually run the stream as a side effect (not just return it)
-	runtime.runFork(
-		Stream.fromSchedule(Schedule.spaced(HEARTBEAT_INTERVAL)).pipe(
-			Stream.tap(() =>
-				Effect.gen(function* () {
-					const client = yield* HazelRpcClient
-					yield* client("userPresenceStatus.heartbeat", {})
-				}).pipe(
-					Effect.catchAll((error) => {
-						console.error("Heartbeat failed:", error)
-						return Effect.void
-					}),
-				),
-			),
-			Stream.runDrain,
-		),
-	)
+	let inFlight = false
+
+	const sendHeartbeat = () => {
+		if (inFlight) return
+		inFlight = true
+
+		const program = Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			yield* client("userPresenceStatus.heartbeat", {})
+		})
+
+		runtime
+			.runPromise(program)
+			.catch((error) => {
+				console.error("Heartbeat failed:", error)
+			})
+			.finally(() => {
+				inFlight = false
+			})
+	}
+
+	// Send immediately on mount.
+	sendHeartbeat()
+
+	const intervalId = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS)
+
+	get.addFinalizer(() => {
+		clearInterval(intervalId)
+	})
 
 	return user.id
 }).pipe(Atom.keepAlive)
@@ -261,16 +305,11 @@ const currentUserPresenceAtom = Atom.make((get) => {
  */
 export function usePresence() {
 	const { user } = useAuth()
+	const nowMs = useAtomValue(presenceNowSignal)
 	const presenceResult = useAtomValue(currentUserPresenceAtom)
 	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
-	const computedStatusResult = useAtomValue(computedPresenceStatusAtom)
-	const computedStatus = Result.getOrElse(computedStatusResult, () => "online" as PresenceStatus)
-	const afkStateResult = useAtomValue(afkStateAtom)
-	const afkState = Result.getOrElse(afkStateResult, () => ({
-		isAFK: false,
-		timeSinceActivity: 0,
-		shouldMarkAway: false,
-	}))
+	const computedStatus = useAtomValue(computedPresenceStatusAtom)
+	const afkState = useAtomValue(afkStateAtom)
 
 	// Query current user's settings for quiet hours
 	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
@@ -389,7 +428,6 @@ export function usePresence() {
 		}
 	}, [computedStatus, currentChannelId, user?.id])
 
-	useAtomMount(beforeUnloadAtom)
 	useAtomMount(heartbeatAtom)
 
 	const previousManualStatusRef = useRef<PresenceStatus>("online")
@@ -454,8 +492,18 @@ export function usePresence() {
 		return runtime.runPromiseExit(program)
 	}, [user?.id])
 
+	const effectiveStatus = getEffectivePresenceStatus(currentPresence ?? null, nowMs)
+	const displayStatus =
+		computedStatus === "online"
+			? effectiveStatus === "offline"
+				? ("online" as const)
+				: effectiveStatus
+			: computedStatus
+
 	return {
-		status: currentPresence?.status ?? computedStatus,
+		// Prefer local computed status for online/away transitions, but never show "offline" for the local user
+		// when we have a recent heartbeat (effectiveStatus covers anti-flicker).
+		status: displayStatus,
 		isAFK: afkState.isAFK,
 		setStatus,
 		setCustomStatus,
@@ -479,6 +527,7 @@ export interface QuietHoursInfo {
  * Hook to get another user's presence
  */
 export function useUserPresence(userId: UserId) {
+	const nowMs = useAtomValue(presenceNowSignal)
 	const presenceResult = useAtomValue(currentUserPresenceAtomFamily(userId))
 	const presence = Result.getOrElse(presenceResult, () => undefined)
 	const userSettingsResult = useAtomValue(userSettingsAtomFamily(userId))
@@ -510,13 +559,11 @@ export function useUserPresence(userId: UserId) {
 		userSettings?.settings?.quietHoursEnd,
 	])
 
+	const status = getEffectivePresenceStatus(presence ?? null, nowMs)
+
 	return {
-		status: presence?.status ?? ("offline" as const),
-		isOnline:
-			presence?.status === "online" ||
-			presence?.status === "busy" ||
-			presence?.status === "dnd" ||
-			presence?.status === "away",
+		status,
+		isOnline: isEffectivelyOnline(status),
 		activeChannelId: presence?.activeChannelId,
 		customMessage: presence?.customMessage,
 		statusEmoji: presence?.statusEmoji,

@@ -11,7 +11,7 @@ export const usersTable = pgTable(
 		email: varchar({ length: 255 }).notNull(),
 		firstName: varchar({ length: 100 }).notNull(),
 		lastName: varchar({ length: 100 }).notNull(),
-		avatarUrl: text().notNull(),
+		avatarUrl: text(),
 		userType: userTypeEnum().notNull().default("user"),
 		settings: jsonb().$type<Record<string, any>>(),
 		isOnboarded: boolean().notNull().default(false),

@@ -255,9 +255,8 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								<Avatar
 									isSquare
 									size="sm"
-									src={
-										organization?.logoUrl || `https://avatar.vercel.sh/${organizationId}`
-									}
+									src={organization?.logoUrl ?? undefined}
+									seed={organization?.name ?? undefined}
 								/>
 								{organization?.name}
 							</span>

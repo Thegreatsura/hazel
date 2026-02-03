@@ -46,6 +46,12 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		const orgMemberRepo = yield* OrganizationMemberRepo
 		const invitationRepo = yield* InvitationRepo
 
+		const normalizeAvatarUrl = (url: string | null | undefined): string | null =>
+			url?.trim() ? url : null
+
+		const isVercelFallbackAvatarUrl = (url: string | null | undefined): boolean =>
+			typeof url === "string" && url.startsWith("https://avatar.vercel.sh/")
+
 		// Helper to convert an Effect to an Either and accumulate results
 		const collectResult = <A>(
 			effect: Effect.Effect<A, unknown>,
@@ -196,9 +202,16 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					const lastName = existingUser
 						? workosUser.lastName || existingUser.lastName // Keep existing if WorkOS is empty
 						: workosUser.lastName || ""
+					const workosAvatarUrl = normalizeAvatarUrl(workosUser.profilePictureUrl)
+					const existingAvatarUrl = normalizeAvatarUrl(existingUser?.avatarUrl)
 					const avatarUrl = existingUser
-						? workosUser.profilePictureUrl || existingUser.avatarUrl // Keep existing if WorkOS has no picture
-						: workosUser.profilePictureUrl || `https://avatar.vercel.sh/${workosUser.id}.svg`
+						? workosAvatarUrl &&
+							(existingAvatarUrl === null || isVercelFallbackAvatarUrl(existingAvatarUrl))
+							? workosAvatarUrl
+							: isVercelFallbackAvatarUrl(existingAvatarUrl)
+								? null
+								: existingAvatarUrl
+						: workosAvatarUrl
 
 					return collectResult(
 						userRepo
@@ -676,9 +689,16 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				const lastName = existing
 					? data.lastName || existing.lastName // Keep existing if WorkOS is empty
 					: data.lastName || ""
+				const workosAvatarUrl = normalizeAvatarUrl(data.profilePictureUrl)
+				const existingAvatarUrl = normalizeAvatarUrl(existing?.avatarUrl)
 				const avatarUrl = existing
-					? data.profilePictureUrl || existing.avatarUrl // Keep existing if WorkOS has no picture
-					: data.profilePictureUrl || `https://avatar.vercel.sh/${data.id}.svg`
+					? workosAvatarUrl &&
+						(existingAvatarUrl === null || isVercelFallbackAvatarUrl(existingAvatarUrl))
+						? workosAvatarUrl
+						: isVercelFallbackAvatarUrl(existingAvatarUrl)
+							? null
+							: existingAvatarUrl
+					: workosAvatarUrl
 
 				yield* userRepo.upsertByExternalId({
 					externalId: data.id,

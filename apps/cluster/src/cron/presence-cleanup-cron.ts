@@ -4,11 +4,11 @@ import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
-// Run every minute
-const everyMinute = Cron.unsafeParse("* * * * *")
+// Run every 15 seconds (6-field cron: seconds minutes hours day month weekday)
+const every15Seconds = Cron.unsafeParse("*/15 * * * * *")
 
-// Timeout: 90 seconds (3x heartbeat interval of 30s)
-const HEARTBEAT_TIMEOUT_MS = 90_000
+// Timeout: 45 seconds (3x heartbeat interval of 15s)
+const HEARTBEAT_TIMEOUT_MS = 45_000
 
 /**
  * Cron job that marks users as offline if they haven't sent a heartbeat within the timeout period.
@@ -17,7 +17,7 @@ const HEARTBEAT_TIMEOUT_MS = 90_000
  */
 export const PresenceCleanupCronLayer = ClusterCron.make({
 	name: "PresenceCleanup",
-	cron: everyMinute,
+	cron: every15Seconds,
 	execute: Effect.gen(function* () {
 		const db = yield* Database.Database
 		const timeoutThreshold = new Date(Date.now() - HEARTBEAT_TIMEOUT_MS)

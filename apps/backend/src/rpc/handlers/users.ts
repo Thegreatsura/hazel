@@ -146,10 +146,10 @@ export const UserRpcLive = UserRpcs.toLayer(
 									),
 								)
 
-							// Use WorkOS profile picture, fallback to Vercel avatar if not available
-							const avatarUrl =
-								workosUser.profilePictureUrl ||
-								`https://avatar.vercel.sh/${user.externalId}.svg`
+							// Use WorkOS profile picture, otherwise clear avatar
+							const avatarUrl = workosUser.profilePictureUrl?.trim()
+								? workosUser.profilePictureUrl
+								: null
 
 							// Update user's avatar in our database
 							const updatedUser = yield* UserRepo.update({

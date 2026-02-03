@@ -24,6 +24,8 @@ export interface AvatarContextValue {
 	/** Whether the image is currently showing (has src and hasn't failed) */
 	imageShowing: boolean
 	setImageShowing: (showing: boolean) => void
+	/** Optional deterministic seed for non-image fallbacks (e.g., Facehash). */
+	seed?: string
 }
 
 export const AvatarContext = createContext<AvatarContextValue | null>(null)

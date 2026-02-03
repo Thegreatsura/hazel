@@ -99,8 +99,8 @@ export class UserRpcs extends RpcGroup.make(
 	 * UserResetAvatar
 	 *
 	 * Resets the current user's avatar to their original WorkOS profile picture
-	 * (e.g., Google/GitHub OAuth avatar). Falls back to Vercel avatar if
-	 * WorkOS doesn't have a profile picture.
+	 * (e.g., Google/GitHub OAuth avatar). Clears the avatar if WorkOS doesn't have
+	 * a profile picture.
 	 *
 	 * @returns Updated user data and transaction ID
 	 * @throws UnauthorizedError if user is not authenticated

@@ -6,10 +6,12 @@ import { Button as PrimitiveButton } from "react-aria-components"
 import type { RenderElementProps } from "slate-react"
 import { useFocused, useSelected } from "slate-react"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import { presenceNowSignal } from "~/atoms/presence-atoms"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Popover, PopoverContent } from "~/components/ui/popover"
 import { cn } from "~/lib/utils"
+import { getEffectivePresenceStatus } from "~/utils/presence"
 import { getStatusDotColor } from "~/utils/status"
 import type { MentionElement as MentionElementType } from "./slate-mention-plugin"
 
@@ -26,6 +28,7 @@ interface MentionElementProps extends RenderElementProps {
 export function MentionElement({ attributes, children, element, interactive = false }: MentionElementProps) {
 	const selected = useSelected()
 	const focused = useFocused()
+	const nowMs = useAtomValue(presenceNowSignal)
 
 	// Detect special mentions (@channel, @here)
 	const isSpecialMention = element.userId === "channel" || element.userId === "here"
@@ -43,6 +46,7 @@ export function MentionElement({ attributes, children, element, interactive = fa
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence
+	const effectiveStatus = getEffectivePresenceStatus(presence ?? null, nowMs)
 
 	// For special mentions (@channel, @here), use displayName
 	if (isSpecialMention) {
@@ -102,14 +106,12 @@ export function MentionElement({ attributes, children, element, interactive = fa
 						{/* Avatar with status */}
 						<div className="relative shrink-0">
 							<Avatar size="md" alt={fullName} src={user?.avatarUrl || ""} />
-							{presence?.status && (
-								<span
-									className={cn(
-										"absolute right-0 bottom-0 size-3 rounded-full border-2 border-bg",
-										getStatusDotColor(presence.status),
-									)}
-								/>
-							)}
+							<span
+								className={cn(
+									"absolute right-0 bottom-0 size-3 rounded-full border-2 border-bg",
+									getStatusDotColor(effectiveStatus),
+								)}
+							/>
 						</div>
 
 						{/* User info */}

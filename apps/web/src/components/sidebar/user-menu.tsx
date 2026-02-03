@@ -36,7 +36,7 @@ export function UserMenu() {
 	// Fallbacks for missing user data
 	const displayName =
 		user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email || "User"
-	const avatarUrl = user?.avatarUrl || undefined
+	const avatarUrl = user?.avatarUrl ?? undefined
 
 	return (
 		<>
@@ -53,6 +53,7 @@ export function UserMenu() {
 							])}
 							isSquare
 							src={avatarUrl}
+							seed={displayName}
 						/>
 
 						<div className="in-data-[collapsible=dock]:hidden min-w-0 text-sm">

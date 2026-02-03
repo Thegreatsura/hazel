@@ -11,6 +11,7 @@ export interface AvatarRootProps {
 	focusable?: boolean
 	className?: string
 	children: ReactNode
+	seed?: string
 	/**
 	 * Optional: Pass the image src to initialize state correctly and avoid flash.
 	 * Used internally by the Avatar convenience wrapper.
@@ -25,6 +26,7 @@ export function AvatarRoot({
 	focusable = false,
 	className,
 	children,
+	seed,
 	src,
 }: AvatarRootProps) {
 	const [isFailed, setIsFailed] = useState(false)
@@ -32,7 +34,7 @@ export function AvatarRoot({
 	const [imageShowing, setImageShowing] = useState(Boolean(src))
 
 	return (
-		<AvatarContext value={{ size, isSquare, isFailed, setIsFailed, imageShowing, setImageShowing }}>
+		<AvatarContext value={{ size, isSquare, isFailed, setIsFailed, imageShowing, setImageShowing, seed }}>
 			<div
 				data-avatar
 				data-slot="avatar"

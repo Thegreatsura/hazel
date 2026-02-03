@@ -123,7 +123,7 @@ const createMockUserRepoLive = (options?: {
 		email: string
 		firstName: string
 		lastName: string
-		avatarUrl: string
+		avatarUrl: string | null
 		isOnboarded: boolean
 		timezone: string | null
 	}
@@ -327,7 +327,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 							email: "new@example.com",
 							firstName: "New",
 							lastName: "User",
-							avatarUrl: "https://avatar.vercel.sh/user_new.svg",
+							avatarUrl: null,
 							userType: "user",
 							settings: null,
 							isOnboarded: false,

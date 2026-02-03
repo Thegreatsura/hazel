@@ -2,6 +2,7 @@ import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import { presenceNowSignal } from "~/atoms/presence-atoms"
 import IconEdit from "~/components/icons/icon-edit"
 import IconEnvelope from "~/components/icons/icon-envelope"
 import { Avatar } from "~/components/ui/avatar"
@@ -12,6 +13,7 @@ import { SectionLabel } from "~/components/ui/section-label"
 import { TextField } from "~/components/ui/text-field"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
+import { getEffectivePresenceStatus } from "~/utils/presence"
 import { getStatusBadgeColor, getStatusDotColor, getStatusLabel } from "~/utils/status"
 
 export const Route = createFileRoute("/_app/$orgSlug/profile/$userId")({
@@ -21,12 +23,14 @@ export const Route = createFileRoute("/_app/$orgSlug/profile/$userId")({
 function ProfilePage() {
 	const { userId, orgSlug } = Route.useParams()
 	const { user: currentUser } = useAuth()
+	const nowMs = useAtomValue(presenceNowSignal)
 
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(userId as UserId))
 	const data = Result.getOrElse(userPresenceResult, () => [])
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence
+	const effectiveStatus = getEffectivePresenceStatus(presence ?? null, nowMs)
 
 	const isOwnProfile = currentUser?.id === userId
 
@@ -69,28 +73,24 @@ function ProfilePage() {
 				<div className="flex items-center gap-4">
 					<div className="relative">
 						<Avatar size="xl" alt={fullName} src={user.avatarUrl} />
-						{presence?.status && (
-							<span
-								className={cn(
-									"absolute right-0 bottom-0 size-3 rounded-full border-2 border-bg",
-									getStatusDotColor(presence.status),
-								)}
-							/>
-						)}
+						<span
+							className={cn(
+								"absolute right-0 bottom-0 size-3 rounded-full border-2 border-bg",
+								getStatusDotColor(effectiveStatus),
+							)}
+						/>
 					</div>
 					<div className="flex flex-col gap-1">
 						<span className="font-semibold text-fg text-lg">{fullName}</span>
-						{presence?.status && (
-							<span
-								className={cn(
-									"inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-									getStatusBadgeColor(presence.status),
-								)}
-							>
-								<span className="size-1.5 rounded-full bg-current" />
-								{getStatusLabel(presence.status)}
-							</span>
-						)}
+						<span
+							className={cn(
+								"inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
+								getStatusBadgeColor(effectiveStatus),
+							)}
+						>
+							<span className="size-1.5 rounded-full bg-current" />
+							{getStatusLabel(effectiveStatus)}
+						</span>
 					</div>
 				</div>
 

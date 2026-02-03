@@ -63,11 +63,7 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 			>
 				{({ org }) => (
 					<MenuItem id={org.id} textValue={org.name}>
-						<Avatar
-							size="xs"
-							src={org.logoUrl || `https://avatar.vercel.sh/${org.id}`}
-							alt={org.name}
-						/>
+						<Avatar size="xs" src={org.logoUrl} seed={org.name} alt={org.name} />
 						<SidebarLabel>{org.name}</SidebarLabel>
 					</MenuItem>
 				)}
