@@ -7,11 +7,13 @@ import { Editable, type RenderElementProps, type RenderLeafProps, Slate, withRea
 import { isEmojiOnly } from "~/lib/emoji-utils"
 import { cx } from "~/utils/cx"
 import { CodeBlockElement } from "./code-block-element"
+import { HeadingElement } from "./heading-element"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
 import { decorateCodeBlock } from "./slate-code-decorator"
 import { decorateMarkdown } from "./slate-markdown-decorators"
 import { type CustomElement, deserializeFromMarkdown } from "./slate-markdown-serializer"
+import { TableCellElement, TableElement, TableRowElement } from "./table-element"
 import { isCodeBlockElement } from "./types"
 
 interface SlateMessageViewerProps {
@@ -57,6 +59,14 @@ const Element = (props: RenderElementProps) => {
 					{children}
 				</li>
 			)
+		case "table":
+			return <TableElement {...props} element={customElement as any} />
+		case "table-row":
+			return <TableRowElement {...props} />
+		case "table-cell":
+			return <TableCellElement {...props} element={customElement as any} />
+		case "heading":
+			return <HeadingElement {...props} element={customElement as any} />
 		default:
 			return <p {...attributes}>{children}</p>
 	}

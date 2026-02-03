@@ -43,6 +43,14 @@ export function StreamingMarkdown({ children, isAnimating = false, className }: 
 				"[&_ul]:my-0 [&_ol]:my-0",
 				"[&_li]:my-0.5 [&_li]:ml-4",
 				"[&_strong]:font-bold",
+				// Heading styles
+				"[&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1:first-child]:mt-0",
+				"[&_h2]:mt-3 [&_h2]:mb-1.5 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2:first-child]:mt-0",
+				"[&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3:first-child]:mt-0",
+				// Table styles (GFM tables)
+				"[&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
+				"[&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium",
+				"[&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2",
 				className,
 			)}
 			aria-live="polite"

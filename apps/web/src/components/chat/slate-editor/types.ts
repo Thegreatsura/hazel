@@ -52,6 +52,23 @@ export interface HeadingElement extends BaseElement {
 	children: Descendant[]
 }
 
+export interface TableElement extends BaseElement {
+	type: "table"
+	children: TableRowElement[]
+}
+
+export interface TableRowElement extends BaseElement {
+	type: "table-row"
+	children: TableCellElement[]
+}
+
+export interface TableCellElement extends BaseElement {
+	type: "table-cell"
+	header?: boolean
+	align?: "left" | "center" | "right"
+	children: Descendant[]
+}
+
 export type CustomElement =
 	| CodeBlockElement
 	| MentionElement
@@ -62,6 +79,9 @@ export type CustomElement =
 	| OrderedListElement
 	| UnorderedListElement
 	| HeadingElement
+	| TableElement
+	| TableRowElement
+	| TableCellElement
 
 // Custom Text/Leaf Types (for markdown decorations)
 export type MarkdownLeaf = BaseText & {
@@ -91,4 +111,16 @@ export function isMentionElement(element: BaseElement): element is MentionElemen
 
 export function isParagraphElement(element: BaseElement): element is ParagraphElement {
 	return (element as CustomElement).type === "paragraph"
+}
+
+export function isTableElement(element: BaseElement): element is TableElement {
+	return (element as CustomElement).type === "table"
+}
+
+export function isTableRowElement(element: BaseElement): element is TableRowElement {
+	return (element as CustomElement).type === "table-row"
+}
+
+export function isTableCellElement(element: BaseElement): element is TableCellElement {
+	return (element as CustomElement).type === "table-cell"
 }

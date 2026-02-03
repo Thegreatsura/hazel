@@ -35,6 +35,29 @@ export interface MentionElement {
 	children: [{ text: "" }]
 }
 
+export interface TableElement {
+	type: "table"
+	children: TableRowElement[]
+}
+
+export interface TableRowElement {
+	type: "table-row"
+	children: TableCellElement[]
+}
+
+export interface TableCellElement {
+	type: "table-cell"
+	header?: boolean
+	align?: "left" | "center" | "right"
+	children: CustomDescendant[]
+}
+
+export interface HeadingElement {
+	type: "heading"
+	level: 1 | 2 | 3
+	children: CustomText[]
+}
+
 export interface CustomText {
 	text: string
 }
@@ -46,6 +69,10 @@ export type CustomElement =
 	| SubtextElement
 	| ListItemElement
 	| MentionElement
+	| TableElement
+	| TableRowElement
+	| TableCellElement
+	| HeadingElement
 export type CustomDescendant = CustomElement | CustomText
 
 /**
@@ -134,6 +161,45 @@ export function serializeToMarkdown(nodes: CustomDescendant[]): string {
 					// Prefix with - for unordered or number for ordered
 					return element.ordered ? `1. ${text}` : `- ${text}`
 				}
+				case "table": {
+					const tableElement = element as TableElement
+					const rows = tableElement.children
+					if (rows.length === 0) return ""
+
+					const lines: string[] = []
+					for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+						const row = rows[rowIndex]
+						if (!row) continue
+						const cells = row.children
+						const cellTexts = cells.map((cell) =>
+							cell.children.map((child) => serializeToMarkdown([child])).join(""),
+						)
+						lines.push(`| ${cellTexts.join(" | ")} |`)
+
+						// After the header row (first row), add separator
+						if (rowIndex === 0) {
+							const separators = cells.map((cell) => {
+								const align = cell.align
+								if (align === "center") return ":---:"
+								if (align === "right") return "---:"
+								return "---"
+							})
+							lines.push(`| ${separators.join(" | ")} |`)
+						}
+					}
+					return lines.join("\n")
+				}
+				case "table-row":
+				case "table-cell": {
+					// Rows and cells are handled by table parent
+					return ""
+				}
+				case "heading": {
+					const headingElement = element as HeadingElement
+					const text = headingElement.children.map((child) => serializeToMarkdown([child])).join("")
+					const prefix = "#".repeat(headingElement.level)
+					return `${prefix} ${text}`
+				}
 				default: {
 					const text = Node.string(element)
 					return text
@@ -189,6 +255,105 @@ function parseInlineContent(text: string): Array<CustomText | MentionElement> {
 }
 
 /**
+ * Check if a line looks like a GFM table row
+ */
+function isTableRow(line: string): boolean {
+	return line.startsWith("|") && line.endsWith("|")
+}
+
+/**
+ * Check if a line is a GFM table separator row (e.g., |---|:---:|---:|)
+ */
+function isTableSeparator(line: string): boolean {
+	if (!isTableRow(line)) return false
+	// Remove outer pipes and check if all cells are separator patterns
+	const inner = line.slice(1, -1)
+	const cells = inner.split("|")
+	return cells.every((cell) => /^\s*:?-+:?\s*$/.test(cell))
+}
+
+/**
+ * Parse alignment from a separator cell (e.g., :---:, ---:, :---, ---)
+ */
+function parseAlignment(separator: string): "left" | "center" | "right" | undefined {
+	const trimmed = separator.trim()
+	const leftColon = trimmed.startsWith(":")
+	const rightColon = trimmed.endsWith(":")
+
+	if (leftColon && rightColon) return "center"
+	if (rightColon) return "right"
+	if (leftColon) return "left"
+	return undefined
+}
+
+/**
+ * Parse a table row into cell contents
+ */
+function parseTableRow(line: string): string[] {
+	// Remove outer pipes and split by |
+	const inner = line.slice(1, -1)
+	return inner.split("|").map((cell) => cell.trim())
+}
+
+/**
+ * Parse a GFM table from lines starting at index i
+ * Returns the table element and the new index after the table
+ */
+function parseTable(lines: string[], startIndex: number): { table: TableElement; endIndex: number } | null {
+	const tableLines: string[] = []
+	let i = startIndex
+
+	// Collect all consecutive table rows
+	while (i < lines.length && lines[i] && isTableRow(lines[i]!)) {
+		tableLines.push(lines[i]!)
+		i++
+	}
+
+	// Need at least 2 lines (header + separator)
+	if (tableLines.length < 2) return null
+
+	// Second line must be separator
+	if (!isTableSeparator(tableLines[1]!)) return null
+
+	// Parse alignments from separator row
+	const separatorCells = parseTableRow(tableLines[1]!)
+	const alignments = separatorCells.map(parseAlignment)
+
+	// Parse header row
+	const headerCells = parseTableRow(tableLines[0]!)
+	const headerRow: TableRowElement = {
+		type: "table-row",
+		children: headerCells.map((cell, idx) => ({
+			type: "table-cell" as const,
+			header: true,
+			align: alignments[idx],
+			children: parseInlineContent(cell) as CustomDescendant[],
+		})),
+	}
+
+	// Parse data rows (skip header and separator)
+	const dataRows: TableRowElement[] = tableLines.slice(2).map((line) => {
+		const cells = parseTableRow(line)
+		return {
+			type: "table-row" as const,
+			children: cells.map((cell, idx) => ({
+				type: "table-cell" as const,
+				header: false,
+				align: alignments[idx],
+				children: parseInlineContent(cell) as CustomDescendant[],
+			})),
+		}
+	})
+
+	const table: TableElement = {
+		type: "table",
+		children: [headerRow, ...dataRows],
+	}
+
+	return { table, endIndex: i }
+}
+
+/**
  * Deserialize markdown string to Slate value
  * This converts markdown from the backend back to Slate nodes for editing
  */
@@ -235,6 +400,30 @@ export function deserializeFromMarkdown(markdown: string): CustomDescendant[] {
 				children: [{ text: codeLines.join("\n") }],
 			})
 			continue
+		}
+
+		// Check for headings (# ## ###)
+		const headingMatch = line.match(/^(#{1,3})\s+(.+)$/)
+		if (headingMatch) {
+			const level = headingMatch[1]!.length as 1 | 2 | 3
+			const content = headingMatch[2]!
+			nodes.push({
+				type: "heading",
+				level,
+				children: parseInlineContent(content) as CustomText[],
+			})
+			i++
+			continue
+		}
+
+		// Check for GFM table
+		if (isTableRow(line)) {
+			const result = parseTable(lines, i)
+			if (result) {
+				nodes.push(result.table)
+				i = result.endIndex
+				continue
+			}
 		}
 
 		// Check for multi-line blockquote (>>>)
