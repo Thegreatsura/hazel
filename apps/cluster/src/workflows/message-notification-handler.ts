@@ -67,6 +67,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 													false,
 												),
 												or(
+													isNull(schema.userPresenceStatusTable.activeChannelId),
 													ne(
 														schema.userPresenceStatusTable.activeChannelId,
 														payload.channelId,
@@ -180,6 +181,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 										and(
 											eq(schema.userPresenceStatusTable.suppressNotifications, false),
 											or(
+												isNull(schema.userPresenceStatusTable.activeChannelId),
 												ne(
 													schema.userPresenceStatusTable.activeChannelId,
 													payload.channelId,
