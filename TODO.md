@@ -9,6 +9,8 @@
 
 # Bugs
 
+- threads are not really shared it seems
+
 - Profile Pic getting synced later, initally no pfp??
 - if github is already connecred to other org figure out how to let double connect
 

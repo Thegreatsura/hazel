@@ -72,7 +72,7 @@ export const makeBotRpcClient = Effect.fn("BotRpcClient.makeBotRpcClient")(funct
 	config: BotRpcClientConfig,
 ) {
 	// Use HTTP endpoint for bots (simpler, more reliable than WebSocket)
-	const rpcUrl = `${config.backendUrl}/rpc-http`
+	const rpcUrl = `${config.backendUrl}/rpc`
 
 	// Create HTTP protocol layer
 	const ProtocolLayer = RpcClient.layerProtocolHttp({

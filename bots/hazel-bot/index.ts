@@ -543,9 +543,9 @@ const handleAIRequest = (params: {
 	Effect.gen(function* () {
 		const { bot, message, channelId, orgId } = params
 
-		const runtime = yield* Effect.runtime<any>()
-		const runPromise = Runtime.runPromise(runtime as any) as <A>(
-			effect: Effect.Effect<A, any, any>,
+		const runtime = yield* Effect.runtime()
+		const runPromise = Runtime.runPromise(runtime) as <A, E, R>(
+			effect: Effect.Effect<A, E, R>,
 		) => Promise<A>
 
 		// Get enabled integrations for this org (cached)

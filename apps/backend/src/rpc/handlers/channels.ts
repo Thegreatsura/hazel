@@ -235,131 +235,131 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 					)
 					.pipe(withRemapDbErrors("Channel", "create")),
 
-				"channel.createThread": ({ id, messageId, organizationId: requestedOrganizationId }) =>
-					db
-						.transaction(
-							Effect.gen(function* () {
-								const user = yield* CurrentUser.Context
+			"channel.createThread": ({ id, messageId, organizationId: requestedOrganizationId }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const user = yield* CurrentUser.Context
 
-								// 1. Find the message and resolve thread context from authoritative DB data
-								const message = yield* MessageRepo.findById(messageId).pipe(withSystemActor)
+							// 1. Find the message and resolve thread context from authoritative DB data
+							const message = yield* MessageRepo.findById(messageId).pipe(withSystemActor)
 
-								if (Option.isNone(message)) {
-									return yield* Effect.fail(new MessageNotFoundError({ messageId }))
-								}
+							if (Option.isNone(message)) {
+								return yield* Effect.fail(new MessageNotFoundError({ messageId }))
+							}
 
-								// If the message already points to a thread, return that thread.
-								if (message.value.threadChannelId) {
-									const existingThread = yield* ChannelRepo.findById(message.value.threadChannelId).pipe(
-										withSystemActor,
-									)
-									if (Option.isNone(existingThread)) {
-										return yield* Effect.fail(
-											new InternalServerError({
-												message: "Thread channel linked to message was not found",
-												detail: `messageId=${messageId} threadChannelId=${message.value.threadChannelId}`,
-											}),
-										)
-									}
-
-									const txid = yield* generateTransactionId()
-									return {
-										data: existingThread.value,
-										transactionId: txid,
-									}
-								}
-
-								const parentChannel = yield* ChannelRepo.findById(message.value.channelId).pipe(
-									withSystemActor,
-								)
-								if (Option.isNone(parentChannel)) {
+							// If the message already points to a thread, return that thread.
+							if (message.value.threadChannelId) {
+								const existingThread = yield* ChannelRepo.findById(
+									message.value.threadChannelId,
+								).pipe(withSystemActor)
+								if (Option.isNone(existingThread)) {
 									return yield* Effect.fail(
 										new InternalServerError({
-											message: "Parent channel for message was not found",
-											detail: `messageId=${messageId} parentChannelId=${message.value.channelId}`,
+											message: "Thread channel linked to message was not found",
+											detail: `messageId=${messageId} threadChannelId=${message.value.threadChannelId}`,
 										}),
 									)
 								}
-
-								// If the message is already in a thread channel, return that thread.
-								if (parentChannel.value.type === "thread") {
-									const txid = yield* generateTransactionId()
-									return {
-										data: parentChannel.value,
-										transactionId: txid,
-									}
-								}
-
-								// Derive organization from parent channel (source of truth).
-								const organizationId = parentChannel.value.organizationId
-
-								// Optional client org must match the derived parent channel org.
-								if (requestedOrganizationId && requestedOrganizationId !== organizationId) {
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Thread creation organization mismatch",
-											detail: `messageId=${messageId} parentOrganizationId=${organizationId} requestedOrganizationId=${requestedOrganizationId}`,
-										}),
-									)
-								}
-
-								// 2. Create thread channel only when no existing thread was resolved
-								const insertData = id
-									? {
-											id,
-											name: "Thread",
-											icon: null,
-											type: "thread" as const,
-											organizationId,
-											parentChannelId: parentChannel.value.id,
-											sectionId: null,
-											deletedAt: null,
-										}
-									: {
-											name: "Thread",
-											icon: null,
-											type: "thread" as const,
-											organizationId,
-											parentChannelId: parentChannel.value.id,
-											sectionId: null,
-											deletedAt: null,
-										}
-
-								const createdChannel = yield* ChannelRepo.insert(insertData).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(ChannelPolicy.canCreate(organizationId)),
-								)
-
-								// 3. Add creator as member
-								yield* ChannelMemberRepo.insert({
-									channelId: createdChannel.id,
-									userId: user.id,
-									isHidden: false,
-									isMuted: false,
-									isFavorite: false,
-									lastSeenMessageId: null,
-									notificationCount: 0,
-									joinedAt: new Date(),
-									deletedAt: null,
-								}).pipe(withSystemActor)
-
-								// 4. Link message to thread (direct SQL update to bypass schema restrictions)
-								yield* db.execute((client) =>
-									client
-										.update(schema.messagesTable)
-										.set({ threadChannelId: createdChannel.id })
-										.where(eq(schema.messagesTable.id, messageId)),
-								)
 
 								const txid = yield* generateTransactionId()
-
 								return {
-									data: createdChannel,
+									data: existingThread.value,
 									transactionId: txid,
 								}
-							}),
-						)
-						.pipe(withRemapDbErrors("Channel", "create")),
+							}
+
+							const parentChannel = yield* ChannelRepo.findById(message.value.channelId).pipe(
+								withSystemActor,
+							)
+							if (Option.isNone(parentChannel)) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "Parent channel for message was not found",
+										detail: `messageId=${messageId} parentChannelId=${message.value.channelId}`,
+									}),
+								)
+							}
+
+							// If the message is already in a thread channel, return that thread.
+							if (parentChannel.value.type === "thread") {
+								const txid = yield* generateTransactionId()
+								return {
+									data: parentChannel.value,
+									transactionId: txid,
+								}
+							}
+
+							// Derive organization from parent channel (source of truth).
+							const organizationId = parentChannel.value.organizationId
+
+							// Optional client org must match the derived parent channel org.
+							if (requestedOrganizationId && requestedOrganizationId !== organizationId) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "Thread creation organization mismatch",
+										detail: `messageId=${messageId} parentOrganizationId=${organizationId} requestedOrganizationId=${requestedOrganizationId}`,
+									}),
+								)
+							}
+
+							// 2. Create thread channel only when no existing thread was resolved
+							const insertData = id
+								? {
+										id,
+										name: "Thread",
+										icon: null,
+										type: "thread" as const,
+										organizationId,
+										parentChannelId: parentChannel.value.id,
+										sectionId: null,
+										deletedAt: null,
+									}
+								: {
+										name: "Thread",
+										icon: null,
+										type: "thread" as const,
+										organizationId,
+										parentChannelId: parentChannel.value.id,
+										sectionId: null,
+										deletedAt: null,
+									}
+
+							const createdChannel = yield* ChannelRepo.insert(insertData).pipe(
+								Effect.map((res) => res[0]!),
+								policyUse(ChannelPolicy.canCreate(organizationId)),
+							)
+
+							// 3. Add creator as member
+							yield* ChannelMemberRepo.insert({
+								channelId: createdChannel.id,
+								userId: user.id,
+								isHidden: false,
+								isMuted: false,
+								isFavorite: false,
+								lastSeenMessageId: null,
+								notificationCount: 0,
+								joinedAt: new Date(),
+								deletedAt: null,
+							}).pipe(withSystemActor)
+
+							// 4. Link message to thread (direct SQL update to bypass schema restrictions)
+							yield* db.execute((client) =>
+								client
+									.update(schema.messagesTable)
+									.set({ threadChannelId: createdChannel.id })
+									.where(eq(schema.messagesTable.id, messageId)),
+							)
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: createdChannel,
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("Channel", "create")),
 
 			"channel.generateName": ({ channelId }) =>
 				Effect.gen(function* () {
