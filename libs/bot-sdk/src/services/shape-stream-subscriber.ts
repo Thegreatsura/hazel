@@ -245,7 +245,21 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 					Stream.filterMap((option) => option),
 					Stream.runDrain,
 				)
-			}).pipe(Effect.scoped)
+			}).pipe(
+				Effect.scoped,
+				// FetchError from ShapeStream is thrown as an untyped defect that escapes
+				// Effect's error channel, crashing the Bun process. Convert defects to
+				// typed errors so the retry mechanism can handle them gracefully.
+				Effect.catchAllDefect((defect) =>
+					Effect.fail(
+						new ShapeStreamSubscribeError({
+							message: `Shape stream defect for table: ${subscription.table}: ${String(defect)}`,
+							table: subscription.table,
+							cause: defect instanceof Error ? defect : new Error(String(defect)),
+						}),
+					),
+				),
+			)
 
 		return {
 			/**

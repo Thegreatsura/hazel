@@ -105,10 +105,10 @@ const handleUserRequest = (request: Request) =>
 		// Generate WHERE clause
 		const whereResult = yield* getWhereClauseForTable(tableValidation.table!, user)
 		yield* Effect.log("Generated WHERE clause", { table: tableValidation.table, whereResult })
-		applyWhereToElectricUrl(originUrl, whereResult)
+		const finalUrl = applyWhereToElectricUrl(originUrl, whereResult)
 
 		// Proxy request to Electric
-		const response = yield* proxyElectricRequest(originUrl)
+		const response = yield* proxyElectricRequest(finalUrl)
 
 		// Add CORS headers to response
 		const headers = new Headers(response.headers)
@@ -247,10 +247,10 @@ const handleBotRequest = (request: Request) =>
 		// Generate WHERE clause
 		const whereResult = yield* getBotWhereClauseForTable(tableValidation.table!, bot)
 		yield* Effect.log("Generated bot WHERE clause", { table: tableValidation.table, whereResult })
-		applyWhereToElectricUrl(originUrl, whereResult)
+		const finalUrl = applyWhereToElectricUrl(originUrl, whereResult)
 
 		// Proxy request to Electric
-		const response = yield* proxyElectricRequest(originUrl)
+		const response = yield* proxyElectricRequest(finalUrl)
 
 		// Add CORS headers to response
 		const headers = new Headers(response.headers)

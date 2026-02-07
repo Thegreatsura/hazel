@@ -50,20 +50,39 @@ export const prepareElectricUrl = Effect.fn("ElectricClient.prepareElectricUrl")
  * Proxies a request to Electric SQL and returns the response
  * Uses zero-copy body passthrough for maximum streaming performance
  *
- * @param originUrl - The prepared Electric SQL URL
+ * @param originUrl - The prepared Electric SQL URL (string or URL object)
  * @returns Effect that succeeds with the proxied response
  */
 export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricRequest")(function* (
-	originUrl: URL,
+	originUrl: string | URL,
 ) {
+	const urlStr = typeof originUrl === "string" ? originUrl : originUrl.toString()
 	const response = yield* Effect.tryPromise({
-		try: () => fetch(originUrl),
+		try: () => fetch(urlStr),
 		catch: (error) =>
 			new ElectricProxyError({
 				message: "Failed to fetch from Electric SQL",
 				detail: String(error),
 			}),
 	})
+
+	// Log non-2xx responses for debugging (e.g. Electric returning 400 for bad params)
+	if (!response.ok) {
+		const errorBody = yield* Effect.promise(() => response.text())
+		yield* Effect.logWarning("Electric returned non-2xx", {
+			status: response.status,
+			url: urlStr.replace(/secret=[^&]+/, "secret=***"),
+			body: errorBody.slice(0, 500),
+		})
+		const headers = new Headers(response.headers)
+		headers.delete("content-encoding")
+		headers.delete("content-length")
+		return new Response(errorBody, {
+			status: response.status,
+			statusText: response.statusText,
+			headers,
+		})
+	}
 
 	// Prepare response headers
 	const headers = new Headers(response.headers)

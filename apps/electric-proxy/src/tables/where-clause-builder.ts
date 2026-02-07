@@ -210,16 +210,24 @@ export function buildIntegrationConnectionClause(
 
 /**
  * Apply WHERE clause result to Electric URL with params.
- * Sets the "where" parameter and individual "params[N]" parameters.
+ * Sets the "where" parameter and appends "params[N]" parameters directly to the URL string.
  *
- * @param url - The URL to modify
+ * URLSearchParams.set encodes brackets as %5B/%5D which Electric SQL may not decode,
+ * causing HTTP 400 "Parameters must be numbered sequentially, starting from 1".
+ * We build the params portion manually to keep brackets unencoded.
+ *
+ * @param url - The URL to modify (where clause is set via searchParams)
  * @param result - The WhereClauseResult
+ * @returns The final URL string with unencoded bracket params
  */
-export function applyWhereToElectricUrl(url: URL, result: WhereClauseResult): void {
+export function applyWhereToElectricUrl(url: URL, result: WhereClauseResult): string {
 	url.searchParams.set("where", result.whereClause)
 
+	// Append params with unencoded brackets directly to the URL string.
 	// Electric uses params[1], params[2], etc. (1-indexed)
-	result.params.forEach((value, index) => {
-		url.searchParams.set(`params[${index + 1}]`, String(value))
-	})
+	let urlStr = url.toString()
+	for (let i = 0; i < result.params.length; i++) {
+		urlStr += `&params[${i + 1}]=${encodeURIComponent(String(result.params[i]))}`
+	}
+	return urlStr
 }
