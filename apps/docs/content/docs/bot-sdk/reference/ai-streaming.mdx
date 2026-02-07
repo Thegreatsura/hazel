@@ -255,7 +255,7 @@ This will:
 
 1. Catch any error
 2. Call `session.fail(error)` to mark the stream as failed
-3. Send an error message to the channel
+3. Re-throw a typed `CommandHandlerError` so callers can `catchTag` upstream
 
 ### Manual Error Handling
 

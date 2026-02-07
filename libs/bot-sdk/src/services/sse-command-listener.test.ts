@@ -3,7 +3,8 @@ import { Sse } from "@effect/experimental"
 import { Duration, Effect, Exit, Fiber, Metric, Queue, Ref, Schedule, Stream, TestContext } from "effect"
 import {
 	defaultCommandQueueConfig,
-	SseConnectionError,
+	SseRequestError,
+	SseResponseError,
 	sseReconnectRetrySchedule,
 	type CommandQueueConfig,
 } from "./sse-command-listener.ts"
@@ -164,7 +165,9 @@ describe("permanent failure recovery", () => {
 			// Simulate the SSE listener retry pattern (simplified)
 			const connectAndProcess = Effect.gen(function* () {
 				yield* Ref.update(attemptCycles, (n) => n + 1)
-				return yield* Effect.fail(new SseConnectionError({ message: "Connection refused" }))
+				return yield* Effect.fail(
+					new SseRequestError({ message: "Connection refused", cause: "ECONNREFUSED" }),
+				)
 			})
 
 			// Run one iteration of the forever loop
@@ -201,19 +204,19 @@ describe("permanent failure recovery", () => {
 // Test: Error types
 // ============================================================================
 
-describe("SseConnectionError", () => {
-	it("has correct tag", () => {
-		const error = new SseConnectionError({
+describe("SSE error tags", () => {
+	it("has correct request error tag", () => {
+		const error = new SseRequestError({
 			message: "Connection failed",
 			cause: new Error("ECONNREFUSED"),
 		})
 
-		expect(error._tag).toBe("SseConnectionError")
+		expect(error._tag).toBe("SseRequestError")
 		expect(error.message).toBe("Connection failed")
 	})
 
 	it("can wrap HTTP errors", () => {
-		const error = new SseConnectionError({
+		const error = new SseRequestError({
 			message: "Request error: Connection timeout",
 			cause: { code: "ETIMEDOUT" },
 		})
@@ -222,8 +225,9 @@ describe("SseConnectionError", () => {
 	})
 
 	it("can wrap response errors", () => {
-		const error = new SseConnectionError({
+		const error = new SseResponseError({
 			message: "Response error: Server returned 503",
+			status: 503,
 			cause: { status: 503 },
 		})
 

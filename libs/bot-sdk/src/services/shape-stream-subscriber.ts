@@ -1,7 +1,7 @@
 import { isChangeMessage, type ChangeMessage, type Message, ShapeStream } from "@electric-sql/client"
 import type { ConfigError } from "effect"
 import { Config, Effect, Layer, Metric, Option, Ref, Schedule, Schema, Stream } from "effect"
-import { ConnectionError, ValidationError } from "../errors.ts"
+import { ShapeStreamCreateError, ShapeStreamDecodeError, ShapeStreamSubscribeError } from "../errors.ts"
 import { generateEventId } from "../log-context.ts"
 import { RetryStrategy } from "../retry.ts"
 import { createElectricEvent, type EventOperation } from "../types/events.ts"
@@ -105,9 +105,9 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 					Effect.retry(RetryStrategy.connectionErrors),
 					Effect.catchAll((error) =>
 						Effect.fail(
-							new ConnectionError({
+							new ShapeStreamCreateError({
 								message: `Failed to create shape stream for table: ${subscription.table}`,
-								service: "electric",
+								table: subscription.table,
 								cause: error,
 							}),
 						),
@@ -129,8 +129,8 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 		const shapeStreamToEffectStream = (
 			shapeStream: ShapeStream,
 			table: string,
-		): Stream.Stream<Message, ConnectionError> =>
-			Stream.async<Message, ConnectionError>((emit) => {
+		): Stream.Stream<Message, ShapeStreamSubscribeError> =>
+			Stream.async<Message, ShapeStreamSubscribeError>((emit) => {
 				const unsubscribe = shapeStream.subscribe(
 					(messages) => {
 						for (const message of messages) {
@@ -140,9 +140,9 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 					(error) => {
 						// Handle stream errors by failing the stream
 						emit.fail(
-							new ConnectionError({
+							new ShapeStreamSubscribeError({
 								message: `Shape stream error for table: ${table}`,
-								service: "electric",
+								table,
 								cause: error,
 							}),
 						)
@@ -178,7 +178,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 				const parseResult = yield* Schema.decodeUnknown(subscription.schema)(message.value).pipe(
 					Effect.mapError(
 						(error) =>
-							new ValidationError({
+							new ShapeStreamDecodeError({
 								message: error.message,
 								table: subscription.table,
 								cause: error,
@@ -207,7 +207,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 		 * Handle validation errors with proper logging and metrics
 		 */
 		const handleValidationError = Effect.fn("ShapeStreamSubscriber.handleValidationError")(function* (
-			error: ValidationError,
+			error: ShapeStreamDecodeError,
 		) {
 			yield* Effect.logWarning("Schema validation failed, skipping message", {
 				table: error.table,
@@ -235,7 +235,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 					Stream.mapEffect((message) =>
 						validateAndTransform(subscription, message).pipe(
 							// Handle validation errors gracefully - log and continue
-							Effect.catchTag("ValidationError", (error) =>
+							Effect.catchTag("ShapeStreamDecodeError", (error) =>
 								handleValidationError(error).pipe(Effect.as(Option.none())),
 							),
 							Effect.map(Option.some),

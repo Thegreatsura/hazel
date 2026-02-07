@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, type ManagedRuntime, type Scope } from "effect"
 import { BotAuth, type BotAuthContext } from "./auth.ts"
-import { BotStartError } from "./errors.ts"
+import { EventDispatcherStartupError, ShapeStreamStartupError } from "./errors.ts"
 import { EventDispatcher } from "./services/event-dispatcher.ts"
 import { ShapeStreamSubscriber, type ShapeSubscriptionConfig } from "./services/shape-stream-subscriber.ts"
 import { extractTablesFromEventTypes } from "./types/events.ts"
@@ -15,7 +15,7 @@ export interface TypedBotClient<Subs extends readonly ShapeSubscriptionConfig[]>
 	 * Register a typed event handler for a specific event type
 	 * The handler's value type is automatically inferred from the subscription schema
 	 * @template E - Event type from subscriptions
-	 * @template Err - Error type for the handler (defaults to HandlerError)
+	 * @template Err - Error type for the handler (defaults to EventHandlerError)
 	 * @template R - Required context/services for the handler
 	 */
 	on<E extends SubscriptionEventTypes<Subs>, Err = any, R = never>(
@@ -27,7 +27,7 @@ export interface TypedBotClient<Subs extends readonly ShapeSubscriptionConfig[]>
 	 * Start the bot client
 	 * Requires Scope because it starts scoped resources
 	 */
-	readonly start: Effect.Effect<void, BotStartError, Scope.Scope>
+	readonly start: Effect.Effect<void, ShapeStreamStartupError | EventDispatcherStartupError, Scope.Scope>
 
 	/**
 	 * Get bot authentication context
@@ -75,7 +75,7 @@ export const createBotClientLayer = <Subs extends readonly ShapeSubscriptionConf
 					yield* subscriber.start(requiredTables).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new BotStartError({
+								new ShapeStreamStartupError({
 									message: "Failed to start shape stream subscriptions",
 									cause: error,
 								}),
@@ -87,7 +87,7 @@ export const createBotClientLayer = <Subs extends readonly ShapeSubscriptionConf
 					yield* dispatcher.start.pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new BotStartError({
+								new EventDispatcherStartupError({
 									message: "Failed to start event dispatcher",
 									cause: error,
 								}),

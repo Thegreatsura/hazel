@@ -290,13 +290,13 @@ All event handlers receive typed data from the domain package:
 import type { Message, Channel, ChannelMember } from "@hazel/domain"
 
 // Message events
-type MessageHandler = (message: Message.Model.Json) => Effect.Effect<void, HandlerError>
+type MessageHandler = (message: Message.Model.Json) => Effect.Effect<void, EventHandlerError>
 
 // Channel events
-type ChannelCreatedHandler = (channel: Channel.Model.Json) => Effect.Effect<void, HandlerError>
+type ChannelCreatedHandler = (channel: Channel.Model.Json) => Effect.Effect<void, EventHandlerError>
 
 // Channel member events
-type ChannelMemberAddedHandler = (member: ChannelMember.Model.Json) => Effect.Effect<void, HandlerError>
+type ChannelMemberAddedHandler = (member: ChannelMember.Model.Json) => Effect.Effect<void, EventHandlerError>
 ```
 
 ## Examples
@@ -421,11 +421,11 @@ The SDK provides typed errors for different failure scenarios:
 
 ```typescript
 import {
-	QueueError,
-	ShapeStreamError,
-	HandlerError,
 	AuthenticationError,
-	BotStartError,
+	ShapeStreamCreateError,
+	ShapeStreamSubscribeError,
+	ShapeStreamStartupError,
+	EventDispatcherStartupError,
 } from "@hazel/bot-sdk"
 import { Effect } from "effect"
 
@@ -434,10 +434,15 @@ const program = Effect.gen(function* () {
 
 	yield* bot.start.pipe(
 		Effect.catchTags({
-			ShapeStreamError: (error) =>
-				Effect.logError(`Failed to subscribe to ${error.table}: ${error.message}`),
+			ShapeStreamCreateError: (error) =>
+				Effect.logError(`Failed to create shape stream ${error.table}: ${error.message}`),
+			ShapeStreamSubscribeError: (error) =>
+				Effect.logError(`Shape stream disconnected ${error.table}: ${error.message}`),
+			ShapeStreamStartupError: (error) =>
+				Effect.logError(`Shape stream startup failed: ${error.message}`),
+			EventDispatcherStartupError: (error) =>
+				Effect.logError(`Dispatcher startup failed: ${error.message}`),
 			AuthenticationError: (error) => Effect.logError(`Auth failed: ${error.message}`),
-			BotStartError: (error) => Effect.logError(`Failed to start bot: ${error.message}`),
 		}),
 	)
 })

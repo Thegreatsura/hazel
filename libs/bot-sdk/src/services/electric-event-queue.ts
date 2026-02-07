@@ -1,6 +1,12 @@
 import type { ConfigError } from "effect"
 import { Config, Effect, Layer, Metric, Option, Queue, Ref } from "effect"
-import { QueueError } from "../errors.ts"
+import {
+	QueueCreateError,
+	QueueOfferError,
+	QueuePollError,
+	QueueSizeError,
+	QueueTakeError,
+} from "../errors.ts"
 import { generateCorrelationId } from "../log-context.ts"
 import type { ElectricEvent, EventType } from "../types/events.ts"
 
@@ -77,7 +83,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 		const getEventTypeFromEvent = (event: ElectricEvent): EventType => event.eventType
 
 		// Helper to get or create queue for event type
-		const getQueue = (eventType: EventType): Effect.Effect<Queue.Queue<ElectricEvent>, QueueError> =>
+		const getQueue = (
+			eventType: EventType,
+		): Effect.Effect<Queue.Queue<ElectricEvent>, QueueCreateError> =>
 			Effect.gen(function* () {
 				const queues = yield* Ref.get(queuesRef)
 				const existing = queues.get(eventType)
@@ -99,8 +107,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 				).pipe(
 					Effect.catchAll((error) =>
 						Effect.fail(
-							new QueueError({
+							new QueueCreateError({
 								message: `Failed to create queue for event type: ${eventType}`,
+								eventType,
 								cause: error,
 							}),
 						),
@@ -136,8 +145,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 				const offered = yield* Queue.offer(queue, event).pipe(
 					Effect.catchAll((error) =>
 						Effect.fail(
-							new QueueError({
+							new QueueOfferError({
 								message: `Failed to offer event to queue: ${eventType}`,
+								eventType,
 								cause: error,
 							}),
 						),
@@ -164,8 +174,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 					yield* Queue.offer(queue, event).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new QueueError({
+								new QueueOfferError({
 									message: `Failed to offer event after dropping oldest: ${eventType}`,
+									eventType,
 									cause: error,
 								}),
 							),
@@ -191,8 +202,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 					const event = yield* Queue.take(queue).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new QueueError({
+								new QueueTakeError({
 									message: `Failed to take event from queue: ${eventType}`,
+									eventType,
 									cause: error,
 								}),
 							),
@@ -219,8 +231,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 					const result = yield* Queue.poll(queue).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new QueueError({
+								new QueuePollError({
 									message: `Failed to poll event from queue: ${eventType}`,
+									eventType,
 									cause: error,
 								}),
 							),
@@ -243,8 +256,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 					return yield* Queue.size(queue).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
-								new QueueError({
+								new QueueSizeError({
 									message: `Failed to get queue size: ${eventType}`,
+									eventType,
 									cause: error,
 								}),
 							),

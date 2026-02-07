@@ -45,7 +45,19 @@ import {
 	type EmptyCommands,
 	type TypedCommandContext,
 } from "./command.ts"
-import type { HandlerError } from "./errors.ts"
+import {
+	CommandArgsDecodeError,
+	CommandHandlerError,
+	CommandSyncError,
+	EventHandlerError,
+	MentionableSyncError,
+	MessageDeleteError,
+	MessageListError,
+	MessageReactError,
+	MessageReplyError,
+	MessageSendError,
+	MessageUpdateError,
+} from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
@@ -118,23 +130,29 @@ export type ChannelMemberType = Schema.Schema.Type<typeof ChannelMember.Model.js
 /**
  * Hazel-specific event handlers
  */
-export type MessageHandler<E = HandlerError, R = never> = (message: MessageType) => Effect.Effect<void, E, R>
-export type ChannelHandler<E = HandlerError, R = never> = (channel: ChannelType) => Effect.Effect<void, E, R>
-export type ChannelMemberHandler<E = HandlerError, R = never> = (
+export type MessageHandler<E = EventHandlerError, R = never> = (
+	message: MessageType,
+) => Effect.Effect<void, E, R>
+export type ChannelHandler<E = EventHandlerError, R = never> = (
+	channel: ChannelType,
+) => Effect.Effect<void, E, R>
+export type ChannelMemberHandler<E = EventHandlerError, R = never> = (
 	member: ChannelMemberType,
 ) => Effect.Effect<void, E, R>
 
 /**
  * Typed command handler - receives CommandContext with typed args
  */
-export type CommandHandler<Args, E = HandlerError, R = never> = (
+export type CommandHandler<Args, E = CommandHandlerError, R = never> = (
 	ctx: TypedCommandContext<Args>,
 ) => Effect.Effect<void, E, R>
 
 /**
  * Handler for when the bot is @mentioned in a message
  */
-export type MentionHandler<E = HandlerError, R = never> = (message: MessageType) => Effect.Effect<void, E, R>
+export type MentionHandler<E = EventHandlerError, R = never> = (
+	message: MessageType,
+) => Effect.Effect<void, E, R>
 
 // Re-export command types for convenience
 export {
@@ -294,7 +312,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					})
 
 					yield* Effect.logDebug(`Synced ${response.syncedCount} commands successfully`)
-				}),
+				}).pipe(
+					Effect.mapError(
+						(cause) =>
+							new CommandSyncError({
+								message: "Failed to sync commands with backend",
+								cause,
+							}),
+					),
+				),
 		})
 
 		/**
@@ -312,7 +338,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					})
 
 					yield* Effect.logDebug("Mentionable flag synced successfully")
-				}),
+				}).pipe(
+					Effect.mapError(
+						(cause) =>
+							new MentionableSyncError({
+								message: "Failed to sync mentionable flag with backend",
+								cause,
+							}),
+					),
+				),
 		})
 
 		/**
@@ -382,7 +416,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							embeds: opts?.embeds ?? null,
 						},
 					})
-					.pipe(Effect.map((r) => r.data)),
+					.pipe(
+						Effect.map((r) => r.data),
+						Effect.mapError(
+							(cause) =>
+								new MessageSendError({
+									message: "Failed to create message",
+									channelId: chId,
+									cause,
+								}),
+						),
+					),
 			)
 
 		/**
@@ -399,56 +443,66 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							embeds: payload.embeds ?? null,
 						},
 					})
-					.pipe(Effect.map((r) => r.data)),
+					.pipe(
+						Effect.map((r) => r.data),
+						Effect.mapError(
+							(cause) =>
+								new MessageUpdateError({
+									message: "Failed to update message",
+									messageId,
+									cause,
+								}),
+						),
+					),
 			)
 
 		return {
 			/**
 			 * Register a handler for new messages
 			 */
-			onMessage: <E = HandlerError, R = never>(handler: MessageHandler<E, R>) =>
+			onMessage: <E = EventHandlerError, R = never>(handler: MessageHandler<E, R>) =>
 				bot.on("messages.insert", handler),
 
 			/**
 			 * Register a handler for message updates
 			 */
-			onMessageUpdate: <E = HandlerError, R = never>(handler: MessageHandler<E, R>) =>
+			onMessageUpdate: <E = EventHandlerError, R = never>(handler: MessageHandler<E, R>) =>
 				bot.on("messages.update", handler),
 
 			/**
 			 * Register a handler for message deletes
 			 */
-			onMessageDelete: <E = HandlerError, R = never>(handler: MessageHandler<E, R>) =>
+			onMessageDelete: <E = EventHandlerError, R = never>(handler: MessageHandler<E, R>) =>
 				bot.on("messages.delete", handler),
 
 			/**
 			 * Register a handler for new channels
 			 */
-			onChannelCreated: <E = HandlerError, R = never>(handler: ChannelHandler<E, R>) =>
+			onChannelCreated: <E = EventHandlerError, R = never>(handler: ChannelHandler<E, R>) =>
 				bot.on("channels.insert", handler),
 
 			/**
 			 * Register a handler for channel updates
 			 */
-			onChannelUpdated: <E = HandlerError, R = never>(handler: ChannelHandler<E, R>) =>
+			onChannelUpdated: <E = EventHandlerError, R = never>(handler: ChannelHandler<E, R>) =>
 				bot.on("channels.update", handler),
 
 			/**
 			 * Register a handler for channel deletes
 			 */
-			onChannelDeleted: <E = HandlerError, R = never>(handler: ChannelHandler<E, R>) =>
+			onChannelDeleted: <E = EventHandlerError, R = never>(handler: ChannelHandler<E, R>) =>
 				bot.on("channels.delete", handler),
 
 			/**
 			 * Register a handler for new channel members
 			 */
-			onChannelMemberAdded: <E = HandlerError, R = never>(handler: ChannelMemberHandler<E, R>) =>
+			onChannelMemberAdded: <E = EventHandlerError, R = never>(handler: ChannelMemberHandler<E, R>) =>
 				bot.on("channel_members.insert", handler),
 
 			/**
 			 * Register a handler for removed channel members
 			 */
-			onChannelMemberRemoved: <E = HandlerError, R = never>(handler: ChannelMemberHandler<E, R>) =>
+			onChannelMemberRemoved: <E = EventHandlerError, R = never>(handler: ChannelMemberHandler<E, R>) =>
 				bot.on("channel_members.delete", handler),
 
 			/**
@@ -464,7 +518,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 * )
 			 * ```
 			 */
-			onMention: <E = HandlerError, R = never>(handler: MentionHandler<E, R>) =>
+			onMention: <E = EventHandlerError, R = never>(handler: MentionHandler<E, R>) =>
 				Ref.update(mentionHandlersRef, (handlers) => [...handlers, handler as MentionHandlerFn]),
 
 			/**
@@ -496,6 +550,14 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							})
 							.pipe(
 								Effect.map((r) => r.data),
+								Effect.mapError(
+									(cause) =>
+										new MessageSendError({
+											message: "Failed to send message",
+											channelId,
+											cause,
+										}),
+								),
 								Effect.withSpan("bot.message.send", { attributes: { channelId } }),
 							),
 					),
@@ -527,6 +589,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							})
 							.pipe(
 								Effect.map((r) => r.data),
+								Effect.mapError(
+									(cause) =>
+										new MessageReplyError({
+											message: "Failed to reply to message",
+											channelId: message.channelId,
+											replyToMessageId: message.id,
+											cause,
+										}),
+								),
 								Effect.withSpan("bot.message.reply", {
 									attributes: {
 										channelId: message.channelId,
@@ -550,6 +621,14 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							})
 							.pipe(
 								Effect.map((r) => r.data),
+								Effect.mapError(
+									(cause) =>
+										new MessageUpdateError({
+											message: "Failed to update message",
+											messageId: message.id,
+											cause,
+										}),
+								),
 								Effect.withSpan("bot.message.update", {
 									attributes: { messageId: message.id },
 								}),
@@ -566,7 +645,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							.deleteMessage({
 								path: { id },
 							})
-							.pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
+							.pipe(
+								Effect.mapError(
+									(cause) =>
+										new MessageDeleteError({
+											message: "Failed to delete message",
+											messageId: id,
+											cause,
+										}),
+								),
+								Effect.withSpan("bot.message.delete", { attributes: { messageId: id } }),
+							),
 					),
 
 				/**
@@ -585,6 +674,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								},
 							})
 							.pipe(
+								Effect.mapError(
+									(cause) =>
+										new MessageReactError({
+											message: "Failed to toggle reaction",
+											messageId: message.id,
+											emoji,
+											cause,
+										}),
+								),
 								Effect.withSpan("bot.message.react", {
 									attributes: { messageId: message.id, emoji },
 								}),
@@ -629,7 +727,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								limit: options?.limit,
 							},
 						})
-						.pipe(Effect.withSpan("bot.message.list", { attributes: { channelId } })),
+						.pipe(
+							Effect.mapError(
+								(cause) =>
+									new MessageListError({
+										message: "Failed to list messages",
+										channelId,
+										cause,
+									}),
+							),
+							Effect.withSpan("bot.message.list", { attributes: { channelId } }),
+						),
 			},
 
 			/**
@@ -800,7 +908,12 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 * )
 			 * ```
 			 */
-			onCommand: <Name extends string, Args extends Schema.Struct.Fields, E = HandlerError, R = never>(
+			onCommand: <
+				Name extends string,
+				Args extends Schema.Struct.Fields,
+				E = CommandHandlerError,
+				R = never,
+			>(
 				command: CommandDef<Name, Args>,
 				handler: CommandHandler<Schema.Schema.Type<Schema.Struct<Args>>, E, R>,
 			) =>
@@ -829,12 +942,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 */
 			withErrorHandler:
 				<Args>(ctx: TypedCommandContext<Args>) =>
-				<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | void, never, R> =>
+				<A, E, R>(
+					effect: Effect.Effect<A, E, R>,
+				): Effect.Effect<A, CommandHandlerError | MessageSendError, R> =>
 					effect.pipe(
-						Effect.catchAll((error) =>
+						Effect.mapError(
+							(cause) =>
+								new CommandHandlerError({
+									message: `Error in /${ctx.commandName} command`,
+									commandName: ctx.commandName,
+									cause,
+								}),
+						),
+						Effect.catchTag("CommandHandlerError", (error) =>
 							Effect.gen(function* () {
 								yield* Effect.logError(`Error in /${ctx.commandName} command`, { error })
-								yield* messageLimiter(
+								const notifyError = messageLimiter(
 									httpApiClient["api-v1-messages"]
 										.createMessage({
 											payload: {
@@ -845,8 +968,25 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 												embeds: null,
 											},
 										})
-										.pipe(Effect.ignore),
+										.pipe(
+											Effect.mapError(
+												(cause) =>
+													new MessageSendError({
+														message:
+															"Failed to notify user about command failure",
+														channelId: ctx.channelId,
+														cause,
+													}),
+											),
+										),
+								).pipe(
+									Effect.catchTag("MessageSendError", (sendError) =>
+										Effect.fail(sendError),
+									),
 								)
+
+								yield* notifyError
+								return yield* Effect.fail(error)
 							}),
 						),
 					),
@@ -962,10 +1102,21 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 											onNone: () => Effect.succeed(event.arguments),
 											onSome: (def) =>
 												Schema.decodeUnknown(def.argsSchema)(event.arguments).pipe(
-													Effect.catchAll((error) =>
+													Effect.mapError(
+														(cause) =>
+															new CommandArgsDecodeError({
+																message: `Failed to decode args for /${event.commandName}`,
+																commandName: event.commandName,
+																cause,
+															}),
+													),
+													Effect.catchTag("CommandArgsDecodeError", (error) =>
 														Effect.logWarning(
 															`Failed to decode args for /${event.commandName}, using raw arguments`,
-															{ error, rawArgs: event.arguments },
+															{
+																error,
+																rawArgs: event.arguments,
+															},
 														).pipe(Effect.as(event.arguments)),
 													),
 												),
@@ -1133,9 +1284,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 */
 				withErrorHandler:
 					<Args>(ctx: TypedCommandContext<Args>, session: AIStreamSession) =>
-					<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | void, never, R> =>
+					<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, CommandHandlerError, R> =>
 						effect.pipe(
-							Effect.catchAll((error) =>
+							Effect.mapError(
+								(cause) =>
+									new CommandHandlerError({
+										message: `Error in AI streaming for /${ctx.commandName}`,
+										commandName: ctx.commandName,
+										cause,
+									}),
+							),
+							Effect.catchTag("CommandHandlerError", (error) =>
 								Effect.gen(function* () {
 									yield* Effect.logError(`Error in AI streaming for /${ctx.commandName}`, {
 										error,
@@ -1143,8 +1302,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									// Mark the session as failed - this updates the existing message
 									yield* session
 										.fail("An unexpected error occurred. Please try again.")
-										.pipe(Effect.ignore)
+										.pipe(
+											Effect.catchAllCause((cause) =>
+												Effect.logError("Failed to mark AI stream as failed", {
+													cause,
+												}),
+											),
+										)
 									// Do NOT create a new message - the ErrorCard will show the error
+									return yield* Effect.fail(error)
 								}),
 							),
 						),

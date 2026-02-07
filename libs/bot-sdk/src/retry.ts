@@ -6,7 +6,7 @@
  */
 
 import { Duration, Effect, Schedule } from "effect"
-import { isRetryable } from "./errors.ts"
+import { isRetryableError, retryPolicyForTag } from "./errors.ts"
 
 /**
  * Pre-configured retry strategies for common bot SDK operations
@@ -21,7 +21,15 @@ export const RetryStrategy = {
 	 */
 	transientErrors: Schedule.exponential(Duration.millis(100), 2).pipe(
 		Schedule.jittered,
-		Schedule.whileInput(isRetryable),
+		Schedule.whileInput((error) => {
+			const tag =
+				typeof error === "object" && error !== null && "_tag" in error
+					? String((error as Record<string, unknown>)["_tag"])
+					: ""
+			return tag.length > 0
+				? retryPolicyForTag(tag) === "transient" || retryPolicyForTag(tag) === "connection"
+				: isRetryableError(error)
+		}),
 		Schedule.intersect(Schedule.recurs(5)),
 	),
 
@@ -34,6 +42,13 @@ export const RetryStrategy = {
 	 */
 	connectionErrors: Schedule.exponential(Duration.seconds(1), 2).pipe(
 		Schedule.jittered,
+		Schedule.whileInput((error) => {
+			const tag =
+				typeof error === "object" && error !== null && "_tag" in error
+					? String((error as Record<string, unknown>)["_tag"])
+					: ""
+			return tag.length > 0 ? retryPolicyForTag(tag) === "connection" : isRetryableError(error)
+		}),
 		Schedule.intersect(Schedule.recurs(10)),
 	),
 
@@ -45,6 +60,13 @@ export const RetryStrategy = {
 	 */
 	quickRetry: Schedule.exponential(Duration.millis(50), 2).pipe(
 		Schedule.jittered,
+		Schedule.whileInput((error) => {
+			const tag =
+				typeof error === "object" && error !== null && "_tag" in error
+					? String((error as Record<string, unknown>)["_tag"])
+					: ""
+			return tag.length > 0 ? retryPolicyForTag(tag) === "quick" : isRetryableError(error)
+		}),
 		Schedule.intersect(Schedule.recurs(3)),
 	),
 

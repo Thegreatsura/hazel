@@ -99,9 +99,44 @@ export const SseCommandListenerConfigTag = Context.GenericTag<SseCommandListener
 
 // ============ Error ============
 
-export class SseConnectionError extends Schema.TaggedError<SseConnectionError>()("SseConnectionError", {
+export class SseRequestError extends Schema.TaggedError<SseRequestError>()("SseRequestError", {
 	message: Schema.String,
+	cause: Schema.Unknown,
+}) {}
+
+export class SseResponseError extends Schema.TaggedError<SseResponseError>()("SseResponseError", {
+	message: Schema.String,
+	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
+}) {}
+
+export class SsePayloadParseError extends Schema.TaggedError<SsePayloadParseError>()("SsePayloadParseError", {
+	message: Schema.String,
+	payload: Schema.String,
+	cause: Schema.Unknown,
+}) {}
+
+export class SseCommandDecodeError extends Schema.TaggedError<SseCommandDecodeError>()(
+	"SseCommandDecodeError",
+	{
+		message: Schema.String,
+		payload: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
+
+export class SseReconnectExhaustedError extends Schema.TaggedError<SseReconnectExhaustedError>()(
+	"SseReconnectExhaustedError",
+	{
+		message: Schema.String,
+		retryCycle: Schema.Number,
+		cause: Schema.Unknown,
+	},
+) {}
+
+export class SseUnexpectedError extends Schema.TaggedError<SseUnexpectedError>()("SseUnexpectedError", {
+	message: Schema.String,
+	cause: Schema.Unknown,
 }) {}
 
 export const sseReconnectRetrySchedule = Schedule.exponential("1 second", 2).pipe(
@@ -182,8 +217,9 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 
 			if (response.status !== 200) {
 				return yield* Effect.fail(
-					new SseConnectionError({
+					new SseResponseError({
 						message: `SSE connection failed with status ${response.status}`,
+						status: response.status,
 					}),
 				)
 			}
@@ -212,12 +248,24 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 					return Effect.try({
 						try: () => JSON.parse(event.data) as unknown,
 						catch: (error) =>
-							new SseConnectionError({
+							new SsePayloadParseError({
 								message: `Failed to parse SSE event data as JSON`,
+								payload: event.data,
 								cause: error,
 							}),
 					}).pipe(
-						Effect.flatMap((parsed) => Schema.decodeUnknown(CommandEventSchema)(parsed)),
+						Effect.flatMap((parsed) =>
+							Schema.decodeUnknown(CommandEventSchema)(parsed).pipe(
+								Effect.mapError(
+									(cause) =>
+										new SseCommandDecodeError({
+											message: "Failed to decode command payload",
+											payload: event.data,
+											cause,
+										}),
+								),
+							),
+						),
 						Effect.tap((cmd) =>
 							Effect.logInfo("Command received", {
 								commandName: cmd.commandName,
@@ -272,24 +320,24 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			Effect.catchTags({
 				RequestError: (e) =>
 					Effect.fail(
-						new SseConnectionError({
+						new SseRequestError({
 							message: `Request error: ${e.message}`,
 							cause: e,
 						}),
 					),
 				ResponseError: (e) =>
 					Effect.fail(
-						new SseConnectionError({
+						new SseResponseError({
 							message: `Response error: ${e.reason}`,
+							status: undefined,
 							cause: e,
 						}),
 					),
 			}),
 			Effect.catchAll((e) =>
 				Effect.fail(
-					new SseConnectionError({
-						message:
-							e instanceof SseConnectionError ? e.message : `Connection error: ${String(e)}`,
+					new SseUnexpectedError({
+						message: `Unexpected SSE connection error: ${String(e)}`,
 						cause: e,
 					}),
 				),
@@ -309,9 +357,14 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 				Effect.tapError((error) =>
 					Effect.gen(function* () {
 						const retryCycle = yield* Ref.updateAndGet(retryCycleRef, (n) => n + 1)
+						const exhaustedError = new SseReconnectExhaustedError({
+							message: "SSE connection exhausted retries for current cycle",
+							retryCycle,
+							cause: error,
+						})
 						yield* Metric.increment(sseRetryExhaustedCounter)
 						yield* Effect.logWarning("SSE connection exhausted retries for current cycle", {
-							error,
+							error: exhaustedError,
 							botId,
 							botName,
 							retryCycle,

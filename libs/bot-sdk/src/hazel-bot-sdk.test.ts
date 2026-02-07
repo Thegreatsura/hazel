@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, afterEach } from "@effect/vitest"
 import { Effect, Layer, Ref, Scope } from "effect"
-import { BotStartError } from "./errors.ts"
+import { ShapeStreamStartupError } from "./errors.ts"
 import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import {
@@ -45,13 +45,13 @@ describe("HazelBotClient mention handling", () => {
 						const events = yield* Ref.get(registered)
 						if (!events.includes("messages.insert")) {
 							return yield* Effect.fail(
-								new BotStartError({
+								new ShapeStreamStartupError({
 									message: "messages.insert not registered before bot.start",
 									cause: undefined,
 								}),
 							)
 						}
-					}).pipe(Effect.asVoid) as Effect.Effect<void, BotStartError, Scope.Scope>,
+					}).pipe(Effect.asVoid) as Effect.Effect<void, ShapeStreamStartupError, Scope.Scope>,
 					getAuthContext: Effect.succeed({
 						botId: "bot-1",
 						botName: "Test Bot",

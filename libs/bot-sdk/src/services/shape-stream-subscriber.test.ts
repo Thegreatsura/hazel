@@ -14,7 +14,7 @@ import {
 	TestClock,
 	TestContext,
 } from "effect"
-import { ConnectionError } from "../errors.ts"
+import { ShapeStreamSubscribeError } from "../errors.ts"
 import { ElectricEventQueue, defaultEventQueueConfig } from "./electric-event-queue.ts"
 
 // ============================================================================
@@ -82,7 +82,7 @@ describe("shapeStreamToEffectStream", () => {
 			const collectedMessages: Message[] = []
 
 			// Create a stream using the same pattern as shapeStreamToEffectStream
-			const effectStream = Stream.async<Message, ConnectionError>((emit) => {
+			const effectStream = Stream.async<Message, ShapeStreamSubscribeError>((emit) => {
 				const unsubscribe = mockStream.subscribe(
 					(messages) => {
 						for (const message of messages) {
@@ -91,9 +91,9 @@ describe("shapeStreamToEffectStream", () => {
 					},
 					(error) => {
 						emit.fail(
-							new ConnectionError({
+							new ShapeStreamSubscribeError({
 								message: `Shape stream error for table: test`,
-								service: "electric",
+								table: "test",
 								cause: error,
 							}),
 						)
@@ -136,7 +136,7 @@ describe("shapeStreamToEffectStream", () => {
 			const mockStream = createMockShapeStream()
 
 			// Create a stream using the same pattern as shapeStreamToEffectStream
-			const effectStream = Stream.async<Message, ConnectionError>((emit) => {
+			const effectStream = Stream.async<Message, ShapeStreamSubscribeError>((emit) => {
 				const unsubscribe = mockStream.subscribe(
 					(messages) => {
 						for (const message of messages) {
@@ -145,9 +145,9 @@ describe("shapeStreamToEffectStream", () => {
 					},
 					(error) => {
 						emit.fail(
-							new ConnectionError({
+							new ShapeStreamSubscribeError({
 								message: `Shape stream error for table: test`,
-								service: "electric",
+								table: "test",
 								cause: error,
 							}),
 						)
@@ -171,7 +171,7 @@ describe("shapeStreamToEffectStream", () => {
 			expect(Exit.isFailure(exit)).toBe(true)
 			if (Exit.isFailure(exit)) {
 				const error = exit.cause
-				// The cause should contain our ConnectionError
+				// The cause should contain our ShapeStreamSubscribeError
 				expect(String(error)).toContain("Shape stream error for table: test")
 			}
 		}).pipe(Effect.runPromise))
@@ -270,32 +270,31 @@ describe("ShapeStreamSubscriber integration", () => {
 // ============================================================================
 
 describe("error handling", () => {
-	it("ConnectionError includes table name and service", () => {
-		const error = new ConnectionError({
+	it("ShapeStreamSubscribeError includes table name", () => {
+		const error = new ShapeStreamSubscribeError({
 			message: "Shape stream error for table: users",
-			service: "electric",
+			table: "users",
 			cause: new Error("Network failure"),
 		})
 
-		expect(error._tag).toBe("ConnectionError")
+		expect(error._tag).toBe("ShapeStreamSubscribeError")
 		expect(error.message).toContain("users")
-		expect(error.service).toBe("electric")
-		expect(error.retryable).toBe(true)
+		expect(error.table).toBe("users")
 	})
 
-	it("stream errors are converted to ConnectionError with proper context", () =>
+	it("stream errors are converted to ShapeStreamSubscribeError with proper context", () =>
 		Effect.gen(function* () {
 			const mockStream = createMockShapeStream()
 			const tableName = "test_table"
 
-			const effectStream = Stream.async<Message, ConnectionError>((emit) => {
+			const effectStream = Stream.async<Message, ShapeStreamSubscribeError>((emit) => {
 				mockStream.subscribe(
 					() => {},
 					(error) => {
 						emit.fail(
-							new ConnectionError({
+							new ShapeStreamSubscribeError({
 								message: `Shape stream error for table: ${tableName}`,
-								service: "electric",
+								table: tableName,
 								cause: error,
 							}),
 						)

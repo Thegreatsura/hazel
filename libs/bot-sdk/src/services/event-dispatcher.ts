@@ -1,5 +1,6 @@
 import type { ConfigError } from "effect"
 import { Config, Effect, Fiber, Layer, Metric, Schedule, type Scope } from "effect"
+import { EventDispatchError, HandlerRetryExhaustedError } from "../errors.ts"
 import {
 	createEventLogContext,
 	generateEventId,
@@ -151,12 +152,21 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 							Effect.tap(() => Metric.increment(handlerExecutionsCounter)),
 							Effect.retry(retryPolicy),
 							Effect.catchAllCause((cause) =>
+								Effect.fail(
+									new HandlerRetryExhaustedError({
+										message: "Handler failed after retries",
+										eventType,
+										cause,
+									}),
+								),
+							),
+							Effect.catchTag("HandlerRetryExhaustedError", (error) =>
 								Effect.gen(function* () {
 									yield* Metric.increment(handlerFailuresCounter).pipe(
 										Effect.tagMetrics("event_type", eventType),
 									)
 									yield* Effect.logError("Handler failed after retries", {
-										cause,
+										error,
 										eventType,
 										eventId,
 									}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
@@ -190,7 +200,15 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 						Effect.gen(function* () {
 							// Take next event (blocks until available)
 							const event = yield* queue.take(eventType).pipe(
-								Effect.catchAll((error) =>
+								Effect.mapError(
+									(error) =>
+										new EventDispatchError({
+											message: "Failed to take event from queue",
+											eventType,
+											cause: error,
+										}),
+								),
+								Effect.catchTag("EventDispatchError", (error) =>
 									Effect.gen(function* () {
 										yield* Effect.logError("Failed to take event from queue", {
 											error,
