@@ -25,6 +25,10 @@ export const BotEnvConfig = Config.all({
 		Config.withDefault("https://api.hazel.sh"),
 		Config.withDescription("Backend API URL (also used for SSE command streaming)"),
 	),
+	healthPort: Config.number("PORT").pipe(
+		Config.withDefault(0),
+		Config.withDescription("Health check server port (default 0, OS-assigned)"),
+	),
 })
 
 export type BotEnvConfig = Config.Config.Success<typeof BotEnvConfig>

@@ -31,6 +31,12 @@ export interface RunBotConfig<Commands extends CommandGroup<any> = EmptyCommands
 	readonly mentionable?: boolean
 
 	/**
+	 * Health check server port. Set to `false` to disable.
+	 * @default 9090 (or PORT env var)
+	 */
+	readonly healthPort?: number | false
+
+	/**
 	 * Additional layers to provide to the bot program.
 	 * These are merged and provided to the setup function.
 	 */
@@ -99,6 +105,7 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			backendUrl: options.config?.backendUrl ?? envConfig.backendUrl,
 			commands: options.commands,
 			mentionable: options.mentionable,
+			healthPort: options.healthPort ?? envConfig.healthPort,
 			serviceName: options.serviceName ?? "hazel-bot",
 			queueConfig: options.config?.queueConfig,
 			dispatcherConfig: options.config?.dispatcherConfig,

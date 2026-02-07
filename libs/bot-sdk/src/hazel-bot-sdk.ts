@@ -54,6 +54,7 @@ import {
 	ElectricEventQueue,
 	EventDispatcher,
 	ShapeStreamSubscriber,
+	BotHealthServerLive,
 } from "./services/index.ts"
 import { createActorsClient } from "@hazel/actors/client"
 import {
@@ -1222,6 +1223,12 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly serviceName?: string
 
 	/**
+	 * Health check server port. Set to `false` to disable.
+	 * @default 0 (OS-assigned)
+	 */
+	readonly healthPort?: number | false
+
+	/**
 	 * Logging configuration (optional)
 	 *
 	 * @example
@@ -1433,13 +1440,22 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create tracing layer with configurable service name
 	const TracingLayer = createTracingLayer(config.serviceName ?? "hazel-bot")
 
+	// Create health server layer (enabled by default on port 0 = OS-assigned)
+	const healthPort = config.healthPort ?? 0
+	const HealthServerLayer =
+		config.healthPort === false ? Layer.empty : BotHealthServerLive(healthPort as number)
+
 	// Compose all layers with proper dependency order
-	const AllLayers = HazelBotClient.Default.pipe(
-		Layer.provide(BotClientLayer),
-		Layer.provide(RpcClientLayer),
-		Layer.provide(RpcClientConfigLayer),
-		Layer.provide(CommandListenerLayer),
-		Layer.provide(RuntimeConfigLayer),
+	const AllLayers = Layer.mergeAll(
+		HazelBotClient.Default.pipe(
+			Layer.provide(BotClientLayer),
+			Layer.provide(RpcClientLayer),
+			Layer.provide(RpcClientConfigLayer),
+			Layer.provide(CommandListenerLayer),
+			Layer.provide(RuntimeConfigLayer),
+		),
+		HealthServerLayer,
+	).pipe(
 		Layer.provide(
 			Layer.mergeAll(
 				Layer.provide(EventDispatcherLayer, EventQueueLayer),
