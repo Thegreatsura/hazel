@@ -259,25 +259,27 @@ These are specific to AI streaming:
 ### Catch specific tags
 
 ```typescript
-yield* bot.message.send(channelId, content).pipe(
-	Effect.catchTags({
-		MessageSendError: (error) => Effect.logError("Send failed", { error }),
-		MessageReplyError: (error) => Effect.logError("Reply failed", { error }),
-	}),
-)
+yield *
+	bot.message.send(channelId, content).pipe(
+		Effect.catchTags({
+			MessageSendError: (error) => Effect.logError("Send failed", { error }),
+			MessageReplyError: (error) => Effect.logError("Reply failed", { error }),
+		}),
+	)
 ```
 
 ### Handle command failures explicitly
 
 ```typescript
-yield* myCommandEffect.pipe(
-	Effect.catchTag("CommandArgsDecodeError", (error) =>
-		Effect.logWarning("Invalid command arguments", { error }),
-	),
-	Effect.catchTag("CommandHandlerError", (error) =>
-		Effect.logError("Command execution failed", { error }),
-	),
-)
+yield *
+	myCommandEffect.pipe(
+		Effect.catchTag("CommandArgsDecodeError", (error) =>
+			Effect.logWarning("Invalid command arguments", { error }),
+		),
+		Effect.catchTag("CommandHandlerError", (error) =>
+			Effect.logError("Command execution failed", { error }),
+		),
+	)
 ```
 
 ## Retry Classification

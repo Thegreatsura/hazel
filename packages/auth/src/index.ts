@@ -1,11 +1,5 @@
 // Core types
-export {
-	type AuthenticatedUserContext,
-	type AuthenticateResult,
-	type BackendAuthResult,
-	ValidatedSession,
-	type WorkOSUser,
-} from "./types.ts"
+export { type AuthenticatedUserContext, ValidatedSession, type WorkOSUser } from "./types.ts"
 
 // Errors
 export { SessionCacheError } from "./errors.ts"
@@ -24,23 +18,7 @@ export {
 export { AuthConfig, type AuthConfigShape } from "./config.ts"
 
 // Session
-export {
-	decodeSessionJwt,
-	getJwtExpiry,
-	type SealedSession,
-	SessionValidator,
-	WorkOSClient,
-} from "./session/index.ts"
-
-// Cache
-export {
-	calculateCacheTtl,
-	DEFAULT_CACHE_TTL,
-	MIN_CACHE_TTL_SECONDS,
-	SESSION_CACHE_PREFIX,
-	sessionCacheKey,
-	SessionCache,
-} from "./cache/index.ts"
+export { decodeSessionJwt, getJwtExpiry, WorkOSClient } from "./session/index.ts"
 
 // Consumers
 export { BackendAuth, BackendAuthLive, type UserRepoLike } from "./consumers/backend-auth.ts"

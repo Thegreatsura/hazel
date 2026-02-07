@@ -1,4 +1,4 @@
-import { Config, Effect, Layer, Redacted } from "effect"
+import { Config, Effect, Layer } from "effect"
 
 /**
  * Configuration for auth services.
@@ -9,8 +9,6 @@ export interface AuthConfigShape {
 	readonly workosApiKey: string
 	/** WorkOS client ID */
 	readonly workosClientId: string
-	/** Password for sealing/unsealing WorkOS session cookies */
-	readonly workosPasswordCookie: Redacted.Redacted<string>
 }
 
 /**
@@ -22,12 +20,10 @@ export class AuthConfig extends Effect.Service<AuthConfig>()("@hazel/auth/AuthCo
 	effect: Effect.gen(function* () {
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
-		const workosPasswordCookie = yield* Config.redacted("WORKOS_COOKIE_PASSWORD")
 
 		return {
 			workosApiKey,
 			workosClientId,
-			workosPasswordCookie,
 		} satisfies AuthConfigShape
 	}),
 }) {
@@ -35,6 +31,5 @@ export class AuthConfig extends Effect.Service<AuthConfig>()("@hazel/auth/AuthCo
 		_tag: "@hazel/auth/AuthConfig",
 		workosApiKey: "sk_test_123",
 		workosClientId: "client_test_123",
-		workosPasswordCookie: Redacted.make("test-cookie-password-32chars-min"),
 	})
 }

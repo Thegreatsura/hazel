@@ -163,7 +163,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							// Execute the MessageNotificationWorkflow via HTTP
 							// The WorkflowProxy creates an endpoint named after the workflow
 							yield* client.workflows
-								.MessageNotificationWorkflow({
+								.MessageNotificationWorkflowDiscard({
 									payload: {
 										messageId: event.record.id,
 										channelId: event.record.channelId,
@@ -208,21 +208,6 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											Effect.fail(
 												new WorkflowInitializationError({
 													message: "Failed to execute notification workflow",
-													cause: err.message,
-												}),
-											),
-										// Workflow activity errors
-										GetChannelMembersError: (err) =>
-											Effect.fail(
-												new WorkflowInitializationError({
-													message: "Notification workflow failed",
-													cause: err.message,
-												}),
-											),
-										CreateNotificationError: (err) =>
-											Effect.fail(
-												new WorkflowInitializationError({
-													message: "Notification workflow failed",
 													cause: err.message,
 												}),
 											),
@@ -277,7 +262,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 
 									if (originalMessageResult.length > 0) {
 										yield* client.workflows
-											.ThreadNamingWorkflow({
+											.ThreadNamingWorkflowDiscard({
 												payload: {
 													threadChannelId: event.record.channelId,
 													originalMessageId: originalMessageResult[0]!.id,
@@ -299,13 +284,6 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 													ParseError: () => Effect.void,
 													RequestError: () => Effect.void,
 													ResponseError: () => Effect.void,
-													ThreadChannelNotFoundError: () => Effect.void,
-													OriginalMessageNotFoundError: () => Effect.void,
-													ThreadContextQueryError: () => Effect.void,
-													AIProviderUnavailableError: () => Effect.void,
-													AIRateLimitError: () => Effect.void,
-													AIResponseParseError: () => Effect.void,
-													ThreadNameUpdateError: () => Effect.void,
 												}),
 											)
 

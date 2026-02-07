@@ -140,21 +140,10 @@ export const envCommand = Command.make(
 			// Step 3: Secrets - reuse existing or generate new
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 3: Secrets \u2500\u2500\u2500"))
 
-			const existingCookiePassword = getExistingValue(envResult, "WORKOS_COOKIE_PASSWORD")
 			const existingEncryptionKey = getExistingValue(envResult, "INTEGRATION_ENCRYPTION_KEY")
 
 			const generatedSecrets = {
-				cookiePassword: existingCookiePassword?.value ?? secrets.generatePassword(32),
 				encryptionKey: existingEncryptionKey?.value ?? secrets.generateEncryptionKey(),
-			}
-
-			if (existingCookiePassword) {
-				yield* Console.log(
-					pc.green("\u2713") +
-						` Reusing WORKOS_COOKIE_PASSWORD (from ${existingCookiePassword.source})`,
-				)
-			} else {
-				yield* Console.log(pc.green("\u2713") + " Generated WORKOS_COOKIE_PASSWORD")
 			}
 
 			if (existingEncryptionKey) {

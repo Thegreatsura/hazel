@@ -711,7 +711,6 @@ const startProxy = async () => {
 			REDIS_URL: "redis://localhost:6380",
 			WORKOS_API_KEY: "sk_test_e2e",
 			WORKOS_CLIENT_ID: "client_e2e",
-			WORKOS_COOKIE_PASSWORD: "01234567890123456789012345678901",
 			ALLOWED_ORIGIN: "http://localhost:3000",
 		},
 		stdio: ["ignore", "pipe", "pipe"],

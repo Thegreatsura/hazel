@@ -1,26 +1,9 @@
 import type { OrganizationId, UserId } from "@hazel/schema"
-import type {
-	AuthenticateWithSessionCookieFailedResponse,
-	AuthenticateWithSessionCookieSuccessResponse,
-	RefreshSessionResponse,
-	User as WorkOSUser,
-} from "@workos-inc/node"
+import type { User as WorkOSUser } from "@workos-inc/node"
 import { Schema } from "effect"
 
 // Re-export WorkOS types for consumers
 export type { WorkOSUser }
-export type {
-	AuthenticateWithSessionCookieFailedResponse,
-	AuthenticateWithSessionCookieSuccessResponse,
-	RefreshSessionResponse,
-}
-
-/**
- * Union type for authenticate() result from WorkOS SDK
- */
-export type AuthenticateResult =
-	| AuthenticateWithSessionCookieSuccessResponse
-	| AuthenticateWithSessionCookieFailedResponse
 
 /**
  * Validated session data that gets cached in Redis.
@@ -66,17 +49,4 @@ export interface AuthenticatedUserContext {
 	organizationId?: OrganizationId
 	/** User role within the organization */
 	role?: string
-	/** New sealed session cookie if the session was refreshed (caller should set cookie) */
-	refreshedSession?: string
-}
-
-/**
- * Result from backend authentication.
- * Includes full CurrentUser and optionally a refreshed session cookie.
- */
-export interface BackendAuthResult {
-	/** The authenticated user */
-	currentUser: import("@hazel/domain").CurrentUser.Schema
-	/** New sealed session cookie if the session was refreshed */
-	refreshedSession: string | undefined
 }

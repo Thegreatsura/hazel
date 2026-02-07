@@ -3,7 +3,6 @@ import type { OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
-import { SessionValidator } from "../session/session-validator.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
 
@@ -24,7 +23,6 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
  *
  * Key differences from BackendAuth:
  * - Does NOT upsert users to database (validates only)
- * - Handles session refresh and returns new cookie if refreshed
  * - Rejects if user doesn't exist in database
  *
  * Note: Database.Database is intentionally NOT included in dependencies
@@ -32,9 +30,8 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
  */
 export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	accessors: true,
-	dependencies: [SessionValidator.Default, UserLookupCache.Default, WorkOSClient.Default],
+	dependencies: [UserLookupCache.Default, WorkOSClient.Default],
 	effect: Effect.gen(function* () {
-		const validator = yield* SessionValidator
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
@@ -94,51 +91,8 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 		})
 
 		/**
-		 * Validate a session cookie and return user context.
-		 * Uses cached session validation with automatic refresh.
-		 * Rejects if user is not found in database.
-		 * Returns refreshedSession if the session was refreshed (caller should set cookie).
-		 */
-		const validateSession = Effect.fn("ProxyAuth.validateSession")(function* (sessionCookie: string) {
-			// Validate session with automatic refresh (uses Redis cache)
-			const { session, newSealedSession } = yield* validator.validateAndRefresh(sessionCookie)
-
-			// Lookup user (uses cache, falls back to database)
-			const userIdOption = yield* lookupUser(session.workosUserId).pipe(
-				Effect.withSpan("ProxyAuth.lookupUser", {
-					attributes: { "workos.user_id": session.workosUserId },
-				}),
-			)
-
-			if (Option.isNone(userIdOption)) {
-				yield* Effect.annotateCurrentSpan("user.found", false)
-				return yield* new ProxyAuthenticationError({
-					message: "User not found in database",
-					detail: `User must be created via backend first. WorkOS ID: ${session.workosUserId}`,
-				})
-			}
-
-			yield* Effect.annotateCurrentSpan("user.found", true)
-			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
-
-			if (newSealedSession) {
-				yield* Effect.annotateCurrentSpan("session.refreshed", true)
-				yield* Effect.logDebug("Session was refreshed, returning new sealed session")
-			}
-
-			return {
-				workosUserId: session.workosUserId,
-				internalUserId: userIdOption.value as UserId,
-				email: session.email,
-				organizationId: session.internalOrganizationId as OrganizationId | undefined,
-				role: session.role ?? undefined,
-				refreshedSession: newSealedSession,
-			} satisfies AuthenticatedUserContext
-		})
-
-		/**
 		 * Validate a Bearer token (JWT) and return user context.
-		 * Used by Tauri desktop apps that authenticate via JWT instead of cookies.
+		 * Used by web and Tauri desktop apps that authenticate via JWT.
 		 * Rejects if user is not found in database.
 		 */
 		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
@@ -215,12 +169,10 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 				email: (payload.email as string) ?? "",
 				organizationId: internalOrgId,
 				role: (payload.role as string) ?? undefined,
-				refreshedSession: undefined, // No session refresh for JWT auth
 			} satisfies AuthenticatedUserContext
 		})
 
 		return {
-			validateSession,
 			validateBearerToken,
 		}
 	}),
@@ -229,11 +181,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 /**
  * Layer that provides ProxyAuth with all its dependencies via Effect.Service dependencies.
  *
- * ProxyAuth.Default automatically includes:
- * - SessionValidator.Default (which includes WorkOSClient.Default + SessionCache.Default)
- *
  * External dependencies that must be provided:
- * - Redis (for SessionCache)
  * - Database.Database (for user lookup)
  */
 export const ProxyAuthLive = ProxyAuth.Default

@@ -37,7 +37,12 @@ export class TransactionContext extends Effect.Tag("TransactionContext")<
 	TransactionService
 >() {}
 
-const DatabaseErrorType = Schema.Literal("unique_violation", "foreign_key_violation", "connection_error")
+const DatabaseErrorType = Schema.Literal(
+	"unique_violation",
+	"foreign_key_violation",
+	"connection_error",
+	"query_error",
+)
 
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
 	type: DatabaseErrorType,
@@ -61,6 +66,8 @@ const matchPgError = (error: unknown) => {
 				return new DatabaseError({ type: "foreign_key_violation", cause: error })
 			case "08000":
 				return new DatabaseError({ type: "connection_error", cause: error })
+			default:
+				return new DatabaseError({ type: "query_error", cause: error })
 		}
 	}
 	return null

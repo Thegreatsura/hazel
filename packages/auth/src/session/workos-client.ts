@@ -1,40 +1,9 @@
-import { SessionLoadError, WorkOSUserFetchError } from "@hazel/domain"
-import type { Organization } from "@workos-inc/node"
+import { WorkOSUserFetchError } from "@hazel/domain"
+import type { Organization, User as WorkOSUser } from "@workos-inc/node"
 import { OrganizationFetchError } from "../errors.ts"
-import {
-	type AuthenticateWithSessionCookieFailedResponse,
-	type AuthenticateWithSessionCookieSuccessResponse,
-	type RefreshSessionResponse,
-	type User as WorkOSUser,
-	WorkOS as WorkOSNodeAPI,
-} from "@workos-inc/node"
-import { Effect, Layer, Redacted } from "effect"
+import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
+import { Effect, Layer } from "effect"
 import { AuthConfig } from "../config.ts"
-
-/**
- * Sealed session wrapper with proper typing.
- * The WorkOS SDK's CookieSession type doesn't export well, so we define our own interface.
- */
-export interface SealedSession {
-	/**
-	 * Authenticate the session.
-	 * Returns success with user data, or failure with reason.
-	 */
-	authenticate(): Promise<
-		AuthenticateWithSessionCookieSuccessResponse | AuthenticateWithSessionCookieFailedResponse
-	>
-
-	/**
-	 * Refresh the session.
-	 * Returns new sealed session data if successful.
-	 */
-	refresh(): Promise<RefreshSessionResponse>
-
-	/**
-	 * Get the logout URL for the session.
-	 */
-	getLogoutUrl(options?: { returnTo?: string }): Promise<string>
-}
 
 /**
  * WorkOS client wrapper with Effect integration.
@@ -48,32 +17,6 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 		const client = new WorkOSNodeAPI(config.workosApiKey, {
 			clientId: config.workosClientId,
 		})
-
-		const loadSealedSession = (sessionCookie: string): Effect.Effect<SealedSession, SessionLoadError> =>
-			Effect.gen(function* () {
-				// loadSealedSession is synchronous in the WorkOS SDK - it just creates the session object
-				// The actual async operations happen when calling authenticate() or refresh()
-				let session: SealedSession
-				try {
-					session = client.userManagement.loadSealedSession({
-						sessionData: sessionCookie,
-						cookiePassword: Redacted.value(config.workosPasswordCookie),
-					}) as SealedSession
-				} catch (error) {
-					yield* Effect.annotateCurrentSpan("session.loaded", false)
-					yield* Effect.annotateCurrentSpan("error.type", "SessionLoadError")
-					return yield* Effect.fail(
-						new SessionLoadError({
-							message: "Failed to load sealed session from WorkOS",
-							detail: String(error),
-						}),
-					)
-				}
-
-				yield* Effect.annotateCurrentSpan("session.loaded", true)
-				yield* Effect.logDebug("Loaded sealed session from WorkOS")
-				return session
-			}).pipe(Effect.withSpan("WorkOSClient.loadSealedSession"))
 
 		const getUser = (userId: string): Effect.Effect<WorkOSUser, WorkOSUserFetchError> =>
 			Effect.tryPromise({
@@ -104,7 +47,6 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 			)
 
 		return {
-			loadSealedSession,
 			getUser,
 			getOrganization,
 			clientId: config.workosClientId,
@@ -144,72 +86,15 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 	/** Test layer with mock WorkOS responses */
 	static Test = Layer.mock(this, {
 		_tag: "@hazel/auth/WorkOSClient",
-		loadSealedSession: (_sessionCookie: string) =>
-			Effect.succeed({
-				authenticate: () =>
-					Promise.resolve({
-						authenticated: true,
-						user: WorkOSClient.mockUser,
-						sessionId: "sess_abc123",
-						accessToken: "mock-access-token",
-						organizationId: undefined,
-						role: undefined,
-					} as AuthenticateWithSessionCookieSuccessResponse),
-				refresh: () =>
-					Promise.resolve({
-						authenticated: true,
-						sealedSession: "new-sealed-session-cookie",
-						user: WorkOSClient.mockUser,
-						sessionId: "sess_refreshed123",
-						accessToken: "refreshed-access-token",
-						organizationId: undefined,
-						role: undefined,
-					} as RefreshSessionResponse),
-				getLogoutUrl: () => Promise.resolve("https://workos.com/logout"),
-			} satisfies SealedSession),
 		getUser: (userId: string) => Effect.succeed({ ...WorkOSClient.mockUser, id: userId }),
 		getOrganization: (orgId: string) => Effect.succeed({ ...WorkOSClient.mockOrganization, id: orgId }),
 		clientId: "client_test_123",
 	})
 
 	/** Test layer factory for configurable WorkOS behavior */
-	static TestWith = (options: {
-		authenticateResponse?:
-			| AuthenticateWithSessionCookieSuccessResponse
-			| AuthenticateWithSessionCookieFailedResponse
-		refreshResponse?: RefreshSessionResponse
-		user?: WorkOSUser
-		organization?: Organization
-	}) =>
+	static TestWith = (options: { user?: WorkOSUser; organization?: Organization }) =>
 		Layer.mock(WorkOSClient, {
 			_tag: "@hazel/auth/WorkOSClient",
-			loadSealedSession: (_sessionCookie: string) =>
-				Effect.succeed({
-					authenticate: () =>
-						Promise.resolve(
-							options.authenticateResponse ?? {
-								authenticated: true,
-								user: options.user ?? WorkOSClient.mockUser,
-								sessionId: "sess_abc123",
-								accessToken: "mock-access-token",
-								organizationId: undefined,
-								role: undefined,
-							},
-						),
-					refresh: () =>
-						Promise.resolve(
-							options.refreshResponse ?? {
-								authenticated: true,
-								sealedSession: "new-sealed-session-cookie",
-								user: options.user ?? WorkOSClient.mockUser,
-								sessionId: "sess_refreshed123",
-								accessToken: "refreshed-access-token",
-								organizationId: undefined,
-								role: undefined,
-							},
-						),
-					getLogoutUrl: () => Promise.resolve("https://workos.com/logout"),
-				} satisfies SealedSession),
 			getUser: (userId: string) =>
 				Effect.succeed({ ...(options.user ?? WorkOSClient.mockUser), id: userId }),
 			getOrganization: (orgId: string) =>

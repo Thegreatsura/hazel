@@ -18,7 +18,6 @@ export interface EnvValue {
 export interface ExistingConfig {
 	workosApiKey?: EnvValue
 	workosClientId?: EnvValue
-	cookiePassword?: EnvValue
 	encryptionKey?: EnvValue
 	linear?: {
 		clientId: EnvValue
@@ -52,9 +51,6 @@ export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => 
 
 	const workosClientId = getEnvValue(result, "WORKOS_CLIENT_ID")
 	if (workosClientId) config.workosClientId = workosClientId
-
-	const cookiePassword = getEnvValue(result, "WORKOS_COOKIE_PASSWORD")
-	if (cookiePassword) config.cookiePassword = cookiePassword
 
 	const encryptionKey = getEnvValue(result, "INTEGRATION_ENCRYPTION_KEY")
 	if (encryptionKey) config.encryptionKey = encryptionKey
@@ -120,7 +116,6 @@ export interface Config {
 	workosApiKey: string
 	workosClientId: string
 	secrets: {
-		cookiePassword: string
 		encryptionKey: string
 	}
 	s3?: S3Config
@@ -171,10 +166,9 @@ export const ENV_TEMPLATES = {
 			// WorkOS
 			WORKOS_API_KEY: config.workosApiKey,
 			WORKOS_CLIENT_ID: config.workosClientId,
-			WORKOS_COOKIE_PASSWORD: config.secrets.cookiePassword,
 			WORKOS_COOKIE_DOMAIN: "localhost",
 			WORKOS_REDIRECT_URI: "http://localhost:3003/auth/callback",
-			WORKOS_WEBHOOK_SECRET: "whsec_" + config.secrets.cookiePassword.slice(0, 20),
+			WORKOS_WEBHOOK_SECRET: "whsec_" + config.secrets.encryptionKey.slice(0, 20),
 
 			// Encryption
 			INTEGRATION_ENCRYPTION_KEY: config.secrets.encryptionKey,
@@ -220,7 +214,6 @@ export const ENV_TEMPLATES = {
 		ELECTRIC_URL: "http://localhost:3333",
 		WORKOS_API_KEY: config.workosApiKey,
 		WORKOS_CLIENT_ID: config.workosClientId,
-		WORKOS_COOKIE_PASSWORD: config.secrets.cookiePassword,
 		ALLOWED_ORIGIN: "http://localhost:3000",
 	}),
 

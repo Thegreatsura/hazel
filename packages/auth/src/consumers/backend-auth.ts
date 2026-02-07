@@ -9,8 +9,6 @@ import { User } from "@hazel/domain/models"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Config, Effect, Layer, Option } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import type { BackendAuthResult } from "../types.ts"
-import { SessionValidator } from "../session/session-validator.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
 
 /**
@@ -81,15 +79,14 @@ export interface UserRepoLike {
 
 /**
  * Backend authentication service.
- * Provides full authentication with user sync and session refresh support.
+ * Provides full authentication with user sync support.
  *
  * This is used by the backend HTTP API and WebSocket RPC handlers.
  */
 export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
 	accessors: true,
-	dependencies: [SessionValidator.Default, WorkOSClient.Default],
+	dependencies: [WorkOSClient.Default],
 	effect: Effect.gen(function* () {
-		const validator = yield* SessionValidator
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 
@@ -222,48 +219,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			})
 
 		/**
-		 * Authenticate with a WorkOS sealed session cookie.
-		 * Returns the current user and optionally a new session cookie if refreshed.
-		 */
-		const authenticateWithCookie = (sessionCookie: string, userRepo: UserRepoLike) =>
-			Effect.gen(function* () {
-				// Validate and optionally refresh the session
-				const { session, newSealedSession } = yield* validator.validateAndRefresh(sessionCookie)
-
-				// Sync user to database (upsert)
-				const user = yield* syncUserFromWorkOS(
-					userRepo,
-					session.workosUserId,
-					session.email,
-					session.firstName,
-					session.lastName,
-					session.profilePictureUrl,
-				)
-
-				// Build CurrentUser
-				const currentUser = new CurrentUser.Schema({
-					id: user.id,
-					role: (session.role as "admin" | "member" | "owner") || "member",
-					organizationId: session.internalOrganizationId as OrganizationId | undefined,
-					avatarUrl: user.avatarUrl ?? undefined,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					email: user.email,
-					isOnboarded: user.isOnboarded,
-					timezone: user.timezone,
-					settings: user.settings,
-				})
-
-				yield* Effect.logDebug("[Cookie Auth] Final CurrentUser", {
-					id: currentUser.id,
-					organizationId: currentUser.organizationId,
-					role: currentUser.role,
-				})
-
-				return { currentUser, refreshedSession: newSealedSession } satisfies BackendAuthResult
-			})
-
-		/**
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
@@ -370,8 +325,8 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			})
 
 		return {
-			authenticateWithCookie,
 			authenticateWithBearer,
+			syncUserFromWorkOS,
 		}
 	}),
 }) {
@@ -408,51 +363,45 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 	/** Test layer with successful authentication */
 	static Test = Layer.mock(this, {
 		_tag: "@hazel/auth/BackendAuth",
-		authenticateWithCookie: (_sessionCookie: string, _userRepo: UserRepoLike) =>
-			Effect.succeed({
-				currentUser: BackendAuth.mockCurrentUser(),
-				refreshedSession: undefined as string | undefined,
-			}),
 		authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 			Effect.succeed(BackendAuth.mockCurrentUser()),
+		syncUserFromWorkOS: (
+			_userRepo: UserRepoLike,
+			_workOsUserId: string,
+			_email: string,
+			_firstName: string | null,
+			_lastName: string | null,
+			_avatarUrl: string | null,
+		) => Effect.succeed(BackendAuth.mockUser()),
 	})
 
 	/** Test layer factory for configurable authentication behavior */
 	static TestWith = (options: {
 		currentUser?: CurrentUser.Schema
-		refreshedSession?: string
 		shouldFail?: {
-			authenticateWithCookie?: Effect.Effect<never, any>
 			authenticateWithBearer?: Effect.Effect<never, any>
 		}
 	}) =>
 		Layer.mock(BackendAuth, {
 			_tag: "@hazel/auth/BackendAuth",
-			authenticateWithCookie: (_sessionCookie: string, _userRepo: UserRepoLike) =>
-				options.shouldFail?.authenticateWithCookie ??
-				Effect.succeed({
-					currentUser: options.currentUser ?? BackendAuth.mockCurrentUser(),
-					refreshedSession: options.refreshedSession,
-				}),
 			authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 				options.shouldFail?.authenticateWithBearer ??
 				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
+			syncUserFromWorkOS: (
+				_userRepo: UserRepoLike,
+				_workOsUserId: string,
+				_email: string,
+				_firstName: string | null,
+				_lastName: string | null,
+				_avatarUrl: string | null,
+			) => Effect.succeed(BackendAuth.mockUser()),
 		})
 }
 
 /**
- * Layer that provides BackendAuth with all its dependencies EXCEPT ResultPersistence.
- * ResultPersistence must be provided externally for session caching.
+ * Layer that provides BackendAuth with all its dependencies.
  *
  * With Effect.Service dependencies, BackendAuth.Default automatically includes:
- * - SessionValidator.Default (which includes WorkOSClient.Default + SessionCache.Default)
  * - WorkOSClient.Default (which includes AuthConfig.Default)
- *
- * The only remaining external dependency is ResultPersistence for SessionCache.
- *
- * Usage:
- * ```ts
- * BackendAuthLive.pipe(Layer.provide(RedisResultPersistenceLive))
- * ```
  */
 export const BackendAuthLive = BackendAuth.Default

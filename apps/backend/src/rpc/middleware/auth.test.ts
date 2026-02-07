@@ -5,12 +5,7 @@ import { Effect, Exit, Layer, Option, FiberRef } from "effect"
 import { AuthMiddleware } from "./auth-class.ts"
 import { SessionManager } from "../../services/session-manager.ts"
 import type { CurrentUser } from "@hazel/domain"
-import {
-	SessionExpiredError,
-	InvalidJwtPayloadError,
-	InvalidBearerTokenError,
-	SessionNotProvidedError,
-} from "@hazel/domain"
+import { SessionExpiredError, InvalidJwtPayloadError, InvalidBearerTokenError } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
 
 // ===== Mock CurrentUser Factory =====
@@ -42,29 +37,14 @@ const createMiddlewareContext = (headers: Headers.Headers) => ({
 
 const createMockSessionManagerLive = (options?: {
 	currentUser?: CurrentUser.Schema
-	refreshedSession?: string
 	shouldFail?: Effect.Effect<never, any>
 }) =>
 	Layer.succeed(SessionManager, {
-		authenticateWithCookie: (_cookie: string, _password?: string) => {
+		authenticateWithBearer: (_token: string) => {
 			if (options?.shouldFail) {
 				return options.shouldFail
 			}
-			return Effect.succeed({
-				currentUser: options?.currentUser ?? createMockCurrentUser(),
-				refreshedSession: options?.refreshedSession,
-			})
-		},
-		authenticateWithBearer: (_token: string) =>
-			Effect.fail(new InvalidJwtPayloadError({ message: "Not mocked", detail: "" })),
-		authenticateAndGetUser: (_cookie: string, _password?: string) => {
-			if (options?.shouldFail) {
-				return options.shouldFail
-			}
-			return Effect.succeed({
-				currentUser: options?.currentUser ?? createMockCurrentUser(),
-				refreshedSession: options?.refreshedSession,
-			})
+			return Effect.succeed(options?.currentUser ?? createMockCurrentUser())
 		},
 	} as unknown as SessionManager)
 
@@ -120,67 +100,29 @@ const makeAuthMiddlewareLayer = (options?: {
 								status: "offline",
 								customMessage: null,
 							}) as unknown as Effect.Effect<void>
-						).pipe(
-							// Note: catchAll is used here because the mock doesn't have
-							// typed errors - in production code, use catchTag("DatabaseError", ...)
-							Effect.catchAll(() => Effect.void),
-						)
+						).pipe(Effect.catchAll(() => Effect.void))
 					}
 				}),
 			)
 
 			return AuthMiddleware.of(({ headers }) =>
 				Effect.gen(function* () {
-					// Check for Bearer token first (skip for user auth tests)
+					// Require Bearer token
 					const authHeader = Headers.get(headers, "authorization")
-					if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
+					if (Option.isNone(authHeader) || !authHeader.value.startsWith("Bearer ")) {
 						return yield* new InvalidBearerTokenError({
-							message: "Bearer auth not tested here",
-							detail: "",
+							message: "No Bearer token provided",
+							detail: "Authentication requires a Bearer token",
 						})
 					}
 
-					// Parse cookie header
-					const cookieHeader = Headers.get(headers, "cookie")
-
-					if (Option.isNone(cookieHeader)) {
-						return yield* new SessionNotProvidedError({
-							message: "No session cookie provided",
-							detail: "Authentication required",
-						})
-					}
-
-					// Parse cookies
-					const cookies = cookieHeader.value
-						.split(";")
-						.map((c) => c.trim())
-						.reduce(
-							(acc, cookie) => {
-								const [key, ...valueParts] = cookie.split("=")
-								if (key && valueParts.length > 0) {
-									acc[key] = valueParts.join("=")
-								}
-								return acc
-							},
-							{} as Record<string, string>,
-						)
-
-					const sessionCookie = cookies["workos-session"]
-
-					if (!sessionCookie) {
-						return yield* new SessionNotProvidedError({
-							message: "No WorkOS session cookie provided",
-							detail: "Authentication required",
-						})
-					}
-
-					// Authenticate via SessionManager
-					const result = yield* sessionManager.authenticateAndGetUser(sessionCookie)
+					const token = authHeader.value.slice(7)
+					const currentUser = yield* sessionManager.authenticateWithBearer(token)
 
 					// Store user in FiberRef
-					yield* FiberRef.set(currentUserRef, Option.some(result.currentUser))
+					yield* FiberRef.set(currentUserRef, Option.some(currentUser))
 
-					return result.currentUser
+					return currentUser
 				}),
 			)
 		}),
@@ -198,13 +140,13 @@ const TestAuthMiddlewareLive = makeAuthMiddlewareLayer()
 // ===== Tests =====
 
 describe("AuthMiddleware", () => {
-	describe("cookie extraction", () => {
-		layer(TestAuthMiddlewareLive)("cookie parsing", (it) => {
-			it.scoped("parses workos-session from Cookie header", () =>
+	describe("bearer token extraction", () => {
+		layer(TestAuthMiddlewareLive)("bearer parsing", (it) => {
+			it.scoped("parses Bearer token from Authorization header", () =>
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "workos-session=valid-session-cookie; other-cookie=value",
+						authorization: "Bearer valid-bearer-token",
 					})
 
 					const result = yield* middleware(createMiddlewareContext(headers))
@@ -213,36 +155,10 @@ describe("AuthMiddleware", () => {
 					expect(result.email).toBe("test@example.com")
 				}),
 			)
-
-			it.scoped("parses workos-session with encoded characters", () =>
-				Effect.gen(function* () {
-					const middleware = yield* AuthMiddleware
-					const headers = Headers.fromInput({
-						cookie: "workos-session=session%3Dwith%3Dequals; foo=bar",
-					})
-
-					const result = yield* middleware(createMiddlewareContext(headers))
-
-					expect(result).toBeDefined()
-				}),
-			)
-
-			it.scoped("handles workos-session as only cookie", () =>
-				Effect.gen(function* () {
-					const middleware = yield* AuthMiddleware
-					const headers = Headers.fromInput({
-						cookie: "workos-session=only-cookie",
-					})
-
-					const result = yield* middleware(createMiddlewareContext(headers))
-
-					expect(result.id).toBe("usr_test123")
-				}),
-			)
 		})
 
-		layer(TestAuthMiddlewareLive)("missing cookie", (it) => {
-			it.scoped("fails with SessionNotProvidedError when Cookie header is missing", () =>
+		layer(TestAuthMiddlewareLive)("missing token", (it) => {
+			it.scoped("fails with InvalidBearerTokenError when Authorization header is missing", () =>
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({})
@@ -253,24 +169,11 @@ describe("AuthMiddleware", () => {
 				}),
 			)
 
-			it.scoped("fails with SessionNotProvidedError when workos-session cookie is missing", () =>
+			it.scoped("fails when Authorization header has no Bearer prefix", () =>
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "other-cookie=value; another=test",
-					})
-
-					const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
-
-					expect(Exit.isFailure(exit)).toBe(true)
-				}),
-			)
-
-			it.scoped("fails with SessionNotProvidedError when Cookie header is empty", () =>
-				Effect.gen(function* () {
-					const middleware = yield* AuthMiddleware
-					const headers = Headers.fromInput({
-						cookie: "",
+						authorization: "Basic some-credentials",
 					})
 
 					const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
@@ -287,7 +190,7 @@ describe("AuthMiddleware", () => {
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "workos-session=valid-cookie",
+						authorization: "Bearer valid-token",
 					})
 
 					const result = yield* middleware(createMiddlewareContext(headers))
@@ -301,23 +204,23 @@ describe("AuthMiddleware", () => {
 		})
 
 		describe("error propagation", () => {
-			const expiredSessionLayer = makeAuthMiddlewareLayer({
+			const expiredTokenLayer = makeAuthMiddlewareLayer({
 				sessionManagerLayer: createMockSessionManagerLive({
 					shouldFail: Effect.fail(
 						new SessionExpiredError({
-							message: "Session expired",
-							detail: "Could not refresh",
+							message: "Token expired",
+							detail: "Could not verify",
 						}),
 					),
 				}),
 			})
 
-			layer(expiredSessionLayer)("expired session", (it) => {
+			layer(expiredTokenLayer)("expired token", (it) => {
 				it.scoped("propagates SessionExpiredError from SessionManager", () =>
 					Effect.gen(function* () {
 						const middleware = yield* AuthMiddleware
 						const headers = Headers.fromInput({
-							cookie: "workos-session=expired-cookie",
+							authorization: "Bearer expired-token",
 						})
 
 						const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
@@ -343,36 +246,12 @@ describe("AuthMiddleware", () => {
 					Effect.gen(function* () {
 						const middleware = yield* AuthMiddleware
 						const headers = Headers.fromInput({
-							cookie: "workos-session=invalid-jwt",
+							authorization: "Bearer invalid-jwt",
 						})
 
 						const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 						expect(Exit.isFailure(exit)).toBe(true)
-					}),
-				)
-			})
-		})
-
-		describe("session refresh", () => {
-			const refreshedSessionLayer = makeAuthMiddlewareLayer({
-				sessionManagerLayer: createMockSessionManagerLive({
-					refreshedSession: "new-refreshed-session-cookie",
-				}),
-			})
-
-			layer(refreshedSessionLayer)("refreshed session", (it) => {
-				it.scoped("still returns CurrentUser when session is refreshed", () =>
-					Effect.gen(function* () {
-						const middleware = yield* AuthMiddleware
-						const headers = Headers.fromInput({
-							cookie: "workos-session=needs-refresh",
-						})
-
-						const result = yield* middleware(createMiddlewareContext(headers))
-
-						// Should still get user even though session was refreshed
-						expect(result.id).toBe("usr_test123")
 					}),
 				)
 			})
@@ -398,7 +277,7 @@ describe("AuthMiddleware", () => {
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "workos-session=org-session",
+						authorization: "Bearer org-token",
 					})
 
 					const result = yield* middleware(createMiddlewareContext(headers))
@@ -412,7 +291,7 @@ describe("AuthMiddleware", () => {
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "workos-session=full-data",
+						authorization: "Bearer full-data-token",
 					})
 
 					const result = yield* middleware(createMiddlewareContext(headers))
@@ -428,16 +307,12 @@ describe("AuthMiddleware", () => {
 	})
 
 	describe("FiberRef tracking", () => {
-		// Note: Testing the actual finalizer behavior (marking offline on disconnect)
-		// requires integration testing with the real WebSocket lifecycle.
-		// Here we verify the core authentication flow works correctly.
-
 		layer(TestAuthMiddlewareLive)("user tracking", (it) => {
 			it.scoped("successfully authenticates and returns user", () =>
 				Effect.gen(function* () {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({
-						cookie: "workos-session=tracked-user",
+						authorization: "Bearer tracked-user-token",
 					})
 
 					const result = yield* middleware(createMiddlewareContext(headers))

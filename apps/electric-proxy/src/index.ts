@@ -1,5 +1,4 @@
 import { BunRuntime } from "@effect/platform-bun"
-// SessionExpiredError and SessionRefreshError are caught by string tags below
 import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
 import { Effect, Layer, Logger, Runtime } from "effect"
@@ -48,9 +47,9 @@ function getUserCorsHeaders(allowedOrigin: string, requestOrigin: string | null)
 	return {
 		"Access-Control-Allow-Origin": origin,
 		"Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type, Cookie, Authorization",
+		"Access-Control-Allow-Headers": "Content-Type, Authorization",
 		"Access-Control-Allow-Credentials": "true",
-		Vary: "Origin, Cookie",
+		Vary: "Origin",
 	}
 }
 
@@ -117,16 +116,6 @@ const handleUserRequest = (request: Request) =>
 			headers.set(key, value)
 		}
 
-		// If session was refreshed, set the new cookie
-		if (user.refreshedSession) {
-			yield* Effect.logDebug("Setting refreshed session cookie in response")
-			const secure = !config.isDev
-			headers.set(
-				"Set-Cookie",
-				`workos-session=${user.refreshedSession}; Domain=${config.workosCookieDomain}; Path=/; ${secure ? "Secure; " : ""}SameSite=None; HttpOnly`,
-			)
-		}
-
 		return new Response(response.body, {
 			status: response.status,
 			statusText: response.statusText,
@@ -144,49 +133,7 @@ const handleUserRequest = (request: Request) =>
 						error: error.message,
 						detail: error.detail,
 						timestamp: new Date().toISOString(),
-						hint: "Check if session cookie is present and valid",
-					}),
-					{
-						status: 401,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
-					},
-				)
-			}),
-		),
-		Effect.catchTag("SessionExpiredError", (error) =>
-			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
-				yield* Effect.logInfo("Session expired", { error: error.message })
-				return new Response(
-					JSON.stringify({
-						error: error.message,
-						detail: error.detail,
-						timestamp: new Date().toISOString(),
-					}),
-					{
-						status: 401,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
-					},
-				)
-			}),
-		),
-		Effect.catchTag("SessionRefreshError", (error) =>
-			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
-				yield* Effect.logInfo("Session refresh failed", { error: error.message })
-				return new Response(
-					JSON.stringify({
-						error: error.message,
-						detail: error.detail,
-						timestamp: new Date().toISOString(),
+						hint: "Check if Bearer token is present and valid",
 					}),
 					{
 						status: 401,

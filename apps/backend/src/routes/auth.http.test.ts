@@ -11,8 +11,6 @@ const TestConfigProvider = ConfigProvider.fromMap(
 	new Map([
 		["WORKOS_CLIENT_ID", "client_test_123"],
 		["WORKOS_REDIRECT_URI", "http://localhost:3000/auth/callback"],
-		["WORKOS_COOKIE_PASSWORD", "test-cookie-password-32chars-min"],
-		["WORKOS_COOKIE_DOMAIN", "localhost"],
 		["FRONTEND_URL", "http://localhost:3000"],
 		["WORKOS_API_KEY", "sk_test_123"],
 	]),
@@ -35,7 +33,6 @@ const createMockWorkOSLive = (options?: {
 		sealedSession?: string
 		organizationId?: string
 	}
-	logoutUrl?: string
 	shouldFailAuth?: boolean
 	shouldFailLogin?: boolean
 	shouldFailGetOrg?: boolean
@@ -102,17 +99,6 @@ const createMockWorkOSLive = (options?: {
 				},
 				catch: (cause) => new WorkOSApiError({ cause }),
 			}),
-		loadSealedSession: (_cookie: string) =>
-			Effect.succeed({
-				authenticate: async () => ({
-					authenticated: true,
-					user: { id: "user_01ABC123", email: "test@example.com" },
-					sessionId: "sess_abc",
-					accessToken: "mock-token",
-				}),
-				getLogoutUrl: async () => options?.logoutUrl ?? "https://workos.com/logout",
-			}),
-		getLogoutUrl: () => Effect.succeed(options?.logoutUrl ?? "https://workos.com/logout"),
 	} as unknown as WorkOS)
 
 // ===== Mock UserRepo =====
@@ -434,60 +420,6 @@ describe("Auth HTTP Endpoint Logic", () => {
 					}),
 				)
 			})
-		})
-	})
-
-	describe("Logout flow", () => {
-		layer(TestLayer)("logout URL", (it) => {
-			it.effect("gets logout URL from WorkOS", () =>
-				Effect.gen(function* () {
-					const workos = yield* WorkOS
-
-					const logoutUrl = yield* workos.getLogoutUrl() as Effect.Effect<string>
-
-					expect(logoutUrl).toBe("https://workos.com/logout")
-				}),
-			)
-		})
-
-		const customLogoutLayer = makeTestLayer({
-			workosLayer: createMockWorkOSLive({
-				logoutUrl: "https://workos.com/logout?session=abc123",
-			}),
-		})
-
-		layer(customLogoutLayer)("custom logout URL", (it) => {
-			it.effect("returns session-specific logout URL", () =>
-				Effect.gen(function* () {
-					const workos = yield* WorkOS
-
-					const logoutUrl = yield* workos.getLogoutUrl() as Effect.Effect<string>
-
-					expect(logoutUrl).toContain("session=abc123")
-				}),
-			)
-		})
-	})
-
-	describe("Cookie configuration", () => {
-		it("cookie should be secure in production", () => {
-			const isSecure = true // Always use secure cookies with HTTPS proxy
-			expect(isSecure).toBe(true)
-		})
-
-		it("cookie should use SameSite=None for cross-origin requests", () => {
-			const sameSite = "none"
-			expect(sameSite).toBe("none")
-		})
-
-		it("cookie path should be root", () => {
-			const path = "/"
-			expect(path).toBe("/")
-		})
-
-		it("max-age should be 0 for logout to clear cookie", () => {
-			const maxAge = 0
-			expect(maxAge).toBe(0)
 		})
 	})
 })
