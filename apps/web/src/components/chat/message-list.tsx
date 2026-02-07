@@ -73,6 +73,7 @@ const MessageVirtualList = memo(
 				ref={ref}
 				alignItemsAtEnd
 				maintainScrollAtEnd
+				maintainScrollAtEndThreshold={0.5}
 				maintainVisibleContentPosition
 				suggestEstimatedItemSize
 				data={messageRows}

@@ -7,11 +7,15 @@
 
 - replace tanstack form with effect based form
 
+# Integrations
+
+- Craft.do
+- Notion
+- Github
+- Railway
+
 # Bugs
 
-- threads are not really shared it seems
-
-- Profile Pic getting synced later, initally no pfp??
 - if github is already connecred to other org figure out how to let double connect
 
 # Later
