@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import localesPlugin from "@react-aria/optimize-locales-plugin"
@@ -15,6 +16,13 @@ const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
 // Read app version from tauri.conf.json (single source of truth)
 const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "src-tauri/tauri.conf.json"), "utf-8"))
 const appVersion = tauriConfig.version
+
+// Resolve git commit SHA from environment (Railway) or git
+const commitSha =
+	process.env.RAILWAY_GIT_COMMIT_SHA ??
+	process.env.COMMIT_SHA ??
+	process.env.WORKERS_CI_COMMIT_SHA ??
+	"unknown"
 
 export default defineConfig({
 	server: {
@@ -36,6 +44,7 @@ export default defineConfig({
 	envPrefix: ["VITE_", "TAURI_ENV_*"],
 	define: {
 		__APP_VERSION__: JSON.stringify(appVersion),
+		"import.meta.env.VITE_COMMIT_SHA": JSON.stringify(commitSha),
 	},
 	build: {
 		target: process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",

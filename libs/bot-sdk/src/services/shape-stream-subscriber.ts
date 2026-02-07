@@ -1,6 +1,6 @@
 import { isChangeMessage, type ChangeMessage, type Message, ShapeStream } from "@electric-sql/client"
 import type { ConfigError } from "effect"
-import { Config, Effect, Layer, Metric, Option, Schedule, Schema, Stream } from "effect"
+import { Config, Effect, Layer, Metric, Option, Ref, Schedule, Schema, Stream } from "effect"
 import { ConnectionError, ValidationError } from "../errors.ts"
 import { generateEventId } from "../log-context.ts"
 import { RetryStrategy } from "../retry.ts"
@@ -75,6 +75,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 	accessors: true,
 	effect: Effect.fn(function* (config: ShapeStreamSubscriberConfig) {
 		const queue = yield* ElectricEventQueue
+		const connectionStatusRef = yield* Ref.make<Map<string, boolean>>(new Map())
 
 		/**
 		 * Create a scoped ShapeStream resource using Effect.acquireRelease
@@ -223,6 +224,8 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 			Effect.gen(function* () {
 				const shapeStream = yield* acquireShapeStream(subscription)
 
+				yield* Ref.update(connectionStatusRef, (m) => new Map(m).set(subscription.table, true))
+
 				yield* Effect.logInfo(`Shape stream subscription active`, {
 					table: subscription.table,
 				}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
@@ -245,6 +248,12 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 			}).pipe(Effect.scoped)
 
 		return {
+			/**
+			 * Get the connection status of all active shape stream subscriptions.
+			 * Returns a Map of table name -> connected boolean.
+			 */
+			connectionStatus: Ref.get(connectionStatusRef),
+
 			/**
 			 * Start shape stream subscriptions, optionally filtered to only required tables.
 			 * If no filter is provided, all configured subscriptions are started.
@@ -288,13 +297,20 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 								Effect.forever(
 									processSubscription(subscription).pipe(
 										Effect.tapError((error) =>
-											Effect.logWarning(
-												`Shape stream subscription ended, reconnecting`,
-												{
-													table: subscription.table,
-													error: String(error),
-												},
-											).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber")),
+											Effect.gen(function* () {
+												yield* Ref.update(connectionStatusRef, (m) =>
+													new Map(m).set(subscription.table, false),
+												)
+												yield* Effect.logWarning(
+													`Shape stream subscription ended, reconnecting`,
+													{
+														table: subscription.table,
+														error: String(error),
+													},
+												).pipe(
+													Effect.annotateLogs("service", "ShapeStreamSubscriber"),
+												)
+											}),
 										),
 										Effect.retry(
 											Schedule.exponential("1 second", 2).pipe(
