@@ -1,5 +1,25 @@
 # @effect/ai-amazon-bedrock
 
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/ai-anthropic@0.23.0
+  - @effect/experimental@0.58.0
+
+## 0.12.1
+
+### Patch Changes
+
+- [#5891](https://github.com/Effect-TS/effect/pull/5891) [`b1ffd22`](https://github.com/Effect-TS/effect/commit/b1ffd223ab4abc0be3f56bf4d16d99d0f5b4c4b8) Thanks @sbking! - fix cache point support for user and tool messages
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
 ## 0.12.0
 
 ### Patch Changes

@@ -1,5 +1,25 @@
 # @effect/sql-sqlite-bun
 
+## 0.50.1
+
+### Patch Changes
+
+- [#6016](https://github.com/Effect-TS/effect/pull/6016) [`c1aaefb`](https://github.com/Effect-TS/effect/commit/c1aaefb7ad77ca033662422cbf3f3e5494c8bc8d) Thanks @0xh3x! - feat(sql-sqlite-bun): add SafeIntegers support
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.50.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/experimental@0.58.0
+  - @effect/sql@0.49.0
+
 ## 0.49.0
 
 ### Minor Changes

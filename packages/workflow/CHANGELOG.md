@@ -1,5 +1,116 @@
 # @effect/workflow
 
+## 0.16.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/experimental@0.58.0
+  - @effect/rpc@0.73.0
+
+## 0.15.2
+
+### Patch Changes
+
+- [#5880](https://github.com/Effect-TS/effect/pull/5880) [`cc4d2c3`](https://github.com/Effect-TS/effect/commit/cc4d2c3821fa060986d16ea04fca50a14f8ac6ff) Thanks @tim-smart! - ensure no more Activites are attempted before suspending
+
+- Updated dependencies [[`bd08028`](https://github.com/Effect-TS/effect/commit/bd080284febb620e7e71f661bf9d850c402bb87f), [`6c5c2ba`](https://github.com/Effect-TS/effect/commit/6c5c2ba50ce49386e8d1e657230492ee900a6ec7)]:
+  - effect@3.19.10
+
+## 0.15.1
+
+### Patch Changes
+
+- [#5846](https://github.com/Effect-TS/effect/pull/5846) [`7c7d2e0`](https://github.com/Effect-TS/effect/commit/7c7d2e04913663ad98563dfc9ebffdf09c11c7db) Thanks @tim-smart! - add Workflow.scope, a seperate Scope that only closes on completion
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
+## 0.15.0
+
+### Minor Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - add Activity.idempotencyKey
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/experimental@0.57.9
+
+## 0.14.0
+
+### Minor Changes
+
+- [#5827](https://github.com/Effect-TS/effect/pull/5827) [`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b) Thanks @tim-smart! - remove schedule option from Activity.retry
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/experimental@0.57.7
+
+## 0.13.1
+
+### Patch Changes
+
+- [#5821](https://github.com/Effect-TS/effect/pull/5821) [`2519056`](https://github.com/Effect-TS/effect/commit/2519056cb3aabd3dfffa0c874dabd74e2ad98655) Thanks @tim-smart! - add DurableQueue module
+
+  A `DurableQueue` wraps a `PersistedQueue`, providing a way to wait for items
+  to finish processing using a `DurableDeferred`.
+
+  ```ts
+  import { DurableQueue, Workflow } from "@effect/workflow"
+  import { Effect, Schema } from "effect"
+
+  // Define a DurableQueue that can be used to derive workers and offer items for
+  // processing.
+  const ApiQueue = DurableQueue.make({
+    name: "ApiQueue",
+    payload: {
+      id: Schema.String
+    },
+    success: Schema.Void,
+    error: Schema.Never,
+    idempotencyKey(payload) {
+      return payload.id
+    }
+  })
+
+  const MyWorkflow = Workflow.make({
+    name: "MyWorkflow",
+    payload: {
+      id: Schema.String
+    },
+    idempotencyKey: ({ id }) => id
+  })
+
+  const MyWorkflowLayer = MyWorkflow.toLayer(
+    Effect.fn(function* () {
+      // Add an item to the DurableQueue defined above.
+      //
+      // When the worker has finished processing the item, the workflow will
+      // resume.
+      //
+      yield* DurableQueue.process(ApiQueue, { id: "api-call-1" })
+
+      yield* Effect.log("Workflow succeeded!")
+    })
+  )
+
+  // Define a worker layer that can process items from the DurableQueue.
+  const ApiWorker = DurableQueue.worker(
+    ApiQueue,
+    Effect.fn(function* ({ id }) {
+      yield* Effect.log(`Worker processing API call with id: ${id}`)
+    }),
+    { concurrency: 5 } // Process up to 5 items concurrently
+  )
+  ```
+
+- Updated dependencies [[`ebfbbd6`](https://github.com/Effect-TS/effect/commit/ebfbbd62e1daf235d1f25b825d80ae4880408df3)]:
+  - @effect/platform@0.93.5
+
 ## 0.13.0
 
 ### Minor Changes

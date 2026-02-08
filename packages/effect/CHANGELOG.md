@@ -1,5 +1,83 @@
 # effect
 
+## 3.19.16
+
+### Patch Changes
+
+- [#6018](https://github.com/Effect-TS/effect/pull/6018) [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49) Thanks @codewithkenzo! - fix(Match): handle null/undefined in `Match.tag` and `Match.tagStartsWith`
+
+  Added null checks to `discriminator` and `discriminatorStartsWith` predicates to prevent crashes when matching nullable union types.
+
+  Fixes #6017
+
+## 3.19.15
+
+### Patch Changes
+
+- [#5981](https://github.com/Effect-TS/effect/pull/5981) [`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b) Thanks @bxff! - Fix type inference loss in `Array.flatten` for complex nested structures like unions of Effects with contravariant requirements. Uses distributive indexed access (`T[number][number]`) in the `Flatten` type utility and adds `const` to the `flatten` generic parameter.
+
+- [#5970](https://github.com/Effect-TS/effect/pull/5970) [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f) Thanks @KhraksMamtsov! - fix Config.orElseIf signature
+
+- [#5996](https://github.com/Effect-TS/effect/pull/5996) [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc) Thanks @parischap! - fix Equal.equals plain object comparisons in structural mode
+
+## 3.19.14
+
+### Patch Changes
+
+- [#5924](https://github.com/Effect-TS/effect/pull/5924) [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3) Thanks @mikearnaldi! - Fix `Effect.retry` to respect `times: 0` option by using explicit undefined check instead of truthy check.
+
+## 3.19.13
+
+### Patch Changes
+
+- [#5911](https://github.com/Effect-TS/effect/pull/5911) [`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371) Thanks @mattiamanzati! - Add test for ensuring typeConstructor is attached
+
+- [#5910](https://github.com/Effect-TS/effect/pull/5910) [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3) Thanks @mattiamanzati! - Add typeConstructor annotation for Schema
+
+## 3.19.12
+
+### Patch Changes
+
+- [#5897](https://github.com/Effect-TS/effect/pull/5897) [`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8) Thanks @fubhy! - Ensure `performance.now` is only used if it's available
+
+## 3.19.11
+
+### Patch Changes
+
+- [#5888](https://github.com/Effect-TS/effect/pull/5888) [`38abd67`](https://github.com/Effect-TS/effect/commit/38abd67998f676893866a72cb41bbd5edd07b169) Thanks @gcanti! - filter non-JSON values from schema examples and defaults, closes #5884
+
+  Introduce JsonValue type and update JsonSchemaAnnotations to use it for
+  type safety. Add validation to filter invalid values (BigInt, cyclic refs)
+  from examples and defaults, preventing infinite recursion on cycles.
+
+- [#5885](https://github.com/Effect-TS/effect/pull/5885) [`44e0b04`](https://github.com/Effect-TS/effect/commit/44e0b044480c5d8ab17fbdaf1c528f06796fa681) Thanks @gcanti! - feat(JSONSchema): add missing options for target JSON Schema version in make function, closes #5883
+
+## 3.19.10
+
+### Patch Changes
+
+- [#5874](https://github.com/Effect-TS/effect/pull/5874) [`bd08028`](https://github.com/Effect-TS/effect/commit/bd080284febb620e7e71f661bf9d850c402bb87f) Thanks @mattiamanzati! - Fix NoSuchElementException instantiation in fastPath and add corresponding test case
+
+- [#5878](https://github.com/Effect-TS/effect/pull/5878) [`6c5c2ba`](https://github.com/Effect-TS/effect/commit/6c5c2ba50ce49386e8d1e657230492ee900a6ec7) Thanks @Hoishin! - prevent crash from Hash and Equal with invalid Date object
+
+## 3.19.9
+
+### Patch Changes
+
+- [#5875](https://github.com/Effect-TS/effect/pull/5875) [`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249) Thanks @gcanti! - Fix the arbitrary generator for BigDecimal to allow negative scales.
+
+## 3.19.8
+
+### Patch Changes
+
+- [#5815](https://github.com/Effect-TS/effect/pull/5815) [`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281) Thanks @lokhmakov! - Prevent multiple iterations over the same Iterable in Array.intersectionWith and Array.differenceWith
+
+## 3.19.7
+
+### Patch Changes
+
+- [#5813](https://github.com/Effect-TS/effect/pull/5813) [`7ef13d3`](https://github.com/Effect-TS/effect/commit/7ef13d30147dd50eae1cdbb67a1978141751cad5) Thanks @tim-smart! - fix SqlPersistedQueue batch size
+
 ## 3.19.6
 
 ### Patch Changes

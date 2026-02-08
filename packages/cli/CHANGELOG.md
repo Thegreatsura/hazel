@@ -1,5 +1,53 @@
 # @effect/cli
 
+## 0.73.2
+
+### Patch Changes
+
+- [#6022](https://github.com/Effect-TS/effect/pull/6022) [`5df4da1`](https://github.com/Effect-TS/effect/commit/5df4da10de444f379a166f4b28721e75100bb838) Thanks @m9tdev! - Fixed `Prompt.text` rendering duplicate lines when input text wraps to a new terminal line.
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.73.1
+
+### Patch Changes
+
+- [#5983](https://github.com/Effect-TS/effect/pull/5983) [`0d1a44f`](https://github.com/Effect-TS/effect/commit/0d1a44fa142c0da25fe36a1ac35675f666944803) Thanks @cevr! - Allow options to appear after positional arguments
+
+  Previously, `@effect/cli` required all options to appear before positional arguments. For example, `cmd --force staging` worked but `cmd staging --force` failed with "Received unknown argument".
+
+  This change updates the option parsing logic to scan through all arguments to find options, regardless of their position relative to positional arguments. This aligns with the behavior of most CLI tools (git, npm, docker, etc.) which allow options anywhere in the command.
+
+  **Before:**
+
+  ```bash
+  myapp deploy --force staging  # worked
+  myapp deploy staging --force  # failed: "Received unknown argument: '--force'"
+  ```
+
+  **After:**
+
+  ```bash
+  myapp deploy --force staging  # works
+  myapp deploy staging --force  # works
+  ```
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform@0.94.2
+
+## 0.73.0
+
+### Patch Changes
+
+- [#5853](https://github.com/Effect-TS/effect/pull/5853) [`1b23741`](https://github.com/Effect-TS/effect/commit/1b23741a3d43acfa99ffa385b9c496d411704d0c) Thanks @Masty88! - handle executable paths with spaces in CLI arguments
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+
 ## 0.72.1
 
 ### Patch Changes

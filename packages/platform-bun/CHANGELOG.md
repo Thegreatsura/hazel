@@ -1,5 +1,45 @@
 # @effect/platform-bun
 
+## 0.87.1
+
+### Patch Changes
+
+- [#5977](https://github.com/Effect-TS/effect/pull/5977) [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7) Thanks @scotttrinh! - Added `rows` and `isTTY` properties to `Terminal`
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform-node-shared@0.57.1
+  - @effect/platform@0.94.2
+
+## 0.87.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/cluster@0.56.0
+  - @effect/platform-node-shared@0.57.0
+  - @effect/rpc@0.73.0
+  - @effect/sql@0.49.0
+
+## 0.86.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/sql@0.48.6
+  - @effect/cluster@0.55.0
+  - @effect/platform-node-shared@0.56.0
+
+## 0.85.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/cluster@0.54.0
+  - @effect/platform-node-shared@0.55.0
+
 ## 0.84.0
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @effect/sql-pg
 
+## 0.50.2
+
+### Patch Changes
+
+- [#5998](https://github.com/Effect-TS/effect/pull/5998) [`7b8165f`](https://github.com/Effect-TS/effect/commit/7b8165f45779380fea8ac8e09badef898b63eb41) Thanks @Brandon-Perry! - Readded stream as an optional parameter to PgClientConfig.
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.50.1
+
+### Patch Changes
+
+- [#5943](https://github.com/Effect-TS/effect/pull/5943) [`c5a1e33`](https://github.com/Effect-TS/effect/commit/c5a1e332e004acc9374ced41d69c557c1e392bf2) Thanks @sidpremkumar! - Fix crash when pool.connect fails by ensuring client exists before attaching error handler
+
+## 0.50.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/experimental@0.58.0
+  - @effect/sql@0.49.0
+
+## 0.49.7
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+- Updated dependencies [[`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b)]:
+  - @effect/experimental@0.57.5
+  - @effect/sql@0.48.1
+
 ## 0.49.6
 
 ### Patch Changes

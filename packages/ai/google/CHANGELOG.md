@@ -1,5 +1,32 @@
 # @effect/ai-google
 
+## 0.12.1
+
+### Patch Changes
+
+- [#5958](https://github.com/Effect-TS/effect/pull/5958) [`c0a43bd`](https://github.com/Effect-TS/effect/commit/c0a43bd1456b2141a5383782091260e1c801c068) Thanks @izakfilmalter! - - `thinkingLevel` field on `ThinkingConfig` with values: `THINKING_LEVEL_UNSPECIFIED`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`
+  - New `CandidateFinishReason` enum values: `IMAGE_PROHIBITED_CONTENT`, `IMAGE_OTHER`, `NO_IMAGE`, `IMAGE_RECITATION`, `MISSING_THOUGHT_SIGNATURE`
+  - Updated `finishReasonMap` in utilities to handle the new finish reason values
+
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
+## 0.11.1
+
+### Patch Changes
+
+- [#5834](https://github.com/Effect-TS/effect/pull/5834) [`59760c1`](https://github.com/Effect-TS/effect/commit/59760c1d10b72a539ba174a3ca78d29821b01818) Thanks @timurrakhimzhan! - Fixed "oneOf" toolChoice for google language model
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
 ## 0.11.0
 
 ### Patch Changes

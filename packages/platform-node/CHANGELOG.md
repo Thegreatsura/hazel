@@ -1,5 +1,55 @@
 # @effect/platform-node
 
+## 0.104.1
+
+### Patch Changes
+
+- [#5977](https://github.com/Effect-TS/effect/pull/5977) [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7) Thanks @scotttrinh! - Added `rows` and `isTTY` properties to `Terminal`
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform-node-shared@0.57.1
+  - @effect/platform@0.94.2
+
+## 0.104.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/cluster@0.56.0
+  - @effect/platform-node-shared@0.57.0
+  - @effect/rpc@0.73.0
+  - @effect/sql@0.49.0
+
+## 0.103.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/sql@0.48.6
+  - @effect/cluster@0.55.0
+  - @effect/platform-node-shared@0.56.0
+
+## 0.102.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/cluster@0.54.0
+  - @effect/platform-node-shared@0.55.0
+
+## 0.101.2
+
+### Patch Changes
+
+- [#5797](https://github.com/Effect-TS/effect/pull/5797) [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5) Thanks @tim-smart! - use original status code if headers have already been sent
+
+- Updated dependencies [[`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411), [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/cluster@0.53.6
+  - @effect/platform@0.93.4
+
 ## 0.101.1
 
 ### Patch Changes
@@ -488,7 +538,7 @@
 
   Added a `recursive` option to `FileSystem.watch` that allows watching for changes in subdirectories. When set to `true`, the watcher will monitor changes in all nested directories.
 
-  Note: The recursive option is only supported on macOS and Windows. On other platforms, it will be ignored.
+  Note: The `recursive` option behavior depends on the backend implementation. When using the default Node.js `fs.watch()` backend, the `recursive` option is supported on all platforms (Node.js v20+). When using `@parcel/watcher` (via `NodeFileSystem/ParcelWatcher` layer), watching is always recursive on all platforms and this option is ignored.
 
   Example:
 

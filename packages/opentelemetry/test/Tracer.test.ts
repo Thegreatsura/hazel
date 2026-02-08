@@ -1,10 +1,14 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
+import * as OtlpSerialization from "@effect/opentelemetry/OtlpSerialization"
+import * as OtlpTracer from "@effect/opentelemetry/OtlpTracer"
 import * as Tracer from "@effect/opentelemetry/Tracer"
+import { HttpClient } from "@effect/platform"
 import { assert, describe, expect, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Runtime from "effect/Runtime"
 import { OtelSpan } from "../src/internal/tracer.js"
 
@@ -121,6 +125,106 @@ describe("Tracer", () => {
           const span = yield* Effect.currentSpan
           expect(span).not.instanceOf(OtelSpan)
         })
+      ))
+  })
+
+  describe("OTLP tracer", () => {
+    const MockHttpClient = Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make(() => Effect.die("mock http client"))
+    )
+    const OtlpTracingLive = OtlpTracer.layer({
+      url: "http://localhost:4318/v1/traces",
+      resource: {
+        serviceName: "test-otlp"
+      }
+    }).pipe(Layer.provide(MockHttpClient), Layer.provide(OtlpSerialization.layerJson))
+
+    it.effect("currentOtelSpan works with OTLP tracer", () =>
+      Effect.provide(
+        Effect.withSpan("ok")(
+          Effect.gen(function*() {
+            const span = yield* Effect.currentSpan
+            const otelSpan = yield* Tracer.currentOtelSpan
+            const spanContext = otelSpan.spanContext()
+            expect(spanContext.traceId).toBe(span.traceId)
+            expect(spanContext.spanId).toBe(span.spanId)
+            expect(spanContext.traceFlags).toBe(OtelApi.TraceFlags.SAMPLED)
+            expect(spanContext.isRemote).toBe(false)
+            expect(otelSpan.isRecording()).toBe(true)
+
+            // it should proxy attribute changes
+            otelSpan.setAttribute("key", "value")
+            expect(span.attributes.get("key")).toEqual("value")
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with attributes (2-arg overload) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event", { foo: "bar", count: 42 })).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with HrTime tuple (2-arg overload) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event", [1, 2])).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with number timestamp (2-arg overload) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event", Date.now())).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with Date timestamp (2-arg overload) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event", new Date())).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with name only (1-arg) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event")).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
+      ))
+
+    it.effect("addEvent with attributes and timestamp (3-arg overload) does not throw", () =>
+      Effect.provide(
+        Effect.withSpan("root")(
+          Effect.gen(function*() {
+            const otelSpan = yield* Tracer.currentOtelSpan
+            expect(() => otelSpan.addEvent("test-event", { foo: "bar" }, Date.now())).not.toThrow()
+          })
+        ),
+        OtlpTracingLive
       ))
   })
 })

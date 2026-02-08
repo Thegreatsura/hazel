@@ -1,5 +1,91 @@
 # @effect/opentelemetry
 
+## 0.61.0
+
+### Minor Changes
+
+- [#5927](https://github.com/Effect-TS/effect/pull/5927) [`f4972ed`](https://github.com/Effect-TS/effect/commit/f4972eda6c3179070d0167a30985b760afa0a9f9) Thanks @davidgoli! - Add protobuf protocol support for OTLP exporters
+
+  This introduces an `OtlpSerialization` service for choosing between JSON and Protobuf encoding.
+
+  **Breaking changes:**
+  - `Otlp.layer` now requires an `OtlpSerialization` layer to be provided for
+    the desired encoding format.
+
+  **JSON encoding:**
+
+  ```typescript
+  import { Layer } from "effect"
+  import { Otlp, OtlpSerialization } from "@effect/opentelemetry"
+
+  // Option 1: Explicit JSON layer
+  const layer = Otlp.layerJson({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  })
+
+  // Option 2: Use `layer` and provide OtlpSerialization JSON layer
+  const layer = Otlp.layer({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  }).pipe(Layer.provide(OtlpSerialization.layerJson))
+  ```
+
+  **Protobuf encoding:**
+
+  ```typescript
+  import { Otlp } from "@effect/opentelemetry"
+
+  // Simply use layerProtobuf for protobuf encoding
+  const layer = Otlp.layerProtobuf({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  })
+  ```
+
+- [#5952](https://github.com/Effect-TS/effect/pull/5952) [`4725a7e`](https://github.com/Effect-TS/effect/commit/4725a7eceac8b8b66ee55bbd975e1adab67df271) Thanks @clayroach! - Make @opentelemetry/sdk-trace-node and @opentelemetry/sdk-trace-web required peer dependencies instead of optional. This fixes module resolution errors when importing from the main entry point.
+
+### Patch Changes
+
+- [#5929](https://github.com/Effect-TS/effect/pull/5929) [`abdab5c`](https://github.com/Effect-TS/effect/commit/abdab5cc4ede8272799f86caa6557a8a9674ab37) Thanks @schickling! - Fix `Span.addEvent` to correctly handle the 2-argument overload with attributes.
+
+  Previously, calling `span.addEvent("name", { foo: "bar" })` would throw `TypeError: {} is not iterable` because the implementation incorrectly treated the attributes object as a `TimeInput`. The fix adds proper runtime type discrimination to distinguish between `TimeInput` (number, Date, or HrTime tuple) and `Attributes` (plain object).
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform@0.94.2
+
+## 0.60.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+
+## 0.59.3
+
+### Patch Changes
+
+- [#5890](https://github.com/Effect-TS/effect/pull/5890) [`03355c1`](https://github.com/Effect-TS/effect/commit/03355c1470705168e79ca62f57a30f236cc8033d) Thanks @schickling! - Fix `Tracer.currentOtelSpan` to work with OTLP module
+
+  `currentOtelSpan` now works with both the official OpenTelemetry SDK and the lightweight OTLP module. When using OTLP, it returns a wrapper that conforms to the OpenTelemetry Span interface.
+
+  Closes #5889
+
+- Updated dependencies [[`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8), [`a0a84d8`](https://github.com/Effect-TS/effect/commit/a0a84d8df05d18023ffcb1f60af91d14c2b8db57)]:
+  - effect@3.19.12
+  - @effect/platform@0.93.8
+
+## 0.59.2
+
+### Patch Changes
+
+- [#5863](https://github.com/Effect-TS/effect/pull/5863) [`5be3b6a`](https://github.com/Effect-TS/effect/commit/5be3b6add400dcf281475dbefbfede5b69c63940) Thanks @mikearnaldi! - Widen @opentelemetry/sdk-logs peer dependency range
+
+- Updated dependencies [[`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249)]:
+  - effect@3.19.9
+
 ## 0.59.1
 
 ### Patch Changes

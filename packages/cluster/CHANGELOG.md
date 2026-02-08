@@ -1,5 +1,59 @@
 # @effect/cluster
 
+## 0.56.2
+
+### Patch Changes
+
+- [#6031](https://github.com/Effect-TS/effect/pull/6031) [`1781244`](https://github.com/Effect-TS/effect/commit/17812444c6c0d8f19f9fbc85d82f911dff5523ab) Thanks @tim-smart! - backport effect v4 MessageStorage improvements
+
+## 0.56.1
+
+### Patch Changes
+
+- [#5946](https://github.com/Effect-TS/effect/pull/5946) [`e88f289`](https://github.com/Effect-TS/effect/commit/e88f289c1d9fd4ec584ee793c264597aa84c9352) Thanks @vic-mo! - Fix HttpRunner double-slash routing
+
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/rpc@0.73.0
+  - @effect/sql@0.49.0
+  - @effect/workflow@0.16.0
+
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9), [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/sql@0.48.6
+  - @effect/workflow@0.15.0
+
+## 0.54.0
+
+### Patch Changes
+
+- [#5827](https://github.com/Effect-TS/effect/pull/5827) [`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b) Thanks @tim-smart! - add TestRunner & SingleRunner modules
+  - `TestRunner` allows you to run a in-memory cluster for testing purposes.
+  - `SingleRunner` allows you to run a single node cluster simple deployment
+    scenarios.
+    - Message storage is backed by a SQL database
+    - Multiple nodes are not supported
+
+- Updated dependencies [[`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b)]:
+  - @effect/workflow@0.14.0
+
+## 0.53.6
+
+### Patch Changes
+
+- [#5793](https://github.com/Effect-TS/effect/pull/5793) [`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411) Thanks @tim-smart! - allow advisory locks to be disabled
+
+- Updated dependencies [[`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/platform@0.93.4
+
 ## 0.53.5
 
 ### Patch Changes

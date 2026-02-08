@@ -1,5 +1,43 @@
 # @effect/ai-openai
 
+## 0.37.2
+
+### Patch Changes
+
+- [#5949](https://github.com/Effect-TS/effect/pull/5949) [`577f839`](https://github.com/Effect-TS/effect/commit/577f839e00bc74bccb96444e53b9d710310b50e3) Thanks @thewilkybarkid! - Ensure OpenAI headers are redacted
+
+## 0.37.1
+
+### Patch Changes
+
+- [#5938](https://github.com/Effect-TS/effect/pull/5938) [`72f61be`](https://github.com/Effect-TS/effect/commit/72f61be280fdda98eb3835b3d559d6d5031699dc) Thanks @tensor2077! - Fix streaming decode: response.output_item.added may emit web_search_call without action (when status="in_progress").
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
+## 0.37.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
+## 0.36.0
+
+### Minor Changes
+
+- [#5850](https://github.com/Effect-TS/effect/pull/5850) [`1ddd4e4`](https://github.com/Effect-TS/effect/commit/1ddd4e477a9677fb3820f80450a378d3550d31a7) Thanks @IMax153! - Update the generated OpenAI schema definitions
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
 ## 0.35.0
 
 ### Patch Changes

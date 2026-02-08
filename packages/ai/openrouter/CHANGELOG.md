@@ -1,5 +1,56 @@
 # @effect/ai-openrouter
 
+## 0.8.2
+
+### Patch Changes
+
+- [#6026](https://github.com/Effect-TS/effect/pull/6026) [`38241de`](https://github.com/Effect-TS/effect/commit/38241dee2319d051f3ab15781f73f838d626ac24) Thanks @IMax153! - Fix the OpenRouter AI provider schemas
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.8.1
+
+### Patch Changes
+
+- [#5928](https://github.com/Effect-TS/effect/pull/5928) [`34fbbb1`](https://github.com/Effect-TS/effect/commit/34fbbb18e34cbad6ee5f0f396b3e27ba590925b8) Thanks @harrysolovay! - Regenerate OpenRouter schemas to fix schema validation.
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
+## 0.7.1
+
+### Patch Changes
+
+- [#5799](https://github.com/Effect-TS/effect/pull/5799) [`5d7c9d8`](https://github.com/Effect-TS/effect/commit/5d7c9d8bb89b955b79303e7445c713ce56b06977) Thanks @subtleGradient! - Add support for google-gemini-v1 reasoning format
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
+## 0.7.0
+
+### Minor Changes
+
+- [#5849](https://github.com/Effect-TS/effect/pull/5849) [`2dcbf98`](https://github.com/Effect-TS/effect/commit/2dcbf98b0b426536f71dfb33cbe6f310d7ad4e77) Thanks @IMax153! - Update generated schema definitions and apply patch fixes
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
 ## 0.6.0
 
 ### Patch Changes

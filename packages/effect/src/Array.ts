@@ -2352,7 +2352,10 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => has(bs, a))
+    }
   )
 }
 
@@ -2400,7 +2403,10 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => !has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => !has(bs, a))
+    }
   )
 }
 
@@ -2481,9 +2487,8 @@ export declare namespace ReadonlyArray {
    * @since 2.0.0
    */
   export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
-    NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
-    : T extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
-    : never
+    NonEmptyReadonlyArray<NonEmptyReadonlyArray<any>> ? NonEmptyArray<T[number][number]>
+    : Array<T[number][number]>
 }
 
 /**
@@ -2543,7 +2548,9 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(self: S) => ReadonlyArray.Flatten<S> = flatMap(
+export const flatten: <const S extends ReadonlyArray<ReadonlyArray<any>>>(
+  self: S
+) => ReadonlyArray.Flatten<S> = flatMap(
   identity
 ) as any
 
