@@ -1,6 +1,5 @@
 import type { IntegrationConnectionId, MessageId, MessageIntegrationLinkId } from "@hazel/schema"
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
-import { integrationProviderEnum } from "./integration-connections"
 
 export const linkTypeEnum = pgEnum("integration_link_type", ["created", "mentioned", "resolved", "linked"])
 

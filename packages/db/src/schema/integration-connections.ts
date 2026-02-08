@@ -12,14 +12,6 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core"
 
-export const integrationProviderEnum = pgEnum("integration_provider", [
-	"linear",
-	"github",
-	"figma",
-	"notion",
-	"discord",
-])
-
 export const connectionLevelEnum = pgEnum("connection_level", ["organization", "user"])
 
 export const connectionStatusEnum = pgEnum("connection_status", [
@@ -34,7 +26,7 @@ export const integrationConnectionsTable = pgTable(
 	"integration_connections",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<IntegrationConnectionId>(),
-		provider: integrationProviderEnum().notNull(),
+		provider: varchar({ length: 50 }).notNull(),
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		userId: uuid().$type<UserId>(), // null for org-level, populated for user-level
 		level: connectionLevelEnum().notNull(),

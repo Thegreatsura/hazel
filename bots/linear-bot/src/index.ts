@@ -1,9 +1,22 @@
-import { Config, Effect, Redacted, Schema } from "effect"
+import { LanguageModel } from "@effect/ai"
+import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
+import { FetchHttpClient } from "@effect/platform"
+import { Config, Effect, Layer, Schema } from "effect"
 import { runHazelBot } from "@hazel/bot-sdk"
 import { LinearApiClient } from "@hazel/integrations/linear"
-import { generateText } from "ai"
-import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { commands, IssueCommand, IssueifyCommand, GeneratedIssueSchema } from "./commands.ts"
+
+// ============================================================================
+// OpenRouter AI Layer
+// ============================================================================
+
+const OpenRouterClientLayer = OpenRouterClient.layerConfig({
+	apiKey: Config.redacted("OPENROUTER_API_KEY"),
+}).pipe(Layer.provide(FetchHttpClient.layer))
+
+const OpenRouterModelLayer = OpenRouterLanguageModel.layer({
+	model: "moonshotai/kimi-k2.5:nitro",
+}).pipe(Layer.provide(OpenRouterClientLayer))
 
 // ============================================================================
 // Bot Setup
@@ -79,15 +92,12 @@ runHazelBot({
 
 					yield* stream.setText("✨ Generating issue with AI...")
 
-					// Get OpenRouter API key from config
-					const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
-					const openrouter = createOpenRouter({ apiKey: Redacted.value(apiKey) })
-
 					// Use AI to generate issue title and description
-					const { text } = yield* Effect.promise(() =>
-						generateText({
-							model: openrouter("anthropic/claude-3.5-haiku"),
-							system: `You are an expert at converting chat conversations into well-structured Linear issues.
+					const response = yield* LanguageModel.generateText({
+						prompt: [
+							{
+								role: "system",
+								content: `You are an expert at converting chat conversations into well-structured Linear issues.
 You MUST respond with ONLY a valid JSON object, no other text.
 
 The JSON object must have exactly these fields:
@@ -95,11 +105,16 @@ The JSON object must have exactly these fields:
 - "description": A well-structured description in markdown that includes a brief summary, key points, and any action items
 
 Keep the description focused and professional. Don't include raw timestamps or user IDs.`,
-							prompt: `Convert this conversation into a Linear issue. Respond with ONLY a JSON object:
+							},
+							{
+								role: "user",
+								content: `Convert this conversation into a Linear issue. Respond with ONLY a JSON object:
 
 ${conversationText}`,
-						}),
-					)
+							},
+						],
+					})
+					const text = response.text
 
 					// Parse the JSON response
 					const generatedIssue = yield* Schema.decodeUnknown(GeneratedIssueSchema)(JSON.parse(text))
@@ -122,7 +137,7 @@ ${conversationText}`,
 						`@[userId:${ctx.userId}] created an issue from this conversation: ${issue.url}`,
 					)
 					yield* stream.complete()
-				}).pipe(bot.withErrorHandler(ctx)),
+				}).pipe(bot.withErrorHandler(ctx), Effect.provide(OpenRouterModelLayer)),
 			)
 		}),
 })

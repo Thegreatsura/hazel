@@ -105,7 +105,7 @@ export const handleAIRequest = (params: {
 		Effect.provideServiceEffect(
 			LanguageModel.LanguageModel,
 			Config.string("AI_MODEL").pipe(
-				Config.withDefault("moonshotai/kimi-k2.5"),
+				Config.withDefault("moonshotai/kimi-k2.5:nitro"),
 				Effect.flatMap((model) => makeOpenRouterModel(model)),
 			),
 		),

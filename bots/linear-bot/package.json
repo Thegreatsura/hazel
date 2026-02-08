@@ -14,8 +14,8 @@
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/integrations": "workspace:*",
-		"@openrouter/ai-sdk-provider": "^2.1.1",
-		"ai": "^6.0.67",
+		"@effect/ai": "catalog:effect",
+		"@effect/ai-openrouter": "catalog:effect",
 		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
