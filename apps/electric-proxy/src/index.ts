@@ -1,7 +1,7 @@
 import { BunRuntime } from "@effect/platform-bun"
 import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
-import { Effect, Layer, Logger, Runtime } from "effect"
+import { Effect, Layer, Logger, Metric, Runtime } from "effect"
 import { validateBotToken } from "./auth/bot-auth"
 import { validateSession } from "./auth/user-auth"
 import {
@@ -10,6 +10,7 @@ import {
 	RedisPersistenceLive,
 } from "./cache"
 import { ProxyConfigService } from "./config"
+import { proxyAuthFailures, proxyRequestDuration, proxyRequestsTotal } from "./observability/metrics"
 import { TracerLive } from "./observability/tracer"
 import { type ElectricProxyError, prepareElectricUrl, proxyElectricRequest } from "./proxy/electric-client"
 import { type BotTableAccessError, getBotWhereClauseForTable, validateBotTable } from "./tables/bot-tables"
@@ -63,8 +64,14 @@ const BOT_CORS_HEADERS: Record<string, string> = {
 // USER FLOW HANDLER
 // =============================================================================
 
-const handleUserRequest = (request: Request) =>
-	Effect.gen(function* () {
+const handleUserRequest = (request: Request) => {
+	const start = Date.now()
+
+	return Effect.gen(function* () {
+		yield* Effect.annotateCurrentSpan("http.method", request.method)
+		yield* Effect.annotateCurrentSpan("http.route", "/v1/shape")
+		yield* Effect.annotateCurrentSpan("proxy.auth_type", "user")
+
 		const config = yield* ProxyConfigService
 		const allowedOrigin = config.allowedOrigin
 		const requestOrigin = request.headers.get("Origin")
@@ -97,6 +104,8 @@ const handleUserRequest = (request: Request) =>
 				headers: { "Content-Type": "application/json", ...corsHeaders },
 			})
 		}
+
+		yield* Effect.annotateCurrentSpan("proxy.table", tableValidation.table!)
 
 		// Prepare Electric URL
 		const originUrl = yield* prepareElectricUrl(request.url)
@@ -141,6 +150,9 @@ const handleUserRequest = (request: Request) =>
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
 				yield* Effect.logInfo("Authentication failed", { error: error.message, detail: error.detail })
+				yield* Metric.increment(proxyAuthFailures).pipe(
+					Effect.tagMetrics({ auth_type: "user", error_tag: "ProxyAuthenticationError" }),
+				)
 				return new Response(
 					JSON.stringify({
 						error: error.message,
@@ -217,14 +229,36 @@ const handleUserRequest = (request: Request) =>
 				)
 			}),
 		),
+		Effect.tap((response) =>
+			Effect.gen(function* () {
+				const duration = Date.now() - start
+				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
+				yield* Metric.increment(proxyRequestsTotal).pipe(
+					Effect.tagMetrics({
+						route: "/v1/shape",
+						auth_type: "user",
+						status_code: String(response.status),
+					}),
+				)
+				yield* Metric.update(proxyRequestDuration, duration)
+			}),
+		),
+		Effect.withSpan("proxy.handleUserRequest"),
 	)
+}
 
 // =============================================================================
 // BOT FLOW HANDLER
 // =============================================================================
 
-const handleBotRequest = (request: Request) =>
-	Effect.gen(function* () {
+const handleBotRequest = (request: Request) => {
+	const start = Date.now()
+
+	return Effect.gen(function* () {
+		yield* Effect.annotateCurrentSpan("http.method", request.method)
+		yield* Effect.annotateCurrentSpan("http.route", "/bot/v1/shape")
+		yield* Effect.annotateCurrentSpan("proxy.auth_type", "bot")
+
 		// Handle CORS preflight
 		if (request.method === "OPTIONS") {
 			return new Response(null, { status: 204, headers: BOT_CORS_HEADERS })
@@ -252,6 +286,8 @@ const handleBotRequest = (request: Request) =>
 				headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
 			})
 		}
+
+		yield* Effect.annotateCurrentSpan("proxy.table", tableValidation.table!)
 
 		// Prepare Electric URL
 		const originUrl = yield* prepareElectricUrl(request.url)
@@ -297,6 +333,9 @@ const handleBotRequest = (request: Request) =>
 					error: error.message,
 					detail: error.detail,
 				})
+				yield* Metric.increment(proxyAuthFailures).pipe(
+					Effect.tagMetrics({ auth_type: "bot", error_tag: "BotAuthenticationError" }),
+				)
 				return new Response(
 					JSON.stringify({
 						error: error.message,
@@ -364,7 +403,23 @@ const handleBotRequest = (request: Request) =>
 				)
 			}),
 		),
+		Effect.tap((response) =>
+			Effect.gen(function* () {
+				const duration = Date.now() - start
+				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
+				yield* Metric.increment(proxyRequestsTotal).pipe(
+					Effect.tagMetrics({
+						route: "/bot/v1/shape",
+						auth_type: "bot",
+						status_code: String(response.status),
+					}),
+				)
+				yield* Metric.update(proxyRequestDuration, duration)
+			}),
+		),
+		Effect.withSpan("proxy.handleBotRequest"),
 	)
+}
 
 // =============================================================================
 // LAYERS

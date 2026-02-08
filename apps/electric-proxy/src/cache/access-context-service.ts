@@ -91,16 +91,25 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 			})
 
 			return {
-				getBotContext: (botId: BotId, userId: UserId) =>
-					botCache.get(new BotAccessContextRequest({ botId, userId })).pipe(
-						Effect.map((result) => ({
-							channelIds: result.channelIds as readonly ChannelId[],
-						})),
-					),
+				getBotContext: Effect.fn("AccessContextCache.getBotContext")(function* (
+					botId: BotId,
+					userId: UserId,
+				) {
+					yield* Effect.annotateCurrentSpan("cache.system", "redis")
+					yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
+					yield* Effect.annotateCurrentSpan("cache.operation", "get")
+					const result = yield* botCache.get(new BotAccessContextRequest({ botId, userId }))
+					yield* Effect.annotateCurrentSpan("cache.result", "hit")
+					return { channelIds: result.channelIds as readonly ChannelId[] }
+				}),
 
-				invalidateBot: (botId: BotId) =>
+				invalidateBot: Effect.fn("AccessContextCache.invalidateBot")(function* (botId: BotId) {
+					yield* Effect.annotateCurrentSpan("cache.system", "redis")
+					yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
+					yield* Effect.annotateCurrentSpan("cache.operation", "invalidate")
 					// Note: We don't have userId here, but invalidation only uses the primary key (botId)
-					botCache.invalidate(new BotAccessContextRequest({ botId, userId: "" as UserId })),
+					yield* botCache.invalidate(new BotAccessContextRequest({ botId, userId: "" as UserId }))
+				}),
 			} satisfies AccessContextCache
 		}),
 	},

@@ -1,6 +1,7 @@
 import { ELECTRIC_PROTOCOL_QUERY_PARAMS } from "@electric-sql/client"
-import { Effect, Schema } from "effect"
+import { Effect, Metric, Schema } from "effect"
 import { ProxyConfigService } from "../config"
+import { proxyElectricDuration, proxyElectricErrors } from "../observability/metrics"
 
 /**
  * Error thrown when Electric proxy request fails
@@ -57,6 +58,7 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 	originUrl: string | URL,
 ) {
 	const urlStr = typeof originUrl === "string" ? originUrl : originUrl.toString()
+	const start = Date.now()
 	const response = yield* Effect.tryPromise({
 		try: () => fetch(urlStr),
 		catch: (error) =>
@@ -65,9 +67,15 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 				detail: String(error),
 			}),
 	})
+	const duration = Date.now() - start
+
+	yield* Effect.annotateCurrentSpan("electric.status_code", response.status)
+	yield* Effect.annotateCurrentSpan("electric.duration_ms", duration)
+	yield* Metric.update(proxyElectricDuration, duration)
 
 	// Log non-2xx responses for debugging (e.g. Electric returning 400 for bad params)
 	if (!response.ok) {
+		yield* Metric.increment(proxyElectricErrors)
 		const errorBody = yield* Effect.promise(() => response.text())
 		yield* Effect.logWarning("Electric returned non-2xx", {
 			status: response.status,
