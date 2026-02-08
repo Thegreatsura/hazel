@@ -2,7 +2,7 @@
  * Event types for Electric SQL shape stream events
  */
 
-import { Data } from "effect"
+import { Data, type Tracer } from "effect"
 
 /**
  * Event type discriminator (table.operation format)
@@ -23,6 +23,7 @@ export class ElectricEvent<A = unknown> extends Data.Class<{
 	readonly table: string
 	readonly value: A
 	readonly timestamp: Date
+	readonly sourceSpan?: Tracer.AnySpan | undefined
 }> {
 	/**
 	 * Get the event type discriminator (table.operation)
@@ -40,12 +41,14 @@ export const createElectricEvent = <A>(params: {
 	readonly table: string
 	readonly value: A
 	readonly timestamp?: Date
+	readonly sourceSpan?: Tracer.AnySpan | undefined
 }): ElectricEvent<A> =>
 	new ElectricEvent({
 		operation: params.operation,
 		table: params.table,
 		value: params.value,
 		timestamp: params.timestamp ?? new Date(),
+		sourceSpan: params.sourceSpan,
 	})
 
 /**

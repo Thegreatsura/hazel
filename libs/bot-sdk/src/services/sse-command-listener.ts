@@ -10,7 +10,20 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Sse } from "@effect/experimental"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Context, Effect, Layer, Metric, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import {
+	Context,
+	Effect,
+	Layer,
+	Metric,
+	Option,
+	Queue,
+	Redacted,
+	Ref,
+	Schedule,
+	Schema,
+	Stream,
+	type Tracer,
+} from "effect"
 import { BotAuth } from "../auth.ts"
 import { generateCorrelationId } from "../log-context.ts"
 
@@ -41,6 +54,15 @@ export interface CommandContext {
 	readonly orgId: OrganizationId
 	readonly args: Record<string, string>
 	readonly timestamp: number
+}
+
+/**
+ * Wrapper that carries a command event together with its source span
+ * for trace propagation across the queue boundary.
+ */
+export interface CommandQueueItem {
+	readonly event: CommandEvent
+	readonly sourceSpan?: Tracer.AnySpan | undefined
 }
 
 // ============ Queue Config ============
@@ -181,8 +203,8 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		// Create command queue with proper scoped acquisition and backpressure
 		const commandQueue = yield* Effect.acquireRelease(
 			queueConfig.backpressureStrategy === "sliding"
-				? Queue.sliding<CommandEvent>(queueConfig.capacity)
-				: Queue.dropping<CommandEvent>(queueConfig.capacity),
+				? Queue.sliding<CommandQueueItem>(queueConfig.capacity)
+				: Queue.dropping<CommandQueueItem>(queueConfig.capacity),
 			(queue) =>
 				Effect.gen(function* () {
 					yield* Effect.logDebug("Shutting down command queue", {
@@ -284,7 +306,13 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 						),
 						Effect.flatMap((cmd) =>
 							Effect.gen(function* () {
-								const offered = yield* Queue.offer(commandQueue, cmd)
+								// Capture the current span for trace propagation across the queue
+								const sourceSpan = Option.getOrUndefined(
+									yield* Effect.currentSpan.pipe(Effect.option),
+								)
+								const queueItem: CommandQueueItem = { event: cmd, sourceSpan }
+
+								const offered = yield* Queue.offer(commandQueue, queueItem)
 								if (!offered) {
 									// Command was dropped due to backpressure
 									yield* Metric.increment(commandQueueDroppedCounter)
@@ -402,7 +430,8 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 
 		return {
 			/**
-			 * Take the next command event from the queue (blocks until available)
+			 * Take the next command queue item from the queue (blocks until available)
+			 * Returns CommandQueueItem with the event and its source span for trace propagation
 			 * Tracks dequeue metrics and updates queue size gauge
 			 */
 			take: Queue.take(commandQueue).pipe(
@@ -415,7 +444,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			),
 
 			/**
-			 * Take all available command events from the queue (non-blocking)
+			 * Take all available command queue items from the queue (non-blocking)
 			 */
 			takeAll: Queue.takeAll(commandQueue),
 

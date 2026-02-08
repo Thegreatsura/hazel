@@ -6,7 +6,7 @@
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, FiberRef } from "effect"
+import { Effect, FiberRef, type Tracer } from "effect"
 import type { EventOperation, EventType } from "./types/events.ts"
 
 /**
@@ -196,15 +196,17 @@ const contextToSpanAttributes = (ctx: LogContext): Record<string, unknown> => {
  * @param ctx - The log context to use
  * @param spanName - Name for the parent span
  * @param effect - The effect to run with context
+ * @param options - Optional span options (e.g., parent span for trace propagation)
  */
 export const withLogContext = <A, E, R>(
 	ctx: LogContext,
 	spanName: string,
 	effect: Effect.Effect<A, E, R>,
+	options?: { readonly parent?: Tracer.AnySpan },
 ): Effect.Effect<A, E, R> =>
 	effect.pipe(
 		Effect.annotateLogs(contextToAnnotations(ctx)),
-		Effect.withSpan(spanName, { attributes: contextToSpanAttributes(ctx) }),
+		Effect.withSpan(spanName, { attributes: contextToSpanAttributes(ctx), ...options }),
 		(eff) => Effect.locally(eff, currentLogContext, ctx),
 	)
 

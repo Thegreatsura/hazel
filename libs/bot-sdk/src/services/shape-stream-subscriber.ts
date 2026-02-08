@@ -186,11 +186,15 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 					),
 				)
 
+				// Capture the current span so consumers can use it as parent
+				const sourceSpan = Option.getOrUndefined(yield* Effect.currentSpan.pipe(Effect.option))
+
 				// Create immutable event using Data.Class factory
 				const event = createElectricEvent({
 					operation,
 					table: subscription.table,
 					value: parseResult,
+					sourceSpan,
 				})
 
 				yield* queue.offer(event)

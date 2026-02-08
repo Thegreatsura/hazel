@@ -230,9 +230,11 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 							const eventId = generateEventId()
 
 							// Dispatch to handlers based on event type
+							// Use sourceSpan as parent to connect consumer trace to producer trace
 							yield* dispatchToHandlers(eventType, event.value, eventId).pipe(
 								Effect.withSpan("bot.event.dispatch", {
 									attributes: { eventType, eventId },
+									parent: event.sourceSpan,
 								}),
 							)
 						}),

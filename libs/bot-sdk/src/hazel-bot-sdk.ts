@@ -1078,7 +1078,8 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							yield* Effect.forkScoped(
 								Effect.forever(
 									Effect.gen(function* () {
-										const event = yield* commandListener.take
+										const queueItem = yield* commandListener.take
+										const event = queueItem.event
 
 										const handler = commandHandlers.get(event.commandName)
 										if (!handler) {
@@ -1152,6 +1153,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 													),
 												),
 											),
+											{ parent: queueItem.sourceSpan },
 										)
 									}),
 								),
