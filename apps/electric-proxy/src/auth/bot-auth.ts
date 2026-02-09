@@ -50,6 +50,7 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 	// Extract Bearer token from Authorization header
 	const authHeader = request.headers.get("Authorization")
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		yield* Effect.annotateCurrentSpan("auth.header.present", false)
 		return yield* Effect.fail(
 			new BotAuthenticationError({
 				message: "Missing or invalid Authorization header",
@@ -59,6 +60,8 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 	}
 
 	const token = authHeader.slice(7) // Remove "Bearer " prefix
+	yield* Effect.annotateCurrentSpan("auth.header.present", true)
+	yield* Effect.annotateCurrentSpan("auth.scheme", "bearer")
 
 	// Hash the token
 	const tokenHash = yield* Effect.promise(() => hashToken(token))
@@ -78,6 +81,7 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 	const botOption = Option.fromNullable(botResult[0])
 
 	if (Option.isNone(botOption)) {
+		yield* Effect.annotateCurrentSpan("auth.token.valid", false)
 		return yield* Effect.fail(
 			new BotAuthenticationError({
 				message: "Invalid bot token",
@@ -87,10 +91,12 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 	}
 
 	const bot = botOption.value
+	yield* Effect.annotateCurrentSpan("auth.token.valid", true)
 
 	// Get cached access context from Redis-backed cache
 	const cache = yield* AccessContextCacheService
 	const accessContext = yield* cache.getBotContext(bot.id, bot.userId)
+	yield* Effect.annotateCurrentSpan("proxy.bot.channel_count", accessContext.channelIds.length)
 
 	return {
 		botId: bot.id,

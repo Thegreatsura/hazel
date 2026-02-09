@@ -119,13 +119,38 @@ export const messageActor = actor({
 			Effect.scoped,
 			Effect.catchTags({
 				InvalidTokenFormatError: (e) =>
-					Effect.fail(new UserError(e.message, { code: "invalid_token" })),
-				JwtValidationError: (e) => Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+					Log.error("Token validation failed: invalid format", {
+						tokenPrefix: params.token.slice(0, 12),
+					}).pipe(
+						Effect.flatMap(() =>
+							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+						),
+					),
+				JwtValidationError: (e) =>
+					Log.error("Token validation failed: JWT error", {
+						error: e.message,
+					}).pipe(
+						Effect.flatMap(() =>
+							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+						),
+					),
 				BotTokenValidationError: (e) =>
-					Effect.fail(new UserError(e.message, { code: "invalid_token" })),
-				ConfigError: (e) => Effect.fail(new UserError(e.message, { code: "server_error" })),
+					Log.error("Token validation failed: bot token error", {
+						statusCode: e.statusCode,
+						tokenPrefix: params.token.slice(0, 12),
+						error: e.message,
+					}).pipe(
+						Effect.flatMap(() =>
+							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+						),
+					),
+				ConfigError: (e) =>
+					Log.error("Token validation failed: config error", {
+						error: e.message,
+					}).pipe(
+						Effect.flatMap(() => Effect.fail(new UserError(e.message, { code: "server_error" }))),
+					),
 			}),
-			Effect.tapError((error) => Log.error("Token validation failed", { error: error.message })),
 		)
 	}),
 

@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@hazel/actors": "workspace:*",
-		"rivetkit": "^2.0.42"
+		"rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009"
 	},
 	"devDependencies": {
 		"@types/bun": "1.3.8"

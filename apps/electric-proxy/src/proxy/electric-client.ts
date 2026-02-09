@@ -33,15 +33,13 @@ export const prepareElectricUrl = Effect.fn("ElectricClient.prepareElectricUrl")
 	})
 
 	// Add Electric Cloud authentication if configured
-	if (config.electricSourceId && config.electricSourceSecret) {
-		originUrl.searchParams.set("source_id", config.electricSourceId)
-		originUrl.searchParams.set("secret", config.electricSourceSecret)
-	} else {
-		// Log warning if auth is not configured - this helps debug "missing source id" errors
-		yield* Effect.logWarning("Electric auth not configured", {
-			hasSourceId: !!config.electricSourceId,
-			hasSecret: !!config.electricSourceSecret,
-		})
+	const sourceId = config.electricSourceId
+	const sourceSecret = config.electricSourceSecret
+	const hasElectricAuth = sourceId !== undefined && sourceSecret !== undefined
+	yield* Effect.annotateCurrentSpan("electric.auth.configured", hasElectricAuth)
+	if (hasElectricAuth) {
+		originUrl.searchParams.set("source_id", sourceId)
+		originUrl.searchParams.set("secret", sourceSecret)
 	}
 
 	return originUrl
@@ -58,6 +56,9 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 	originUrl: string | URL,
 ) {
 	const urlStr = typeof originUrl === "string" ? originUrl : originUrl.toString()
+	const targetUrl = new URL(urlStr)
+	yield* Effect.annotateCurrentSpan("url.path", targetUrl.pathname)
+	yield* Effect.annotateCurrentSpan("server.address", targetUrl.host)
 	const start = Date.now()
 	const response = yield* Effect.tryPromise({
 		try: () => fetch(urlStr),
@@ -71,16 +72,27 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 
 	yield* Effect.annotateCurrentSpan("electric.status_code", response.status)
 	yield* Effect.annotateCurrentSpan("electric.duration_ms", duration)
+	yield* Effect.annotateCurrentSpan("http.response.status_code", response.status)
 	yield* Metric.update(proxyElectricDuration, duration)
 
 	// Log non-2xx responses for debugging (e.g. Electric returning 400 for bad params)
 	if (!response.ok) {
-		yield* Metric.increment(proxyElectricErrors)
+		const upstreamRequestId = response.headers.get("x-request-id") ?? response.headers.get("request-id")
+		yield* Effect.annotateCurrentSpan("error.type", "ElectricUpstreamError")
+		yield* Effect.annotateCurrentSpan("error.handled", true)
+		if (upstreamRequestId) {
+			yield* Effect.annotateCurrentSpan("electric.upstream_request_id", upstreamRequestId)
+		}
+		yield* Metric.increment(proxyElectricErrors).pipe(
+			Effect.tagMetrics({ status_code: String(response.status) }),
+		)
 		const errorBody = yield* Effect.promise(() => response.text())
 		yield* Effect.logWarning("Electric returned non-2xx", {
 			status: response.status,
-			url: urlStr.replace(/secret=[^&]+/, "secret=***"),
-			body: errorBody.slice(0, 500),
+			statusText: response.statusText,
+			upstreamRequestId: upstreamRequestId ?? undefined,
+			bodyLength: errorBody.length,
+			...(response.status >= 500 ? { bodyPreview: errorBody.slice(0, 500) } : {}),
 		})
 		const headers = new Headers(response.headers)
 		headers.delete("content-encoding")

@@ -60,17 +60,41 @@ const BOT_CORS_HEADERS: Record<string, string> = {
 	"Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
+const REQUEST_ID_HEADER_NAMES = ["x-request-id", "x-correlation-id", "cf-ray"] as const
+
+function getRequestId(request: Request): string | undefined {
+	for (const headerName of REQUEST_ID_HEADER_NAMES) {
+		const value = request.headers.get(headerName)
+		if (value) return value
+	}
+	return undefined
+}
+
+const annotateHandledError = Effect.fn("ElectricProxy.annotateHandledError")(function* (
+	statusCode: number,
+	errorType: string,
+) {
+	yield* Effect.annotateCurrentSpan("http.response.status_code", statusCode)
+	yield* Effect.annotateCurrentSpan("error.type", errorType)
+	yield* Effect.annotateCurrentSpan("error.handled", true)
+})
+
 // =============================================================================
 // USER FLOW HANDLER
 // =============================================================================
 
 const handleUserRequest = (request: Request) => {
 	const start = Date.now()
+	const requestId = getRequestId(request)
 
 	return Effect.gen(function* () {
 		yield* Effect.annotateCurrentSpan("http.method", request.method)
+		yield* Effect.annotateCurrentSpan("http.request.method", request.method)
 		yield* Effect.annotateCurrentSpan("http.route", "/v1/shape")
 		yield* Effect.annotateCurrentSpan("proxy.auth_type", "user")
+		if (requestId) {
+			yield* Effect.annotateCurrentSpan("http.request_id", requestId)
+		}
 
 		const config = yield* ProxyConfigService
 		const allowedOrigin = config.allowedOrigin
@@ -84,6 +108,8 @@ const handleUserRequest = (request: Request) => {
 
 		// Method check
 		if (request.method !== "GET" && request.method !== "DELETE") {
+			yield* Effect.annotateCurrentSpan("proxy.reject_reason", "method_not_allowed")
+			yield* Effect.annotateCurrentSpan("http.response.status_code", 405)
 			return new Response("Method not allowed", {
 				status: 405,
 				headers: { Allow: "GET, DELETE, OPTIONS", ...corsHeaders },
@@ -99,6 +125,8 @@ const handleUserRequest = (request: Request) => {
 		const tableValidation = validateTable(tableParam)
 
 		if (!tableValidation.valid) {
+			yield* Effect.annotateCurrentSpan("proxy.reject_reason", "invalid_table")
+			yield* Effect.annotateCurrentSpan("http.response.status_code", tableParam ? 403 : 400)
 			return new Response(JSON.stringify({ error: tableValidation.error }), {
 				status: tableParam ? 403 : 400,
 				headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -114,20 +142,17 @@ const handleUserRequest = (request: Request) => {
 		// Generate WHERE clause
 		const whereResult = yield* getWhereClauseForTable(tableValidation.table!, user)
 		const whereStats = getWhereClauseParamStats(whereResult)
-		yield* Effect.log("Generated WHERE clause", {
-			table: tableValidation.table,
-			paramsCount: whereStats.paramsCount,
-			uniquePlaceholderCount: whereStats.uniquePlaceholderCount,
-			maxPlaceholderIndex: whereStats.maxPlaceholderIndex,
-			startsAtOne: whereStats.startsAtOne,
-			hasGaps: whereStats.hasGaps,
-		})
 		const finalUrl = applyWhereToElectricUrl(originUrl, whereResult)
-		yield* Effect.log("Prepared Electric URL", {
-			table: tableValidation.table,
-			urlLength: finalUrl.length,
-			whereLength: whereResult.whereClause.length,
-		})
+		yield* Effect.annotateCurrentSpan("proxy.where.params_count", whereStats.paramsCount)
+		yield* Effect.annotateCurrentSpan(
+			"proxy.where.unique_placeholder_count",
+			whereStats.uniquePlaceholderCount,
+		)
+		yield* Effect.annotateCurrentSpan("proxy.where.max_placeholder_index", whereStats.maxPlaceholderIndex)
+		yield* Effect.annotateCurrentSpan("proxy.where.starts_at_one", whereStats.startsAtOne)
+		yield* Effect.annotateCurrentSpan("proxy.where.has_gaps", whereStats.hasGaps)
+		yield* Effect.annotateCurrentSpan("proxy.where.length", whereResult.whereClause.length)
+		yield* Effect.annotateCurrentSpan("proxy.electric_url.length", finalUrl.length)
 
 		// Proxy request to Electric
 		const response = yield* proxyElectricRequest(finalUrl)
@@ -149,7 +174,8 @@ const handleUserRequest = (request: Request) => {
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
-				yield* Effect.logInfo("Authentication failed", { error: error.message, detail: error.detail })
+				yield* annotateHandledError(401, "ProxyAuthenticationError")
+				yield* Effect.logInfo("Authentication failed", { detail: error.detail })
 				yield* Metric.increment(proxyAuthFailures).pipe(
 					Effect.tagMetrics({ auth_type: "user", error_tag: "ProxyAuthenticationError" }),
 				)
@@ -175,6 +201,7 @@ const handleUserRequest = (request: Request) => {
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
+				yield* annotateHandledError(500, "TableAccessError")
 				yield* Effect.logError("Table access error", { error: error.message, table: error.table })
 				return new Response(
 					JSON.stringify({ error: error.message, detail: error.detail, table: error.table }),
@@ -193,6 +220,7 @@ const handleUserRequest = (request: Request) => {
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
+				yield* annotateHandledError(502, "ElectricProxyError")
 				yield* Effect.logError("Electric proxy error", { error: error.message })
 				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
 					status: 502,
@@ -209,6 +237,7 @@ const handleUserRequest = (request: Request) => {
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
+				yield* annotateHandledError(500, errorTag)
 				yield* Effect.logError("Unhandled error in user flow", {
 					tag: errorTag,
 					error: String(error),
@@ -233,6 +262,7 @@ const handleUserRequest = (request: Request) => {
 			Effect.gen(function* () {
 				const duration = Date.now() - start
 				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
+				yield* Effect.annotateCurrentSpan("http.response.status_code", response.status)
 				yield* Metric.increment(proxyRequestsTotal).pipe(
 					Effect.tagMetrics({
 						route: "/v1/shape",
@@ -244,6 +274,11 @@ const handleUserRequest = (request: Request) => {
 			}),
 		),
 		Effect.withSpan("proxy.handleUserRequest"),
+		Effect.annotateLogs({
+			route: "/v1/shape",
+			auth_type: "user",
+			...(requestId ? { request_id: requestId } : {}),
+		}),
 	)
 }
 
@@ -253,11 +288,16 @@ const handleUserRequest = (request: Request) => {
 
 const handleBotRequest = (request: Request) => {
 	const start = Date.now()
+	const requestId = getRequestId(request)
 
 	return Effect.gen(function* () {
 		yield* Effect.annotateCurrentSpan("http.method", request.method)
+		yield* Effect.annotateCurrentSpan("http.request.method", request.method)
 		yield* Effect.annotateCurrentSpan("http.route", "/bot/v1/shape")
 		yield* Effect.annotateCurrentSpan("proxy.auth_type", "bot")
+		if (requestId) {
+			yield* Effect.annotateCurrentSpan("http.request_id", requestId)
+		}
 
 		// Handle CORS preflight
 		if (request.method === "OPTIONS") {
@@ -266,6 +306,8 @@ const handleBotRequest = (request: Request) => {
 
 		// Method check
 		if (request.method !== "GET" && request.method !== "DELETE") {
+			yield* Effect.annotateCurrentSpan("proxy.reject_reason", "method_not_allowed")
+			yield* Effect.annotateCurrentSpan("http.response.status_code", 405)
 			return new Response("Method not allowed", {
 				status: 405,
 				headers: { Allow: "GET, DELETE, OPTIONS", ...BOT_CORS_HEADERS },
@@ -281,6 +323,8 @@ const handleBotRequest = (request: Request) => {
 		const tableValidation = validateBotTable(tableParam)
 
 		if (!tableValidation.valid) {
+			yield* Effect.annotateCurrentSpan("proxy.reject_reason", "invalid_table")
+			yield* Effect.annotateCurrentSpan("http.response.status_code", tableParam ? 403 : 400)
 			return new Response(JSON.stringify({ error: tableValidation.error }), {
 				status: tableParam ? 403 : 400,
 				headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
@@ -296,20 +340,17 @@ const handleBotRequest = (request: Request) => {
 		// Generate WHERE clause
 		const whereResult = yield* getBotWhereClauseForTable(tableValidation.table!, bot)
 		const whereStats = getWhereClauseParamStats(whereResult)
-		yield* Effect.log("Generated bot WHERE clause", {
-			table: tableValidation.table,
-			paramsCount: whereStats.paramsCount,
-			uniquePlaceholderCount: whereStats.uniquePlaceholderCount,
-			maxPlaceholderIndex: whereStats.maxPlaceholderIndex,
-			startsAtOne: whereStats.startsAtOne,
-			hasGaps: whereStats.hasGaps,
-		})
 		const finalUrl = applyWhereToElectricUrl(originUrl, whereResult)
-		yield* Effect.log("Prepared bot Electric URL", {
-			table: tableValidation.table,
-			urlLength: finalUrl.length,
-			whereLength: whereResult.whereClause.length,
-		})
+		yield* Effect.annotateCurrentSpan("proxy.where.params_count", whereStats.paramsCount)
+		yield* Effect.annotateCurrentSpan(
+			"proxy.where.unique_placeholder_count",
+			whereStats.uniquePlaceholderCount,
+		)
+		yield* Effect.annotateCurrentSpan("proxy.where.max_placeholder_index", whereStats.maxPlaceholderIndex)
+		yield* Effect.annotateCurrentSpan("proxy.where.starts_at_one", whereStats.startsAtOne)
+		yield* Effect.annotateCurrentSpan("proxy.where.has_gaps", whereStats.hasGaps)
+		yield* Effect.annotateCurrentSpan("proxy.where.length", whereResult.whereClause.length)
+		yield* Effect.annotateCurrentSpan("proxy.electric_url.length", finalUrl.length)
 
 		// Proxy request to Electric
 		const response = yield* proxyElectricRequest(finalUrl)
@@ -329,8 +370,8 @@ const handleBotRequest = (request: Request) => {
 		// Auth errors → 401
 		Effect.catchTag("BotAuthenticationError", (error) =>
 			Effect.gen(function* () {
+				yield* annotateHandledError(401, "BotAuthenticationError")
 				yield* Effect.logInfo("Bot authentication failed", {
-					error: error.message,
 					detail: error.detail,
 				})
 				yield* Metric.increment(proxyAuthFailures).pipe(
@@ -352,6 +393,7 @@ const handleBotRequest = (request: Request) => {
 		),
 		Effect.catchTag("AccessContextLookupError", (error) =>
 			Effect.gen(function* () {
+				yield* annotateHandledError(500, "AccessContextLookupError")
 				yield* Effect.logError("Bot access context lookup failed", {
 					error: error.message,
 					entityId: error.entityId,
@@ -369,6 +411,7 @@ const handleBotRequest = (request: Request) => {
 		),
 		Effect.catchTag("BotTableAccessError", (error: BotTableAccessError) =>
 			Effect.gen(function* () {
+				yield* annotateHandledError(500, "BotTableAccessError")
 				yield* Effect.logError("Bot table access error", { error: error.message, table: error.table })
 				return new Response(
 					JSON.stringify({ error: error.message, detail: error.detail, table: error.table }),
@@ -378,6 +421,7 @@ const handleBotRequest = (request: Request) => {
 		),
 		Effect.catchTag("ElectricProxyError", (error: ElectricProxyError) =>
 			Effect.gen(function* () {
+				yield* annotateHandledError(502, "ElectricProxyError")
 				yield* Effect.logError("Electric proxy error (bot)", { error: error.message })
 				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
 					status: 502,
@@ -389,6 +433,7 @@ const handleBotRequest = (request: Request) => {
 		Effect.catchAll((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
+				yield* annotateHandledError(500, errorTag)
 				yield* Effect.logError("Unhandled error in bot flow", { tag: errorTag, error: String(error) })
 				return new Response(
 					JSON.stringify({
@@ -407,6 +452,7 @@ const handleBotRequest = (request: Request) => {
 			Effect.gen(function* () {
 				const duration = Date.now() - start
 				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
+				yield* Effect.annotateCurrentSpan("http.response.status_code", response.status)
 				yield* Metric.increment(proxyRequestsTotal).pipe(
 					Effect.tagMetrics({
 						route: "/bot/v1/shape",
@@ -418,6 +464,11 @@ const handleBotRequest = (request: Request) => {
 			}),
 		),
 		Effect.withSpan("proxy.handleBotRequest"),
+		Effect.annotateLogs({
+			route: "/bot/v1/shape",
+			auth_type: "bot",
+			...(requestId ? { request_id: requestId } : {}),
+		}),
 	)
 }
 
@@ -479,6 +530,12 @@ const ServerLive = Layer.scopedDiscard(
 			electricUrl: config.electricUrl,
 			allowedOrigin: config.allowedOrigin,
 		})
+		if (!config.isDev && (!config.electricSourceId || !config.electricSourceSecret)) {
+			yield* Effect.logWarning("Electric source credentials missing; upstream requests may fail", {
+				hasSourceId: !!config.electricSourceId,
+				hasSecret: !!config.electricSourceSecret,
+			})
+		}
 
 		const runtime = yield* Effect.runtime<
 			ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth

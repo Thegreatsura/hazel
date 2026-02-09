@@ -24,7 +24,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	// Require Bearer token
 	const authHeader = request.headers.get("Authorization")
 	if (!authHeader?.startsWith("Bearer ")) {
-		yield* Effect.logDebug("Auth failed: No Bearer token provided")
+		yield* Effect.annotateCurrentSpan("auth.header.present", false)
 		return yield* new ProxyAuthenticationError({
 			message: "No Bearer token provided",
 			detail: "Authentication requires a Bearer token in the Authorization header",
@@ -32,9 +32,12 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	}
 
 	const token = authHeader.slice(7)
-	yield* Effect.logDebug("Auth: Using Bearer token authentication")
+	yield* Effect.annotateCurrentSpan("auth.header.present", true)
+	yield* Effect.annotateCurrentSpan("auth.scheme", "bearer")
 
 	const authContext = yield* proxyAuth.validateBearerToken(token)
+	yield* Effect.annotateCurrentSpan("auth.organization.present", !!authContext.organizationId)
+	yield* Effect.annotateCurrentSpan("auth.role.present", !!authContext.role)
 
 	return {
 		userId: authContext.workosUserId,

@@ -45,6 +45,8 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 
 				lookup: (request: BotAccessContextRequest) =>
 					Effect.gen(function* () {
+						yield* Effect.annotateCurrentSpan("cache.lookup_performed", true)
+						yield* Effect.annotateCurrentSpan("cache.result", "miss")
 						const botId = request.botId as BotId
 
 						// Query channels in all orgs where the bot is installed.
@@ -81,6 +83,7 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 							)
 
 						const channelIds = channels.map((c) => c.channelId)
+						yield* Effect.annotateCurrentSpan("cache.result_size", channelIds.length)
 
 						return { channelIds }
 					}),
@@ -98,8 +101,9 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 					yield* Effect.annotateCurrentSpan("cache.system", "redis")
 					yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
 					yield* Effect.annotateCurrentSpan("cache.operation", "get")
-					const result = yield* botCache.get(new BotAccessContextRequest({ botId, userId }))
+					yield* Effect.annotateCurrentSpan("cache.lookup_performed", false)
 					yield* Effect.annotateCurrentSpan("cache.result", "hit")
+					const result = yield* botCache.get(new BotAccessContextRequest({ botId, userId }))
 					return { channelIds: result.channelIds as readonly ChannelId[] }
 				}),
 
