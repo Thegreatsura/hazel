@@ -90,14 +90,7 @@ function NotificationSettings() {
 								value={settings.soundFile}
 								onChange={(value) =>
 									updateSettings({
-										soundFile: value as
-											| "notification01"
-											| "notification03"
-											| "ping"
-											| "chime"
-											| "bell"
-											| "ding"
-											| "pop",
+										soundFile: value as "notification01" | "notification03",
 									})
 								}
 								isDisabled={!settings.enabled}

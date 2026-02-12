@@ -5,20 +5,81 @@
  */
 
 import type { Channel, Message, User } from "@hazel/domain/models"
+import { isTauri } from "./tauri"
 
 type NotificationApi = typeof import("@tauri-apps/plugin-notification")
 
-const notification: NotificationApi | undefined = (window as any).__TAURI__?.notification
+let notificationApiPromise: Promise<NotificationApi> | null = null
+let permissionGrantedCache: boolean | null = null
+
+const getNotificationApi = async (): Promise<NotificationApi | null> => {
+	if (!isTauri()) {
+		return null
+	}
+
+	try {
+		notificationApiPromise ??= import("@tauri-apps/plugin-notification")
+		return await notificationApiPromise
+	} catch (error) {
+		console.error("[native-notifications] Failed to load notification API:", error)
+		return null
+	}
+}
+
+const getPermission = async (requestIfMissing: boolean): Promise<boolean> => {
+	const notification = await getNotificationApi()
+	if (!notification) {
+		return false
+	}
+
+	if (permissionGrantedCache === true) {
+		return true
+	}
+
+	const granted = await notification.isPermissionGranted()
+	if (granted) {
+		permissionGrantedCache = true
+		return true
+	}
+
+	if (!requestIfMissing) {
+		permissionGrantedCache = false
+		return false
+	}
+
+	const permission = await notification.requestPermission()
+	const wasGranted = permission === "granted"
+	permissionGrantedCache = wasGranted
+	return wasGranted
+}
+
+export type NativeNotificationReason =
+	| "ok"
+	| "permission_denied"
+	| "api_unavailable"
+	| "focused_window"
+	| "error"
+
+export interface NativeNotificationResult {
+	status: "sent" | "suppressed" | "failed"
+	reason: NativeNotificationReason
+	error?: unknown
+}
+
+export async function getNativeNotificationPermissionState(): Promise<
+	"granted" | "denied" | "unavailable"
+> {
+	const notification = await getNotificationApi()
+	if (!notification) {
+		return "unavailable"
+	}
+
+	const granted = await getPermission(false)
+	return granted ? "granted" : "denied"
+}
 
 export async function initNativeNotifications(): Promise<boolean> {
-	if (!notification) return false
-
-	let granted = await notification.isPermissionGranted()
-	if (!granted) {
-		const permission = await notification.requestPermission()
-		granted = permission === "granted"
-	}
-	return granted
+	return getPermission(true)
 }
 
 /**
@@ -26,12 +87,12 @@ export async function initNativeNotifications(): Promise<boolean> {
  * @returns true if notification was sent, false if not available/permitted
  */
 export async function testNativeNotification(): Promise<boolean> {
+	const notification = await getNotificationApi()
 	if (!notification) return false
 
-	const granted = await notification.isPermissionGranted()
+	const granted = await getPermission(true)
 	if (!granted) {
-		const permission = await notification.requestPermission()
-		if (permission !== "granted") return false
+		return false
 	}
 
 	try {
@@ -65,12 +126,31 @@ export interface NativeNotificationOptions {
 /**
  * Send a native notification with rich content
  */
-export async function sendNativeNotification(options: NativeNotificationOptions) {
-	if (document.hasFocus()) return
-	if (!notification) return
+export async function sendNativeNotification(
+	options: NativeNotificationOptions,
+): Promise<NativeNotificationResult> {
+	if (typeof document !== "undefined" && document.hasFocus()) {
+		return {
+			status: "suppressed",
+			reason: "focused_window",
+		}
+	}
 
-	const granted = await notification.isPermissionGranted()
-	if (!granted) return
+	const notification = await getNotificationApi()
+	if (!notification) {
+		return {
+			status: "suppressed",
+			reason: "api_unavailable",
+		}
+	}
+
+	const granted = await getPermission(false)
+	if (!granted) {
+		return {
+			status: "suppressed",
+			reason: "permission_denied",
+		}
+	}
 
 	try {
 		notification.sendNotification({
@@ -79,8 +159,17 @@ export async function sendNativeNotification(options: NativeNotificationOptions)
 			largeBody: options.largeBody,
 			group: options.group,
 		})
+		return {
+			status: "sent",
+			reason: "ok",
+		}
 	} catch (error) {
 		console.error("[native-notifications] Failed to send notification:", error)
+		return {
+			status: "failed",
+			reason: "error",
+			error,
+		}
 	}
 }
 
@@ -98,7 +187,6 @@ export function truncateText(text: string, maxLength: number): string {
 export function getMessagePreview(content: string | null | undefined, maxLength = 100): string {
 	if (!content) return "Sent a message"
 
-	// Strip markdown characters for clean preview
 	const plainText = content.replace(/[*_`~#]/g, "").trim()
 
 	return truncateText(plainText, maxLength)
@@ -125,12 +213,10 @@ export function formatNotificationTitle(
 
 	if (!channel) return authorName
 
-	// For direct/single channels, just show author name
 	if (channel.type === "direct" || channel.type === "single") {
 		return authorName
 	}
 
-	// For public/private channels and threads, show "Author in #channel"
 	return `${authorName} in #${channel.name}`
 }
 

@@ -19,14 +19,14 @@ export const sessionStartTimeAtom = Atom.make<Date>(new Date()).pipe(Atom.keepAl
 export interface NotificationSoundSettings {
 	enabled: boolean
 	volume: number
-	soundFile: "notification01" | "notification03" | "ping" | "chime" | "bell" | "ding" | "pop"
+	soundFile: "notification01" | "notification03"
 	cooldownMs: number
 }
 
 const NotificationSoundSettingsSchema = Schema.Struct({
 	enabled: Schema.Boolean,
 	volume: Schema.Number,
-	soundFile: Schema.Literal("notification01", "notification03", "ping", "chime", "bell", "ding", "pop"),
+	soundFile: Schema.Literal("notification01", "notification03"),
 	cooldownMs: Schema.Number,
 })
 
@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: NotificationSoundSettings = {
 	enabled: true,
 	volume: 0.5,
 	soundFile: "notification01",
-	cooldownMs: 2000,
+	cooldownMs: 1000,
 }
 
 export const notificationSoundSettingsAtom = Atom.kvs({
@@ -44,12 +44,9 @@ export const notificationSoundSettingsAtom = Atom.kvs({
 	defaultValue: () => DEFAULT_SETTINGS,
 })
 
-/**
- * Helper to parse time string (HH:MM) to hour number
- */
-const parseTimeToHour = (time: string): number => {
-	const [hours] = time.split(":").map(Number)
-	return hours ?? 0
+const parseTimeToMinutes = (time: string): number => {
+	const [hours, minutes] = time.split(":").map(Number)
+	return (hours ?? 0) * 60 + (minutes ?? 0)
 }
 
 /**
@@ -62,22 +59,22 @@ export const isInQuietHours = (quietHoursStart: string | null, quietHoursEnd: st
 	}
 
 	const now = new Date()
-	const currentHour = now.getHours()
-	const start = parseTimeToHour(quietHoursStart)
-	const end = parseTimeToHour(quietHoursEnd)
+	const currentMinutes = now.getHours() * 60 + now.getMinutes()
+	const start = parseTimeToMinutes(quietHoursStart)
+	const end = parseTimeToMinutes(quietHoursEnd)
 
-	// Handle quiet hours that span midnight
-	if (start <= end) {
-		return currentHour >= start && currentHour < end
+	if (start === end) {
+		return false
 	}
-	return currentHour >= start || currentHour < end
+
+	if (start < end) {
+		return currentMinutes >= start && currentMinutes < end
+	}
+	return currentMinutes >= start || currentMinutes < end
 }
 
 /**
- * Computed atom that determines if sounds should be muted.
- * Checks DND, enabled state, and quiet hours at READ time.
- * This function returns a getter that can be called at any time
- * to get the current muted state.
+ * Computed getter that determines if sounds should be muted.
  */
 export const createIsMutedGetter = (
 	settings: NotificationSoundSettings | null,
@@ -86,17 +83,14 @@ export const createIsMutedGetter = (
 	quietHoursEnd: string | null,
 ): (() => boolean) => {
 	return () => {
-		// Check if notifications are disabled
 		if (!settings?.enabled) {
 			return true
 		}
 
-		// Check Do Not Disturb mode
 		if (doNotDisturb) {
 			return true
 		}
 
-		// Check quiet hours at READ time (not subscription time)
 		if (isInQuietHours(quietHoursStart, quietHoursEnd)) {
 			return true
 		}

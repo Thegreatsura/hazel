@@ -1,7 +1,7 @@
 import type { ChannelId, MessageId } from "@hazel/schema"
 import { useAtomValue } from "@effect-atom/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { type ReactNode, useEffect, useRef } from "react"
+import { type ReactNode, useEffect, useMemo, useRef } from "react"
 import {
 	createIsMutedGetter,
 	notificationSoundSettingsAtom,
@@ -16,22 +16,28 @@ import {
 } from "~/db/collections"
 import { currentChannelIdAtom } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
-import { buildNotificationContent, sendNativeNotification } from "~/lib/native-notifications"
+import {
+	inAppNotificationSink,
+	NativeNotificationSink,
+	notificationOrchestrator,
+	SoundNotificationSink,
+	type NotificationEvent,
+} from "~/lib/notifications"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 
 interface NotificationSoundProviderProps {
 	children: ReactNode
 }
 
+const MAX_RECENT_NOTIFICATIONS = 250
+
 export function NotificationSoundProvider({ children }: NotificationSoundProviderProps) {
 	const { user } = useAuth()
 
-	// Get reactive values from atoms
 	const settings = useAtomValue(notificationSoundSettingsAtom)
 	const sessionStartTime = useAtomValue(sessionStartTimeAtom)
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
 
-	// Read user settings from userCollection (TanStack DB) - auto-updates on collection change
 	const { data: userData } = useLiveQuery(
 		(q) =>
 			user?.id
@@ -43,12 +49,10 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		[user?.id],
 	)
 
-	// Derive notification settings from userData
 	const doNotDisturb = userData?.settings?.doNotDisturb ?? false
 	const quietHoursStart = userData?.settings?.quietHoursStart ?? "22:00"
 	const quietHoursEnd = userData?.settings?.quietHoursEnd ?? "08:00"
 
-	// Get current member
 	const { data: member } = useLiveQuery(
 		(q) =>
 			q
@@ -58,23 +62,18 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		[user?.id],
 	)
 
-	// Subscribe to latest notification for current member
-	const { data: latestNotification } = useLiveQuery(
+	const { data: recentNotifications } = useLiveQuery(
 		(q) =>
-			q
-				.from({ notification: notificationCollection })
-				.where(({ notification }) => eq(notification.memberId, member?.id))
-				.orderBy(({ notification }) => notification.createdAt, "desc")
-				.findOne(),
+			member?.id
+				? q
+						.from({ notification: notificationCollection })
+						.where(({ notification }) => eq(notification.memberId, member.id))
+						.orderBy(({ notification }) => notification.createdAt, "desc")
+						.limit(MAX_RECENT_NOTIFICATIONS)
+				: null,
 		[member?.id],
 	)
 
-	// Track last processed notification to detect new ones
-	const lastProcessedIdRef = useRef<string | null>(null)
-
-	// Use refs for reactive values so manager always has current values
-	// without causing re-subscriptions. We use a single ref object to avoid
-	// multiple useEffect calls for syncing individual values.
 	const latestValuesRef = useRef({
 		settings,
 		doNotDisturb,
@@ -84,8 +83,6 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		currentChannelId,
 	})
 
-	// Sync all values in a single effect - this is equivalent to assigning directly
-	// but ensures the ref always has the latest values for use in callbacks
 	useEffect(() => {
 		latestValuesRef.current = {
 			settings,
@@ -97,75 +94,87 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		}
 	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd, sessionStartTime, currentChannelId])
 
-	// Helper to create dependencies from latest values ref
-	const createDependencies = () => {
-		const v = latestValuesRef.current
-		return {
-			getCurrentChannelId: () => latestValuesRef.current.currentChannelId,
-			getSessionStartTime: () => latestValuesRef.current.sessionStartTime,
-			getIsMuted: createIsMutedGetter(v.settings, v.doNotDisturb, v.quietHoursStart, v.quietHoursEnd),
+	const soundSink = useMemo(
+		() => new SoundNotificationSink({ notificationSoundManager }),
+		[],
+	)
+	const nativeSink = useMemo(() => new NativeNotificationSink(), [])
+
+	useEffect(() => {
+		const cleanupPriming = notificationSoundManager.initPriming()
+		notificationSoundManager.setDependencies({
 			getConfig: () => ({
 				soundFile: latestValuesRef.current.settings?.soundFile ?? "notification01",
 				volume: latestValuesRef.current.settings?.volume ?? 0.5,
-				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 2000,
+				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 1000,
 			}),
-		}
-	}
-
-	// Initialize manager dependencies once on mount
-	useEffect(() => {
-		// Initialize priming (for browser autoplay)
-		const cleanupPriming = notificationSoundManager.initPriming()
-
-		// Set up dependencies using refs for latest values
-		notificationSoundManager.setDependencies(createDependencies())
+		})
 
 		return cleanupPriming
 	}, [])
 
-	// Update the getIsMuted function when relevant settings change
 	useEffect(() => {
-		notificationSoundManager.setDependencies(createDependencies())
-	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd])
-
-	// Process new notifications
-	useEffect(() => {
-		if (!latestNotification) {
-			return
-		}
-
-		// Skip if we've already processed this notification
-		if (latestNotification.id === lastProcessedIdRef.current) {
-			return
-		}
-
-		lastProcessedIdRef.current = latestNotification.id
-
-		// Play sound via manager (handles all suppression logic)
-		notificationSoundManager.playSound({
-			notificationId: latestNotification.id,
-			channelId: latestNotification.targetedResourceId,
-			createdAt: latestNotification.createdAt,
+		notificationSoundManager.setDependencies({
+			getConfig: () => ({
+				soundFile: latestValuesRef.current.settings?.soundFile ?? "notification01",
+				volume: latestValuesRef.current.settings?.volume ?? 0.5,
+				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 1000,
+			}),
 		})
+	}, [settings])
 
-		// Send native notification with rich content
-		try {
-			const messageId = latestNotification.resourceId as MessageId | null
-			const channelId = latestNotification.targetedResourceId as ChannelId | null
+	useEffect(() => {
+		notificationOrchestrator.setDependencies({
+			getContext: () => {
+				const latest = latestValuesRef.current
+				return {
+					currentChannelId: latest.currentChannelId,
+					sessionStartTime: latest.sessionStartTime,
+					isMuted: createIsMutedGetter(
+						latest.settings,
+						latest.doNotDisturb,
+						latest.quietHoursStart,
+						latest.quietHoursEnd,
+					)(),
+					isWindowFocused: typeof document !== "undefined" ? document.hasFocus() : false,
+					visibilityState:
+						typeof document !== "undefined" ? document.visibilityState : "hidden",
+					now: Date.now(),
+				}
+			},
+			inAppSink: inAppNotificationSink,
+			soundSink,
+			nativeSink,
+		})
+	}, [soundSink, nativeSink, settings, doNotDisturb, quietHoursStart, quietHoursEnd, sessionStartTime, currentChannelId])
 
-			// Synchronous lookups from local TanStack DB collections
-			const message = messageId ? messageCollection.state.get(messageId) : undefined
-			const author = message?.authorId ? userCollection.state.get(message.authorId) : undefined
-			const channel = channelId ? channelCollection.state.get(channelId) : undefined
-
-			const content = buildNotificationContent(message, author, channel)
-			sendNativeNotification(content)
-		} catch (error) {
-			// Fallback to generic notification on any error
-			console.error("[notification-sound-provider] Failed to build rich notification:", error)
-			sendNativeNotification({ title: "Hazel", body: "You have a new notification" })
+	useEffect(() => {
+		if (!recentNotifications || recentNotifications.length === 0) {
+			return
 		}
-	}, [latestNotification])
+
+		const events: NotificationEvent[] = [...recentNotifications]
+			.reverse()
+			.map((notification) => {
+				const messageId = notification.resourceId as MessageId | null
+				const channelId = notification.targetedResourceId as ChannelId | null
+
+				const message = messageId ? messageCollection.state.get(messageId) : undefined
+				const author = message?.authorId ? userCollection.state.get(message.authorId) : undefined
+				const channel = channelId ? channelCollection.state.get(channelId) : undefined
+
+				return {
+					id: notification.id,
+					notification,
+					message,
+					author,
+					channel,
+					receivedAt: Date.now(),
+				}
+			})
+
+		notificationOrchestrator.enqueue(events)
+	}, [recentNotifications])
 
 	return <>{children}</>
 }

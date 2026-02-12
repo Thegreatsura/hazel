@@ -1,8 +1,58 @@
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, inArray, isNull, ne, or, schema, sql } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
-import type { NotificationId, UserId } from "@hazel/schema"
+import type { ChannelMemberId, NotificationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Effect, Schema } from "effect"
+
+interface OrgMemberLookupRow {
+	orgMemberId: OrganizationMemberId
+	userId: UserId
+}
+
+interface InsertableNotificationRow {
+	memberId: OrganizationMemberId
+	targetedResourceId: string
+	targetedResourceType: "channel"
+	resourceId: string
+	resourceType: "message"
+	createdAt: Date
+}
+
+export const buildOrgMemberLookup = (rows: ReadonlyArray<OrgMemberLookupRow>) => {
+	const byUserId = new Map<UserId, OrganizationMemberId>()
+	for (const row of rows) {
+		byUserId.set(row.userId, row.orgMemberId)
+	}
+	return byUserId
+}
+
+export const buildNotificationInsertRows = (
+	members: ReadonlyArray<Cluster.ChannelMemberForNotification>,
+	orgMemberByUserId: ReadonlyMap<UserId, OrganizationMemberId>,
+	payload: Cluster.MessageNotificationWorkflowPayload,
+) => {
+	const values: InsertableNotificationRow[] = []
+	const channelMemberByOrgMember = new Map<OrganizationMemberId, ChannelMemberId>()
+
+	for (const member of members) {
+		const orgMemberId = orgMemberByUserId.get(member.userId)
+		if (!orgMemberId) {
+			continue
+		}
+
+		values.push({
+			memberId: orgMemberId,
+			targetedResourceId: payload.channelId,
+			targetedResourceType: "channel",
+			resourceId: payload.messageId,
+			resourceType: "message",
+			createdAt: new Date(),
+		})
+		channelMemberByOrgMember.set(orgMemberId, member.id)
+	}
+
+	return { values, channelMemberByOrgMember }
+}
 
 export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkflow.toLayer(
 	Effect.fn(function* (payload: Cluster.MessageNotificationWorkflowPayload) {
@@ -235,92 +285,87 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 			error: Schema.Union(Cluster.CreateNotificationError),
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
-				const notificationIds: NotificationId[] = []
-
+				const startedAt = Date.now()
 				yield* Effect.logDebug(`Creating notifications for ${membersResult.members.length} members`)
 
-				// Process each member
-				for (const member of membersResult.members) {
-					// First, get the organization member ID for this user
-					// We need to join channel -> organization -> organization_members
-					const orgMemberResult = yield* db
-						.execute((client) =>
-							client
-								.select({
-									orgMemberId: schema.organizationMembersTable.id,
-									organizationId: schema.channelsTable.organizationId,
-								})
-								.from(schema.channelsTable)
-								.innerJoin(
-									schema.organizationMembersTable,
-									eq(
-										schema.organizationMembersTable.organizationId,
-										schema.channelsTable.organizationId,
-									),
-								)
-								.where(
-									and(
-										eq(schema.channelsTable.id, payload.channelId),
-										eq(schema.organizationMembersTable.userId, member.userId),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								)
-								.limit(1),
-						)
-						.pipe(
-							Effect.catchTags({
-								DatabaseError: (err) =>
-									Effect.fail(
-										new Cluster.CreateNotificationError({
-											messageId: payload.messageId,
-											userId: member.userId,
-											message: "Failed to query organization member",
-											cause: err,
-										}),
-									),
+				const userIds = membersResult.members.map((member) => member.userId)
+				const orgMembers = yield* db
+					.execute((client) =>
+						client
+							.select({
+								orgMemberId: schema.organizationMembersTable.id,
+								userId: schema.organizationMembersTable.userId,
+							})
+							.from(schema.organizationMembersTable)
+							.innerJoin(
+								schema.channelsTable,
+								eq(
+									schema.channelsTable.organizationId,
+									schema.organizationMembersTable.organizationId,
+								),
+							)
+							.where(
+								and(
+									eq(schema.channelsTable.id, payload.channelId),
+									inArray(schema.organizationMembersTable.userId, userIds),
+									isNull(schema.organizationMembersTable.deletedAt),
+								),
+							),
+					)
+					.pipe(
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new Cluster.CreateNotificationError({
+										messageId: payload.messageId,
+										message: "Failed to query organization members",
+										cause: err,
+									}),
+								),
+						}),
+					)
+
+				const orgMemberLookup = buildOrgMemberLookup(orgMembers)
+				const { values, channelMemberByOrgMember } = buildNotificationInsertRows(
+					membersResult.members,
+					orgMemberLookup,
+					payload,
+				)
+
+				if (values.length === 0) {
+					yield* Effect.logDebug("No valid organization members to notify")
+					return { notificationIds: [], notifiedCount: 0 }
+				}
+
+				const insertedNotifications = yield* db
+					.execute((client) =>
+						client
+							.insert(schema.notificationsTable)
+							.values(values)
+							.onConflictDoNothing()
+							.returning({
+								id: schema.notificationsTable.id,
+								memberId: schema.notificationsTable.memberId,
 							}),
-						)
+					)
+					.pipe(
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new Cluster.CreateNotificationError({
+										messageId: payload.messageId,
+										message: "Failed to insert notification batch",
+										cause: err,
+									}),
+								),
+						}),
+					)
 
-					if (orgMemberResult.length === 0) {
-						yield* Effect.logDebug(`Skipping user ${member.userId} - not found in organization`)
-						continue
-					}
+				const insertedChannelMemberIds: ChannelMemberId[] = insertedNotifications
+					.map((row) => channelMemberByOrgMember.get(row.memberId))
+					.filter((id): id is ChannelMemberId => Boolean(id))
 
-					const orgMemberId = orgMemberResult[0]!.orgMemberId
-
-					// Insert notification
-					const notificationResult = yield* db
-						.execute((client) =>
-							client
-								.insert(schema.notificationsTable)
-								.values({
-									memberId: orgMemberId,
-									targetedResourceId: payload.channelId,
-									targetedResourceType: "channel",
-									resourceId: payload.messageId,
-									resourceType: "message",
-									createdAt: new Date(),
-								})
-								.returning({ id: schema.notificationsTable.id }),
-						)
-						.pipe(
-							Effect.catchTags({
-								DatabaseError: (err) =>
-									Effect.fail(
-										new Cluster.CreateNotificationError({
-											messageId: payload.messageId,
-											memberId: orgMemberId,
-											message: "Failed to insert notification",
-											cause: err,
-										}),
-									),
-							}),
-						)
-
-					const notificationId = notificationResult[0]!.id
-					notificationIds.push(notificationId)
-
-					// Increment notification count for the channel member
+				if (insertedChannelMemberIds.length > 0) {
 					yield* db
 						.execute((client) =>
 							client
@@ -328,7 +373,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 								.set({
 									notificationCount: sql`${schema.channelMembersTable.notificationCount} + 1`,
 								})
-								.where(eq(schema.channelMembersTable.id, member.id)),
+								.where(inArray(schema.channelMembersTable.id, insertedChannelMemberIds)),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -336,18 +381,21 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 									Effect.fail(
 										new Cluster.CreateNotificationError({
 											messageId: payload.messageId,
-											memberId: orgMemberId,
-											message: "Failed to increment notification count",
+											message: "Failed to increment notification counts",
 											cause: err,
 										}),
 									),
 							}),
 						)
-
-					yield* Effect.logDebug(
-						`Created notification ${notificationId} for member ${member.userId}`,
-					)
 				}
+
+				const notificationIds = insertedNotifications.map((row) => row.id) as NotificationId[]
+				yield* Effect.logDebug("Notification batch completed", {
+					candidates: membersResult.members.length,
+					eligible: values.length,
+					inserted: insertedNotifications.length,
+					durationMs: Date.now() - startedAt,
+				})
 
 				return {
 					notificationIds,

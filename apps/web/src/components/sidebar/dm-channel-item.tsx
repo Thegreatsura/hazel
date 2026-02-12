@@ -64,9 +64,10 @@ function DmUserStatusEmoji({ userId }: { userId: UserId }) {
 
 export interface DmChannelItemProps {
 	channelId: ChannelId
+	notificationCount?: number
 }
 
-export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
+export const DmChannelItem = ({ channelId, notificationCount }: DmChannelItemProps) => {
 	const { slug: orgSlug } = useOrganization()
 	const router = useRouter()
 	const scrollRef = useScrollIntoViewOnActive(channelId)
@@ -156,8 +157,8 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 			content={
 				<SidebarItem
 					badge={
-						channel.currentUser.notificationCount > 0
-							? channel.currentUser.notificationCount
+						(notificationCount ?? channel.currentUser.notificationCount) > 0
+							? (notificationCount ?? channel.currentUser.notificationCount)
 							: undefined
 					}
 					tooltip={tooltipName}

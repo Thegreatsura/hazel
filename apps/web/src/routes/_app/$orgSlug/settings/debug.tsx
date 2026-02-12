@@ -1,7 +1,8 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { type Notification } from "@hazel/domain/models"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { reactScanEnabledAtom } from "~/atoms/react-scan-atoms"
 import { IconServers } from "~/components/icons/icon-servers"
 import { Button } from "~/components/ui/button"
@@ -20,6 +21,14 @@ import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { useOrganization } from "~/hooks/use-organization"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
+import {
+	clearNotificationDiagnostics,
+	getNotificationDiagnostics,
+	notificationOrchestrator,
+	subscribeNotificationDiagnostics,
+} from "~/lib/notifications"
+import { getNativeNotificationPermissionState, testNativeNotification } from "~/lib/native-notifications"
+import { notificationSoundManager } from "~/lib/notification-sound-manager"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
@@ -37,8 +46,16 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
 function DebugSettings() {
 	const [showMockDataDialog, setShowMockDataDialog] = useState(false)
 	const [isGeneratingMockData, setIsGeneratingMockData] = useState(false)
+	const [notificationPermission, setNotificationPermission] = useState<
+		"granted" | "denied" | "unavailable" | "loading"
+	>("loading")
 
 	const { organizationId } = useOrganization()
+	const notificationDiagnostics = useSyncExternalStore(
+		subscribeNotificationDiagnostics,
+		getNotificationDiagnostics,
+	)
+	const latestDiagnostics = useMemo(() => notificationDiagnostics.slice(0, 10), [notificationDiagnostics])
 
 	const reactScanEnabled = useAtomValue(reactScanEnabledAtom)
 	const setReactScanEnabled = useAtomSet(reactScanEnabledAtom)
@@ -46,6 +63,12 @@ function DebugSettings() {
 	const generateMockData = useAtomSet(HazelApiClient.mutation("mockData", "generate"), {
 		mode: "promiseExit",
 	})
+
+	useEffect(() => {
+		getNativeNotificationPermissionState()
+			.then(setNotificationPermission)
+			.catch(() => setNotificationPermission("unavailable"))
+	}, [])
 
 	const handleGenerateMockData = async () => {
 		setIsGeneratingMockData(true)
@@ -64,6 +87,33 @@ function DebugSettings() {
 			)
 			.run()
 		setIsGeneratingMockData(false)
+	}
+
+	const handleSyntheticNotification = () => {
+		const now = new Date()
+		const syntheticNotification: typeof Notification.Model.Type = {
+			id: `synthetic-${Date.now()}` as any,
+			memberId: `synthetic-member-${Date.now()}` as any,
+			targetedResourceId: null,
+			targetedResourceType: null,
+			resourceId: null,
+			resourceType: null,
+			createdAt: now,
+			readAt: null,
+		}
+
+		notificationOrchestrator.enqueue([
+			{
+				id: syntheticNotification.id,
+				notification: syntheticNotification,
+				receivedAt: Date.now(),
+			},
+		])
+	}
+
+	const handleTestNativeNotification = async () => {
+		await testNativeNotification()
+		setNotificationPermission(await getNativeNotificationPermissionState())
 	}
 
 	return (
@@ -96,7 +146,7 @@ function DebugSettings() {
 
 				{/* React-Scan Toggle Section */}
 				<div className="flex flex-col gap-5">
-					<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
+						<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
 						<SectionLabel.Root
 							size="sm"
 							title="React Performance Scanner"
@@ -204,10 +254,86 @@ function DebugSettings() {
 									</span>
 								</div>
 							</div>
+							</div>
+						</div>
+
+						<hr className="h-px w-full border-none bg-border" />
+
+						<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
+							<SectionLabel.Root
+								size="sm"
+								title="Notification Diagnostics"
+								description="Inspect orchestrator decisions and sink outcomes."
+							/>
+
+							<div className="space-y-4 rounded-lg border border-border bg-secondary/50 p-4">
+								<div className="grid grid-cols-1 gap-2 font-mono text-xs sm:grid-cols-2">
+									<div>
+										<span className="text-muted-fg">Native permission:</span>{" "}
+										<span>{notificationPermission}</span>
+									</div>
+									<div>
+										<span className="text-muted-fg">Sound primed:</span>{" "}
+										<span>{notificationSoundManager.getIsPrimed() ? "yes" : "no"}</span>
+									</div>
+									<div className="sm:col-span-2">
+										<span className="text-muted-fg">Diagnostics records:</span>{" "}
+										<span>{notificationDiagnostics.length}</span>
+									</div>
+								</div>
+
+								<div className="flex flex-wrap gap-2">
+									<Button size="sm" intent="secondary" onPress={handleSyntheticNotification}>
+										Run synthetic notification
+									</Button>
+									<Button size="sm" intent="outline" onPress={() => notificationSoundManager.testSound()}>
+										Test sound
+									</Button>
+									<Button size="sm" intent="outline" onPress={handleTestNativeNotification}>
+										Test native
+									</Button>
+									<Button
+										size="sm"
+										intent="plain"
+										onPress={() => {
+											clearNotificationDiagnostics()
+										}}
+									>
+										Clear diagnostics
+									</Button>
+								</div>
+
+								<div className="max-h-64 overflow-auto rounded border border-border bg-bg p-2">
+									{latestDiagnostics.length === 0 ? (
+										<p className="text-muted-fg text-xs">No diagnostics yet.</p>
+									) : (
+										<div className="space-y-2">
+											{latestDiagnostics.map((record) => (
+												<div key={`${record.eventId}-${record.finishedAt}`} className="rounded border border-border/60 p-2 text-xs">
+													<div className="font-mono text-muted-fg">
+														{new Date(record.finishedAt).toLocaleTimeString()} · {record.durationMs}ms
+													</div>
+													<div className="mt-1 font-mono">
+														event={record.eventId} decision(sound=
+														{record.decision.playSound ? "1" : "0"}, native=
+														{record.decision.sendNative ? "1" : "0"})
+													</div>
+													<div className="mt-1 flex flex-wrap gap-1">
+														{record.results.map((result) => (
+															<span key={`${record.eventId}-${result.sink}`} className="rounded border border-border px-1.5 py-0.5 font-mono text-muted-fg">
+																{result.sink}:{result.status}:{result.reason}
+															</span>
+														))}
+													</div>
+												</div>
+											))}
+										</div>
+									)}
+								</div>
+							</div>
 						</div>
 					</div>
-				</div>
-			</form>
+				</form>
 
 			{/* Mock Data Generation Modal */}
 			<Modal>

@@ -25,6 +25,7 @@ import { exitToastAsync } from "~/lib/toast-exit"
 interface ChannelItemProps {
 	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
 	member: ChannelMember
+	notificationCount?: number
 	threads?: Array<{
 		channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
 		member: ChannelMember
@@ -35,7 +36,13 @@ interface ChannelItemProps {
 
 export const CHANNEL_DRAG_TYPE = "application/x-hazel-channel"
 
-export function ChannelItem({ channel, member, threads, sections = [] }: ChannelItemProps) {
+export function ChannelItem({
+	channel,
+	member,
+	notificationCount,
+	threads,
+	sections = [],
+}: ChannelItemProps) {
 	const deleteChannelModal = useModal("delete-channel")
 
 	const { slug } = useOrganization()
@@ -83,7 +90,11 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 				content={
 					<SidebarItem
 						tooltip={channel.name}
-						badge={member.notificationCount > 0 ? member.notificationCount : undefined}
+						badge={
+							(notificationCount ?? member.notificationCount) > 0
+								? (notificationCount ?? member.notificationCount)
+								: undefined
+						}
 					>
 						<SidebarLink
 							ref={scrollRef}

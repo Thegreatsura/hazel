@@ -3,12 +3,7 @@ import { generateIntegrationInstructions, type AIContentChunk, type HazelBotClie
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Cause, Config, Duration, Effect, Exit, Ref, Stream } from "effect"
 
-import {
-	DegenerateOutputError,
-	IterationTimeoutError,
-	SessionTimeoutError,
-	StreamIdleTimeoutError,
-} from "./errors.ts"
+import { SessionTimeoutError } from "./errors.ts"
 import { streamAgentLoop } from "./agent-loop.ts"
 import { makeOpenRouterModel } from "./openrouter.ts"
 import { INTEGRATION_INSTRUCTIONS, buildSystemPrompt } from "./prompt.ts"

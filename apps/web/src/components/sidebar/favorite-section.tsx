@@ -5,11 +5,13 @@ import { SidebarSection } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
+import { useChannelUnreadCountMap } from "~/hooks/use-notifications"
 import { ChannelItem } from "./channel-item"
 import { DmChannelItem } from "./dm-channel-item"
 
 export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 	const { user } = useAuth()
+	const { unreadByChannel } = useChannelUnreadCountMap()
 
 	const { data: favoriteChannels } = useLiveQuery(
 		(q) =>
@@ -64,10 +66,19 @@ export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 			}
 		>
 			{publicPrivateChannels.map(({ channel, member }) => (
-				<ChannelItem key={channel.id} channel={channel} member={member} />
+				<ChannelItem
+					key={channel.id}
+					channel={channel}
+					member={member}
+					notificationCount={unreadByChannel.get(channel.id) ?? member.notificationCount}
+				/>
 			))}
 			{dmChannels.map((channel) => (
-				<DmChannelItem key={channel.id} channelId={channel.id} />
+				<DmChannelItem
+					key={channel.id}
+					channelId={channel.id}
+					notificationCount={unreadByChannel.get(channel.id) ?? 0}
+				/>
 			))}
 		</SidebarSection>
 	)

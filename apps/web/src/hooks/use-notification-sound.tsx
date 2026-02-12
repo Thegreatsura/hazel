@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS: NotificationSoundSettings = {
 	enabled: true,
 	volume: 0.5,
 	soundFile: "notification01",
-	cooldownMs: 2000,
+	cooldownMs: 1000,
 }
 
 export function useNotificationSound() {

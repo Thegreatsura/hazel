@@ -40,6 +40,7 @@ import {
 } from "~/components/ui/sidebar"
 import { channelCollection, channelMemberCollection, channelSectionCollection } from "~/db/collections"
 import { useActiveThreads } from "~/db/hooks"
+import { useChannelUnreadCountMap } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import IconCirclePlus from "../icons/icon-circle-plus"
@@ -84,6 +85,7 @@ const ChannelSection = ({
 	sections,
 }: ChannelSectionProps) => {
 	const { user } = useAuth()
+	const { unreadByChannel } = useChannelUnreadCountMap()
 
 	const { data: userChannels } = useLiveQuery(
 		(q) => {
@@ -166,6 +168,7 @@ const ChannelSection = ({
 						key={channel.id}
 						channel={channel}
 						member={member}
+						notificationCount={unreadByChannel.get(channel.id) ?? member.notificationCount}
 						threads={threadsByParent?.get(channel.id)}
 						sections={sections}
 					/>
@@ -180,6 +183,7 @@ const ChannelSection = ({
 
 const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () => void }) => {
 	const { user } = useAuth()
+	const { unreadByChannel } = useChannelUnreadCountMap()
 
 	const { data: userDmChannels } = useLiveQuery(
 		(q) =>
@@ -209,7 +213,11 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 	return (
 		<SectionGroup sectionId="dms" name="Direct Messages" onCreateDm={props.onCreateDm}>
 			{dmChannels.map((channel) => (
-				<DmChannelItem key={channel.id} channelId={channel.id} />
+				<DmChannelItem
+					key={channel.id}
+					channelId={channel.id}
+					notificationCount={unreadByChannel.get(channel.id) ?? 0}
+				/>
 			))}
 		</SectionGroup>
 	)

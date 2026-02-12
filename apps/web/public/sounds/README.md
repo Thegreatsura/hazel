@@ -7,15 +7,12 @@ This directory contains notification sound files for the application.
 - `notification01.mp3` - Classic notification
 - `notification03.mp3` - Modern alert
 
-## Required Files (To Add)
+## Active Sound Catalog
 
-You need to add the following sound files to complete the notification sound selection feature:
+The notification system currently supports two production sounds:
 
-- `ping.mp3` - Quick notification ping
-- `chime.mp3` - Pleasant chime sound
-- `bell.mp3` - Classic bell tone
-- `ding.mp3` - Soft ding sound
-- `pop.mp3` - Modern pop sound
+- `notification01`
+- `notification03`
 
 ## Where to Find Free Notification Sounds
 

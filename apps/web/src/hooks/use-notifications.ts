@@ -2,7 +2,7 @@ import type { Channel, Message, Notification, User } from "@hazel/domain/models"
 import type { NotificationId } from "@hazel/schema"
 import { and, eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { Effect } from "effect"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
 	channelCollection,
 	messageCollection,
@@ -11,13 +11,16 @@ import {
 	userCollection,
 } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
+import {
+	isUnreadNotification,
+	selectUnreadCount,
+	selectUnreadCountsByChannel,
+	useNotificationUnreadCountsByChannel,
+} from "~/lib/notifications"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { useOrganization } from "./use-organization"
 
-/**
- * Hook to get the current user's organization member record
- */
 function useOrganizationMember() {
 	const { user } = useAuth()
 	const { organizationId } = useOrganization()
@@ -45,16 +48,10 @@ export interface NotificationWithDetails {
 	author?: typeof User.Model.Type
 }
 
-/**
- * Hook to manage notifications for the current user
- *
- * Returns notifications with joined message, channel, and author data,
- * plus functions to mark notifications as read.
- */
 export function useNotifications() {
 	const { memberId, isLoading: memberLoading } = useOrganizationMember()
+	const [optimisticReadIds, setOptimisticReadIds] = useState<Set<string>>(new Set())
 
-	// Query notifications with joined data
 	const { data: notificationsData, isLoading: notificationsLoading } = useLiveQuery(
 		(q) =>
 			memberId
@@ -75,7 +72,6 @@ export function useNotifications() {
 		[memberId],
 	)
 
-	// Process notifications into a cleaner structure
 	const notifications = useMemo<NotificationWithDetails[]>(() => {
 		if (!notificationsData) return []
 
@@ -87,13 +83,27 @@ export function useNotifications() {
 		}))
 	}, [notificationsData])
 
-	// Calculate unread count
 	const unreadCount = useMemo(() => {
-		return notifications.filter((n) => n.notification.readAt === null).length
-	}, [notifications])
+		return selectUnreadCount(
+			notifications.map((n) => n.notification),
+			optimisticReadIds,
+		)
+	}, [notifications, optimisticReadIds])
 
-	// Mark a single notification as read
+	const unreadByChannel = useMemo(() => {
+		return selectUnreadCountsByChannel(
+			notifications.map((n) => n.notification),
+			optimisticReadIds,
+		)
+	}, [notifications, optimisticReadIds])
+
 	const markAsRead = useCallback(async (notificationId: NotificationId) => {
+		setOptimisticReadIds((prev) => {
+			const next = new Set(prev)
+			next.add(notificationId)
+			return next
+		})
+
 		const program = Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 			yield* client("notification.update", {
@@ -102,20 +112,38 @@ export function useNotifications() {
 			} as any)
 		})
 
-		await runtime.runPromise(program).catch(console.error)
+		await runtime.runPromise(program).catch(() => {
+			setOptimisticReadIds((prev) => {
+				const next = new Set(prev)
+				next.delete(notificationId)
+				return next
+			})
+		})
 	}, [])
 
-	// Mark all notifications as read
 	const markAllAsRead = useCallback(async () => {
-		const unreadNotifications = notifications.filter((n) => n.notification.readAt === null)
+		const unreadNotificationIds = notifications
+			.map((item) => item.notification)
+			.filter((notification) => isUnreadNotification(notification, optimisticReadIds))
+			.map((notification) => notification.id)
 
-		// Mark all notifications as read in parallel
-		await Promise.all(unreadNotifications.map(({ notification }) => markAsRead(notification.id)))
-	}, [notifications, markAsRead])
+		if (unreadNotificationIds.length === 0) return
+
+		setOptimisticReadIds((prev) => {
+			const next = new Set(prev)
+			for (const id of unreadNotificationIds) {
+				next.add(id)
+			}
+			return next
+		})
+
+		await Promise.all(unreadNotificationIds.map((id) => markAsRead(id)))
+	}, [notifications, optimisticReadIds, markAsRead])
 
 	return {
 		notifications,
 		unreadCount,
+		unreadByChannel,
 		isLoading: memberLoading || notificationsLoading,
 		markAsRead,
 		markAllAsRead,
@@ -123,10 +151,6 @@ export function useNotifications() {
 	}
 }
 
-/**
- * Lightweight hook that only returns the unread notification count
- * Use this in components that only need to display the badge count
- */
 export function useUnreadNotificationCount() {
 	const { memberId, isLoading: memberLoading } = useOrganizationMember()
 
@@ -146,4 +170,22 @@ export function useUnreadNotificationCount() {
 		unreadCount: notifications?.length ?? 0,
 		isLoading: memberLoading || notificationsLoading,
 	}
+}
+
+export function useChannelUnreadCount(channelId: string | null | undefined) {
+	const { memberId } = useOrganizationMember()
+	const { unreadByChannel, totalUnread, isLoading } = useNotificationUnreadCountsByChannel(memberId)
+
+	const unreadCount = channelId ? (unreadByChannel.get(channelId) ?? 0) : 0
+
+	return {
+		unreadCount,
+		totalUnread,
+		isLoading,
+	}
+}
+
+export function useChannelUnreadCountMap() {
+	const { memberId } = useOrganizationMember()
+	return useNotificationUnreadCountsByChannel(memberId)
 }

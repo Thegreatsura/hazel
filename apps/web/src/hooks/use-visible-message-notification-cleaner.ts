@@ -83,7 +83,7 @@ export function useVisibleMessageNotificationCleaner(options: UseVisibleMessageN
 	})
 
 	// Process pending deletions
-	const processPendingDeletions = useCallback(() => {
+	const processPendingDeletions = useCallback(async () => {
 		const messageIds = Array.from(pendingMessageIdsRef.current).filter(
 			(id) => !deletedMessageIdsRef.current.has(id),
 		) as MessageId[]
@@ -96,10 +96,17 @@ export function useVisibleMessageNotificationCleaner(options: UseVisibleMessageN
 		}
 		pendingMessageIdsRef.current.clear()
 
-		// Fire and forget - we don't need to await
-		deleteNotifications({
-			payload: { messageIds, channelId },
-		}).catch(console.error)
+		try {
+			await deleteNotifications({
+				payload: { messageIds, channelId },
+			})
+		} catch (error) {
+			// Roll back optimistic deleted IDs so future visibility updates can retry.
+			for (const id of messageIds) {
+				deletedMessageIdsRef.current.delete(id)
+			}
+			console.error(error)
+		}
 	}, [deleteNotifications, channelId])
 
 	// Handler called when visible messages change
@@ -119,18 +126,20 @@ export function useVisibleMessageNotificationCleaner(options: UseVisibleMessageN
 
 			// Debounce the deletion
 			clearTimeout(debounceTimeoutRef.current)
-			debounceTimeoutRef.current = setTimeout(processPendingDeletions, debounceMs)
+			debounceTimeoutRef.current = setTimeout(() => {
+				void processPendingDeletions()
+			}, debounceMs)
 		},
 		[messageIdsWithNotifications, processPendingDeletions, debounceMs],
 	)
 
-	// Cleanup on unmount
+			// Cleanup on unmount
 	useEffect(() => {
 		return () => {
 			clearTimeout(debounceTimeoutRef.current)
 			// Process any remaining pending deletions
 			if (pendingMessageIdsRef.current.size > 0) {
-				processPendingDeletions()
+				void processPendingDeletions()
 			}
 		}
 	}, [processPendingDeletions])

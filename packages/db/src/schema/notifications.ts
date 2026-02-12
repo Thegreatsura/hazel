@@ -1,5 +1,6 @@
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
-import { index, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
+import { index, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core"
 
 // Notifications table
 export const notificationsTable = pgTable(
@@ -17,9 +18,13 @@ export const notificationsTable = pgTable(
 	},
 	(table) => [
 		index("notifications_member_id_idx").on(table.memberId),
+		index("notifications_member_created_id_idx").on(table.memberId, table.createdAt, table.id),
 		index("notifications_targeted_resource_idx").on(table.targetedResourceId, table.targetedResourceType),
 		index("notifications_resource_idx").on(table.resourceId, table.resourceType),
 		index("notifications_read_at_idx").on(table.readAt),
+		uniqueIndex("notifications_message_channel_dedupe_idx")
+			.on(table.memberId, table.resourceId, table.targetedResourceId)
+			.where(sql`${table.resourceType} = 'message' AND ${table.targetedResourceType} = 'channel'`),
 	],
 )
 
