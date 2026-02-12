@@ -201,7 +201,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 						const { attachmentIds, embeds, replyToMessageId, threadChannelId, ...rest } = payload
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									const createdMessage = yield* MessageRepo.insert({
@@ -238,6 +238,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "create"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
@@ -260,7 +262,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 						const { embeds, ...rest } = payload
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									const updatedMessage = yield* MessageRepo.update({
@@ -281,6 +283,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "update"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
@@ -301,7 +305,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 						yield* checkMessageRateLimit(bot.userId)
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									yield* MessageRepo.deleteById(path.id).pipe(
@@ -317,6 +321,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "delete"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
@@ -335,7 +341,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 						const bot = yield* authenticateBotFromToken
 						const currentUser = createBotUserContext(bot)
 
-						return yield* db
+						const result = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									const { emoji, channelId } = payload
@@ -352,17 +358,26 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 									// If reaction exists, delete it
 									if (Option.isSome(existingReaction)) {
+										const deletedSyncPayload = {
+											reactionId: existingReaction.value.id,
+											hazelChannelId: existingReaction.value.channelId,
+											hazelMessageId: existingReaction.value.messageId,
+											emoji: existingReaction.value.emoji,
+											userId: existingReaction.value.userId,
+										} as const
+
 										yield* MessageReactionRepo.deleteById(existingReaction.value.id).pipe(
 											policyUse(
 												MessageReactionPolicy.canDelete(existingReaction.value.id),
 											),
 										)
 
-										return new ToggleReactionResponse({
+										return {
 											wasCreated: false,
 											data: undefined,
 											transactionId: txid,
-										})
+											deletedSyncPayload,
+										}
 									}
 
 									// Otherwise, create a new reaction
@@ -376,17 +391,24 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										policyUse(MessageReactionPolicy.canCreate(messageId)),
 									)
 
-									return new ToggleReactionResponse({
+									return {
 										wasCreated: true,
 										data: createdReaction,
 										transactionId: txid,
-									})
+										deletedSyncPayload: null,
+									}
 								}),
 							)
 							.pipe(
 								withRemapDbErrors("MessageReaction", "create"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						return new ToggleReactionResponse({
+							wasCreated: result.wasCreated,
+							data: result.data,
+							transactionId: result.transactionId,
+						})
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(

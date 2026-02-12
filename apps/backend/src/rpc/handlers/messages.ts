@@ -34,7 +34,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								const createdMessage = yield* MessageRepo.insert({
@@ -65,6 +65,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "create"))
+
+					return response
 				}),
 
 			"message.update": ({ id, ...payload }) =>
@@ -74,7 +76,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								const updatedMessage = yield* MessageRepo.update({
@@ -91,6 +93,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "update"))
+
+					return response
 				}),
 
 			"message.delete": ({ id }) =>
@@ -100,7 +104,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								yield* MessageRepo.deleteById(id).pipe(policyUse(MessagePolicy.canDelete(id)))
@@ -111,6 +115,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "delete"))
+
+					return response
 				}),
 		}
 	}),

@@ -2,13 +2,29 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder, HttpApiClient, HttpServerRequest } from "@effect/platform"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/domain"
-import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
+import {
+	GitHubWebhookResponse,
+	InvalidGitHubWebhookSignature,
+} from "@hazel/domain/http"
+import type {
+	SequinMessageReactionRecord,
+	SequinMessageRecord,
+	SequinWebhookRecord,
+} from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
+import { DiscordSyncWorker } from "../services/chat-sync/discord-sync-worker"
+
+const isSequinMessageRecord = (record: SequinWebhookRecord): record is SequinMessageRecord =>
+	"authorId" in record
+
+const isSequinMessageReactionRecord = (
+	record: SequinWebhookRecord,
+): record is SequinMessageReactionRecord => "userId" in record
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
 	handlers
@@ -106,11 +122,33 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 
 				// Get database for channel type lookup
 				const db = yield* Database.Database
+				const discordSyncWorker = yield* DiscordSyncWorker
 
 				// Get the Cluster API client once for all events
 				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 					baseUrl: clusterUrl,
 				})
+
+				// Resolve Discord integration bot user once to avoid feedback loops.
+				const integrationBotResult = yield* db
+					.execute((client) =>
+						client
+							.select({ id: schema.usersTable.id })
+							.from(schema.usersTable)
+							.where(
+								and(
+									eq(schema.usersTable.externalId, "integration-bot-discord"),
+									isNull(schema.usersTable.deletedAt),
+								),
+							)
+							.limit(1),
+					)
+					.pipe(
+						Effect.catchTags({
+							DatabaseError: () => Effect.succeed([]),
+						}),
+					)
+				const integrationBotUserId = integrationBotResult[0]?.id ?? null
 
 				// Process each event in the batch
 				yield* Effect.forEach(
@@ -121,18 +159,114 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							yield* Effect.logDebug("Processing Sequin event", {
 								action: event.action,
 								tableName: event.metadata.table_name,
-								messageId: event.record.id,
+								recordId: event.record.id,
 								channelId: event.record.channelId,
 							})
 
-							// Only process 'insert' actions (new messages)
-							if (event.action !== "insert") {
-								yield* Effect.logDebug("Ignoring non-insert action", {
+							// Drive Hazel -> Discord sync from Sequin events.
+							if (event.metadata.table_name === "messages" && isSequinMessageRecord(event.record)) {
+								if (event.record.authorId === integrationBotUserId) {
+									yield* Effect.logDebug("Skipping Sequin message event from integration bot", {
+										tableName: event.metadata.table_name,
+										messageId: event.record.id,
+										channelId: event.record.channelId,
+									})
+								} else {
+									const dedupeKey = `hazel:sequin:${event.metadata.table_name}:${event.action}:${event.record.id}:${event.metadata.idempotency_key}`
+									const isSoftDeleteUpdate =
+										event.action === "update" && event.record.deletedAt !== null
+
+									yield* (
+										event.action === "insert"
+											? discordSyncWorker.syncHazelMessageCreateToAllConnections(
+													event.record.id,
+													dedupeKey,
+												)
+											: event.action === "delete" || isSoftDeleteUpdate
+												? discordSyncWorker.syncHazelMessageDeleteToAllConnections(
+														event.record.id,
+														dedupeKey,
+													)
+												: discordSyncWorker.syncHazelMessageUpdateToAllConnections(
+														event.record.id,
+														dedupeKey,
+													)
+									).pipe(
+										Effect.catchAll((error) =>
+											Effect.logWarning("Failed to sync Sequin message event to Discord", {
+												action: event.action,
+												messageId: event.record.id,
+												channelId: event.record.channelId,
+												error: String(error),
+											}),
+										),
+									)
+								}
+							}
+
+							if (
+								event.metadata.table_name === "message_reactions" &&
+								isSequinMessageReactionRecord(event.record)
+							) {
+								if (event.record.userId === integrationBotUserId) {
+									yield* Effect.logDebug("Skipping Sequin reaction event from integration bot", {
+										tableName: event.metadata.table_name,
+										reactionId: event.record.id,
+										channelId: event.record.channelId,
+									})
+								} else {
+									const dedupeKey = `hazel:sequin:${event.metadata.table_name}:${event.action}:${event.record.id}:${event.metadata.idempotency_key}`
+
+									yield* (
+										event.action === "insert"
+											? discordSyncWorker.syncHazelReactionCreateToAllConnections(
+													event.record.id,
+													dedupeKey,
+												)
+											: event.action === "delete"
+												? discordSyncWorker.syncHazelReactionDeleteToAllConnections(
+														{
+															hazelChannelId: event.record.channelId,
+															hazelMessageId: event.record.messageId,
+															emoji: event.record.emoji,
+															userId: event.record.userId,
+														},
+														dedupeKey,
+													)
+												: Effect.succeed({
+														synced: 0,
+														failed: 0,
+												  })
+									).pipe(
+										Effect.catchAll((error) =>
+											Effect.logWarning("Failed to sync Sequin reaction event to Discord", {
+												action: event.action,
+												reactionId: event.record.id,
+												channelId: event.record.channelId,
+												error: String(error),
+											}),
+										),
+									)
+								}
+							}
+
+							// Notification and thread-naming workflows are insert-only.
+							if (event.metadata.table_name !== "messages" || event.action !== "insert") {
+								yield* Effect.logDebug("Skipping non-insert workflow actions", {
 									action: event.action,
-									messageId: event.record.id,
+									tableName: event.metadata.table_name,
+									recordId: event.record.id,
 								})
 								return
 							}
+							if (!isSequinMessageRecord(event.record)) {
+								yield* Effect.logWarning("Skipping unexpected Sequin payload for message workflow", {
+									tableName: event.metadata.table_name,
+									recordId: event.record.id,
+								})
+								return
+							}
+							const messageRecord = event.record
 
 							// Fetch channel type for smart notifications
 							const channelResult = yield* db
@@ -143,7 +277,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											name: schema.channelsTable.name,
 										})
 										.from(schema.channelsTable)
-										.where(eq(schema.channelsTable.id, event.record.channelId))
+										.where(eq(schema.channelsTable.id, messageRecord.channelId))
 										.limit(1),
 								)
 								.pipe(
@@ -165,21 +299,21 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							yield* client.workflows
 								.MessageNotificationWorkflowDiscard({
 									payload: {
-										messageId: event.record.id,
-										channelId: event.record.channelId,
-										authorId: event.record.authorId,
+										messageId: messageRecord.id,
+										channelId: messageRecord.channelId,
+										authorId: messageRecord.authorId,
 										channelType,
-										content: event.record.content ?? "",
-										replyToMessageId: event.record.replyToMessageId ?? null,
+										content: messageRecord.content ?? "",
+										replyToMessageId: messageRecord.replyToMessageId ?? null,
 									},
 								})
 								.pipe(
 									Effect.tapError((err) =>
 										Effect.logError("Failed to execute notification workflow", {
 											error: err.message,
-											messageId: event.record.id,
-											channelId: event.record.channelId,
-											authorId: event.record.authorId,
+											messageId: messageRecord.id,
+											channelId: messageRecord.channelId,
+											authorId: messageRecord.authorId,
 										}),
 									),
 									Effect.catchTags({
@@ -222,15 +356,15 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 										client
 											.select({ count: sql<number>`count(*)::int` })
 											.from(schema.messagesTable)
-											.where(
-												and(
-													eq(
-														schema.messagesTable.channelId,
-														event.record.channelId,
-													),
-													isNull(schema.messagesTable.deletedAt),
+										.where(
+											and(
+												eq(
+													schema.messagesTable.channelId,
+													messageRecord.channelId,
 												),
+												isNull(schema.messagesTable.deletedAt),
 											),
+										),
 									)
 									.pipe(
 										Effect.catchTags({
@@ -249,7 +383,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 												.where(
 													eq(
 														schema.messagesTable.threadChannelId,
-														event.record.channelId,
+														messageRecord.channelId,
 													),
 												)
 												.limit(1),
@@ -263,21 +397,21 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 									if (originalMessageResult.length > 0) {
 										yield* client.workflows
 											.ThreadNamingWorkflowDiscard({
-												payload: {
-													threadChannelId: event.record.channelId,
-													originalMessageId: originalMessageResult[0]!.id,
-												},
-											})
-											.pipe(
-												Effect.tapError((err) =>
-													Effect.logError(
-														"Failed to execute thread naming workflow",
-														{
-															error: err.message,
-															threadChannelId: event.record.channelId,
-														},
+													payload: {
+														threadChannelId: messageRecord.channelId,
+														originalMessageId: originalMessageResult[0]!.id,
+													},
+												})
+												.pipe(
+													Effect.tapError((err) =>
+														Effect.logError(
+															"Failed to execute thread naming workflow",
+															{
+																error: err.message,
+																threadChannelId: messageRecord.channelId,
+															},
+														),
 													),
-												),
 												// Don't fail the main flow - catch all workflow errors
 												Effect.catchTags({
 													HttpApiDecodeError: () => Effect.void,
@@ -287,17 +421,17 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 												}),
 											)
 
-										yield* Effect.logDebug("Triggered thread naming workflow", {
-											threadChannelId: event.record.channelId,
-											originalMessageId: originalMessageResult[0]!.id,
-										})
+											yield* Effect.logDebug("Triggered thread naming workflow", {
+												threadChannelId: messageRecord.channelId,
+												originalMessageId: originalMessageResult[0]!.id,
+											})
+										}
 									}
 								}
-							}
 
-							yield* Effect.logDebug("Event processed successfully", {
-								messageId: event.record.id,
-							})
+								yield* Effect.logDebug("Event processed successfully", {
+									messageId: messageRecord.id,
+								})
 						}),
 					{ concurrency: "unbounded" },
 				)

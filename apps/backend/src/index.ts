@@ -15,6 +15,10 @@ import {
 	ChannelMemberRepo,
 	ChannelRepo,
 	ChannelSectionRepo,
+	ChatSyncChannelLinkRepo,
+	ChatSyncConnectionRepo,
+	ChatSyncEventReceiptRepo,
+	ChatSyncMessageLinkRepo,
 	CustomEmojiRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
@@ -37,7 +41,7 @@ import {
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
-import { Config, Layer } from "effect"
+import { Config, ConfigProvider, Effect, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -65,6 +69,9 @@ import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
+import { ChatSyncAttributionReconciler } from "./services/chat-sync/chat-sync-attribution-reconciler"
+import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
+import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
@@ -118,6 +125,10 @@ const RepoLive = Layer.mergeAll(
 	ChannelRepo.Default,
 	ChannelMemberRepo.Default,
 	ChannelSectionRepo.Default,
+	ChatSyncConnectionRepo.Default,
+	ChatSyncChannelLinkRepo.Default,
+	ChatSyncMessageLinkRepo.Default,
+	ChatSyncEventReceiptRepo.Default,
 	UserRepo.Default,
 	OrganizationRepo.Default,
 	OrganizationMemberRepo.Default,
@@ -182,12 +193,18 @@ const MainLive = Layer.mergeAll(
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
 	IntegrationBotService.Default,
+	ChatSyncAttributionReconciler.Default,
+	DiscordSyncWorker.Default,
+	DiscordGatewayService.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,
 	RateLimiter.Default,
 	// SessionManager.Default includes BackendAuth.Default via dependencies
 	SessionManager.Default,
-).pipe(Layer.provideMerge(FetchHttpClient.layer))
+).pipe(
+	Layer.provideMerge(FetchHttpClient.layer),
+	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
+)
 
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
@@ -214,5 +231,6 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 		),
 	),
 	Layer.launch,
+	Effect.scoped,
 	BunRuntime.runMain,
 )

@@ -7,6 +7,7 @@ import { IntegrationConnection } from "../models"
 
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
+const ConnectionLevel = IntegrationConnection.ConnectionLevel
 
 // OAuth URL response - returned from getOAuthUrl endpoint for SPA OAuth flow
 export class OAuthUrlResponse extends Schema.Class<OAuthUrlResponse>("OAuthUrlResponse")({
@@ -75,6 +76,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
+				}),
+			)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
@@ -103,6 +109,9 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					code: Schema.optional(Schema.String),
 					// State is optional because GitHub doesn't send it for update callbacks
 					state: Schema.optional(Schema.String),
+					// Discord bot scope callback includes selected guild context
+					guild_id: Schema.optional(Schema.String),
+					permissions: Schema.optional(Schema.String),
 					// GitHub App uses `installation_id` instead of code
 					installation_id: Schema.optional(Schema.String),
 					// GitHub also sends setup_action (e.g., "install", "update")
@@ -128,6 +137,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				Schema.Struct({
 					orgId: OrganizationId,
 					provider: IntegrationProvider,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
 				}),
 			)
 			.middleware(CurrentUser.Authorization)
@@ -176,6 +190,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				Schema.Struct({
 					orgId: OrganizationId,
 					provider: IntegrationProvider,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
 				}),
 			)
 			.annotateContext(
