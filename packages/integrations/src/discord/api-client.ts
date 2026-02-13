@@ -351,7 +351,7 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 
 			const response = yield* httpClient
 				.post(
-					`${DISCORD_API_BASE_URL}/webhooks/${params.webhookId}/${params.webhookToken}/messages?wait=true`,
+					`${DISCORD_API_BASE_URL}/webhooks/${params.webhookId}/${params.webhookToken}?wait=true`,
 					{
 						body: HttpBody.text(JSON.stringify(payload), "application/json"),
 						headers: {
