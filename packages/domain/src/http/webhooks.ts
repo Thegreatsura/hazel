@@ -50,7 +50,7 @@ export class SequinMessageReactionRecord extends Schema.Class<SequinMessageReact
 	userId: UserId,
 	emoji: Schema.String,
 	createdAt: Schema.String,
-	updatedAt: Schema.NullOr(Schema.String),
+	updatedAt: Schema.NullishOr(Schema.String),
 }) {}
 
 export class SequinConsumer extends Schema.Class<SequinConsumer>("SequinConsumer")({
