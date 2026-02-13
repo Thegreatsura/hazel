@@ -65,6 +65,39 @@ const STATUS_CONFIG: Record<ConnectionStatus, { label: string; badgeClass: strin
 	},
 }
 
+type WebhookPermissionState = "allowed" | "denied" | "unknown"
+
+const WEBHOOK_PERMISSION_LABELS: Record<WebhookPermissionState, { label: string; badgeClass: string }> = {
+	allowed: {
+		label: "Webhook",
+		badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+	},
+	denied: {
+		label: "Bot fallback",
+		badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+	},
+	unknown: {
+		label: "Checking",
+		badgeClass: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400",
+	},
+}
+
+const getWebhookPermissionFromSettings = (
+	settings: Record<string, unknown> | null | undefined,
+): WebhookPermissionState => {
+	const raw = settings?.webhookPermission
+	if (!raw || typeof raw !== "object") {
+		return "unknown"
+	}
+
+	const status = (raw as { status?: unknown }).status
+	if (status === "allowed" || status === "denied") {
+		return status
+	}
+
+	return "unknown"
+}
+
 const DIRECTION_PATHS: Record<SyncDirection, string> = {
 	both: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5",
 	hazel_to_external: "M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3",
@@ -689,6 +722,7 @@ function ChannelLinkRow({
 		externalChannelName: string | null
 		direction: string
 		isActive: boolean
+		settings: Record<string, unknown> | null
 	}
 	onDelete: () => void
 	onToggleActive: () => void
@@ -696,6 +730,8 @@ function ChannelLinkRow({
 }) {
 	const direction = (link.direction as SyncDirection) || "both"
 	const directionDisplay = DIRECTION_DISPLAY[direction]
+	const webhookPermissionStatus = getWebhookPermissionFromSettings(link.settings)
+	const webhookPermissionLabel = WEBHOOK_PERMISSION_LABELS[webhookPermissionStatus]
 
 	// Look up the Hazel channel name
 	const { data: channelData } = useLiveQuery(
@@ -739,6 +775,11 @@ function ChannelLinkRow({
 
 			{/* Status + Actions */}
 			<div className="flex shrink-0 items-center gap-2">
+				<span
+					className={`inline-flex rounded-full px-2 py-0.5 text-xs ${webhookPermissionLabel.badgeClass}`}
+				>
+					{webhookPermissionLabel.label}
+				</span>
 				<span
 					className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
 						link.isActive

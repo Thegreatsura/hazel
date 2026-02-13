@@ -99,7 +99,7 @@ export const PROVIDER_CONFIGS: Record<
 		scopes: ["identify", "guilds", "bot"],
 		scopeDelimiter: " ",
 		additionalAuthParams: {
-			permissions: "76800",
+			permissions: "536947712",
 		},
 	},
 }

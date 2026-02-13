@@ -248,6 +248,50 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
 
+		type WebhookPermissionStatus = "unknown" | "allowed" | "denied"
+
+		type WebhookPermissionState = {
+			status: WebhookPermissionStatus
+			checkedAt: string
+			reason?: string
+		}
+
+		const getRawWebhookPermissionState = (
+			settings: Record<string, unknown> | null | undefined,
+		): WebhookPermissionState | undefined => {
+			const raw = settings?.webhookPermission
+			if (!raw || typeof raw !== "object") {
+				return undefined
+			}
+
+			const status = (raw as { status?: unknown }).status
+			if (status !== "allowed" && status !== "denied" && status !== "unknown") {
+				return undefined
+			}
+
+			const checkedAt = (raw as { checkedAt?: unknown }).checkedAt
+			const reason = (raw as { reason?: unknown }).reason
+
+			return {
+				status,
+				checkedAt:
+					typeof checkedAt === "string" && checkedAt.trim().length > 0 ? checkedAt : new Date().toISOString(),
+				reason: typeof reason === "string" && reason.trim().length > 0 ? reason : undefined,
+			}
+		}
+
+		const makeWebhookPermissionState = (params: {
+			status: WebhookPermissionStatus
+			reason?: string
+		}): WebhookPermissionState => ({
+			status: params.status,
+			checkedAt: new Date().toISOString(),
+			...(params.reason ? { reason: params.reason } : {}),
+		})
+
+		const isDiscordApiError = (error: unknown): error is Discord.DiscordApiError =>
+			typeof error === "object" && error !== null && (error as { _tag?: unknown })._tag === "DiscordApiError"
+
 		const isWebhookStrategyEnabled = (outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings): boolean =>
 			outboundIdentity.strategy === "webhook"
 
@@ -330,6 +374,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				settings: Record<string, unknown> | null
 			},
 			outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings,
+			webhookPermissionState?: WebhookPermissionState,
 		) {
 			const currentRawOutboundIdentity = getRawOutboundIdentitySettings(link.settings) ?? defaultOutboundIdentitySettings()
 			const currentProviders =
@@ -349,6 +394,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						...outboundIdentity.providers,
 					},
 				},
+				...(webhookPermissionState ? { webhookPermission: webhookPermissionState } : {}),
 			}
 			yield* channelLinkRepo
 				.updateSettings(link.id, nextSettings)
@@ -358,23 +404,29 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const ensureDiscordWebhookIdentity = Effect.fn(
 			"DiscordSyncWorker.ensureDiscordWebhookIdentity",
 		)(function* (params: {
-				provider: ChatSyncProvider
-				link: {
-					id: SyncChannelLinkId
-					externalChannelId: ExternalChannelId
-					settings: Record<string, unknown> | null
-				}
-			}) {
+			provider: ChatSyncProvider
+			link: {
+				id: SyncChannelLinkId
+				externalChannelId: ExternalChannelId
+				settings: Record<string, unknown> | null
+			}
+		}) {
+			const outboundIdentity = getOutboundIdentitySettings(params.link.settings)
+			if (params.provider !== "discord") {
+				return Option.none()
+			}
+
+			if (!isWebhookStrategyEnabled(outboundIdentity)) {
+				return Option.none()
+			}
+
+			const webhookPermissionState =
+				getRawWebhookPermissionState(params.link.settings) ?? makeWebhookPermissionState({ status: "unknown" })
+			if (webhookPermissionState.status === "denied") {
+				return Option.none()
+			}
+
 			return yield* Effect.gen(function* () {
-				if (params.provider !== "discord") {
-					return Option.none()
-				}
-
-				const outboundIdentity = getOutboundIdentitySettings(params.link.settings)
-				if (!isWebhookStrategyEnabled(outboundIdentity)) {
-					return Option.none()
-				}
-
 				const currentConfig = getDiscordWebhookConfig(outboundIdentity)
 				if (Option.isSome(currentConfig)) {
 					if (!outboundIdentity.enabled) {
@@ -409,22 +461,55 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					},
 				}
 
-				yield* persistWebhookIdentity(params.link, nextOutboundIdentity)
+				yield* persistWebhookIdentity(
+					params.link,
+					nextOutboundIdentity,
+					makeWebhookPermissionState({ status: "allowed" }),
+				)
 				return Option.some(nextConfig)
 			}).pipe(
 				Effect.catchAll((error) =>
 					Effect.gen(function* () {
+						if (isDiscordApiError(error) && error.status === 403) {
+							const fallbackOutboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings = {
+								enabled: outboundIdentity.enabled,
+								strategy: "fallback_bot",
+								providers: outboundIdentity.providers,
+							}
+
+							yield* persistWebhookIdentity(
+								params.link,
+								fallbackOutboundIdentity,
+								makeWebhookPermissionState({
+									status: "denied",
+									reason: `Webhook create forbidden (HTTP ${error.status})`,
+								}),
+							)
+						} else {
+							const reason =
+								typeof error === "object" && error !== null && "message" in error
+									? String((error as { message?: unknown }).message)
+									: undefined
+
+							yield* persistWebhookIdentity(
+								params.link,
+								outboundIdentity,
+								makeWebhookPermissionState({ status: "unknown", reason }),
+							)
+						}
+
 						yield* Effect.logWarning("Failed to provision Discord webhook identity", {
 							provider: params.provider,
 							externalChannelId: params.link.externalChannelId,
 							error: String(error),
 						})
-					return Option.none()
-				}),
+						return Option.none()
+					}),
 				),
 			)
 		})
 
+		
 
 		const getDiscordWebhookIdentityMessageMetadata = Effect.fn(
 			"DiscordSyncWorker.getDiscordWebhookIdentityMessageMetadata",

@@ -47,6 +47,7 @@ const HAZEL_MESSAGE_ID = "00000000-0000-0000-0000-000000000005" as MessageId
 const BOT_USER_ID = "00000000-0000-0000-0000-000000000006" as UserId
 const REACTION_USER_ID = "00000000-0000-0000-0000-000000000007" as UserId
 const DISCORD_CHANNEL_ID = "discord-channel-1" as ExternalChannelId
+const DISCORD_CHANNEL_ID_SNOWFLAKE = "123456789012345678" as ExternalChannelId
 const DISCORD_MESSAGE_ID = "discord-message-1" as ExternalMessageId
 const DISCORD_WEBHOOK_ID = "123456789012345678" as ExternalWebhookId
 const DISCORD_WEBHOOK_TOKEN = "webhook-test-token"
@@ -73,6 +74,19 @@ const DISCORD_WEBHOOK_IDENTITY_SETTINGS = {
 				webhookToken: DISCORD_WEBHOOK_TOKEN,
 			},
 		},
+	},
+} as const
+
+const DISCORD_WEBHOOK_DENIED_PERMISSION_SETTINGS = {
+	outboundIdentity: {
+		enabled: true,
+		strategy: "webhook",
+		providers: {},
+	},
+	webhookPermission: {
+		status: "denied",
+		checkedAt: "2026-02-01T00:00:00.000Z",
+		reason: "user revoked webhook permissions",
 	},
 } as const
 
@@ -105,8 +119,20 @@ const runWorkerEffect = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 
 const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 	DiscordSyncWorker.DefaultWithoutDependencies.pipe(
-		Layer.provide(ChatSyncCoreWorker.DefaultWithoutDependencies),
-		Layer.provide(ChatSyncProviderRegistry.Default),
+		Layer.provide(
+			ChatSyncCoreWorker.DefaultWithoutDependencies.pipe(
+				Layer.provide(
+					deps.providerRegistry
+						? (Layer.succeed(ChatSyncProviderRegistry, deps.providerRegistry as ChatSyncProviderRegistry))
+						: ChatSyncProviderRegistry.Default,
+				),
+				Layer.provide(
+					deps.discordApiClient
+						? (Layer.succeed(Discord.DiscordApiClient, deps.discordApiClient as Discord.DiscordApiClient))
+						: Discord.DiscordApiClient.Default,
+				),
+			),
+		),
 		Layer.provide(
 			Layer.succeed(Database.Database, {
 				execute: () => Effect.die("not used in this test"),
@@ -158,23 +184,6 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 
 const makeWorkerLayerWithOverrides = (deps: WorkerLayerDeps) => {
 	let layer = makeWorkerLayer(deps)
-
-	if (deps.providerRegistry) {
-		layer = layer.pipe(
-			Layer.provide(
-				Layer.succeed(ChatSyncProviderRegistry, deps.providerRegistry as ChatSyncProviderRegistry),
-			),
-		)
-	}
-
-	if (deps.discordApiClient) {
-		layer = layer.pipe(
-			Layer.provide(
-				Layer.succeed(Discord.DiscordApiClient, deps.discordApiClient as Discord.DiscordApiClient),
-			),
-		)
-	}
-
 	return layer
 }
 
@@ -1312,17 +1321,142 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 		}
 	})
 
-	it("falls back to bot API when webhook provisioning fails", async () => {
+	it("skips webhook provisioning when permission is denied in settings", async () => {
 		const originalToken = process.env.DISCORD_BOT_TOKEN
 		process.env.DISCORD_BOT_TOKEN = "unit-test-token"
-		let webhookProvisioned = false
-		let adapterCreateCalled = false
-
+		let createWebhookCalled = false
+		let botApiCalled = false
 		try {
 			const layer = makeWorkerLayerWithOverrides({
 				connectionRepo: {
 					findById: () =>
 						Effect.succeed(
+							Option.some({
+								id: SYNC_CONNECTION_ID,
+								organizationId: ORGANIZATION_ID,
+								provider: "discord",
+								status: "active",
+							}),
+						),
+					updateLastSyncedAt: () => Effect.succeed([]),
+				},
+				channelLinkRepo: {
+				findByHazelChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID_SNOWFLAKE,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: DISCORD_WEBHOOK_DENIED_PERMISSION_SETTINGS,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+				updateSettings: () => {
+					return Effect.succeed([{ id: CHANNEL_LINK_ID }] as any)
+				},
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByHazelMessage: () => Effect.succeed(Option.none()),
+				insert: () => Effect.succeed([{ id: "message-link-id" } as any]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: HAZEL_MESSAGE_ID,
+							channelId: HAZEL_CHANNEL_ID,
+							authorId: BOT_USER_ID,
+							content: "hello from hazel",
+							replyToMessageId: null,
+							threadChannelId: null,
+						}),
+					),
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: BOT_USER_ID,
+							firstName: "Alex",
+							lastName: "Doe",
+							avatarUrl: "https://avatar.example/discord",
+						}),
+					),
+			} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => {
+							botApiCalled = true
+							return Effect.succeed("bot-message-id")
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			discordApiClient: {
+				createMessage: () => {
+					botApiCalled = true
+					return Effect.succeed("bot-message-id")
+				},
+				createWebhook: () => {
+					createWebhookCalled = true
+					return Effect.fail(new Error("should not create webhook when denied"))
+				},
+				executeWebhookMessage: () => Effect.fail(new Error("should not execute webhook")),
+				updateWebhookMessage: () => Effect.succeed(undefined),
+				deleteWebhookMessage: () => Effect.succeed(undefined),
+			} as unknown as Discord.DiscordApiClient,
+		})
+
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+				Effect.provide(layer),
+			),
+		)
+
+		expect(result.status).toBe("synced")
+		expect(result.externalMessageId).toBe("bot-message-id")
+		expect(createWebhookCalled).toBe(false)
+		expect(botApiCalled).toBe(true)
+		} finally {
+			if (originalToken === undefined) {
+				delete process.env.DISCORD_BOT_TOKEN
+			} else {
+				process.env.DISCORD_BOT_TOKEN = originalToken
+			}
+		}
+	})
+
+		it("marks webhook permission as denied and falls back when Discord returns 403", async () => {
+			const originalToken = process.env.DISCORD_BOT_TOKEN
+			process.env.DISCORD_BOT_TOKEN = "unit-test-token"
+			let webhookProvisioned = false
+			let adapterCreateCalled = false
+			let updatedSettings: Record<string, unknown> | null = null
+			const checkedReason = "Webhook create forbidden (HTTP 403)"
+
+			try {
+				const layer = makeWorkerLayerWithOverrides({
+					connectionRepo: {
+						findById: () =>
+							Effect.succeed(
 							Option.some({
 								id: SYNC_CONNECTION_ID,
 								organizationId: ORGANIZATION_ID,
@@ -1335,14 +1469,18 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 				channelLinkRepo: {
 					findByHazelChannel: () =>
 						Effect.succeed(
-							Option.some({
-								id: CHANNEL_LINK_ID,
-								externalChannelId: DISCORD_CHANNEL_ID,
-								hazelChannelId: HAZEL_CHANNEL_ID,
-								settings: DISCORD_WEBHOOK_EMPTY_SETTINGS,
-							}),
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID_SNOWFLAKE,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: DISCORD_WEBHOOK_EMPTY_SETTINGS,
+						}),
 						),
 					updateLastSyncedAt: () => Effect.succeed([]),
+					updateSettings: (id: SyncChannelLinkId, settings: Record<string, unknown> | null) => {
+						updatedSettings = settings
+						return Effect.succeed([{ id }] as any)
+					},
 				} as unknown as ChatSyncChannelLinkRepo,
 				messageLinkRepo: {
 					findByHazelMessage: () => Effect.succeed(Option.none()),
@@ -1379,53 +1517,213 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 							}),
 						),
 				} as unknown as UserRepo,
-				organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
-				integrationBotService: {
-					getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
-				} as unknown as IntegrationBotService,
-				channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
-				providerRegistry: {
-					getAdapter: () =>
-						Effect.succeed({
-							provider: "discord",
-							createMessage: () => {
-								adapterCreateCalled = true
-								return Effect.succeed("bot-message-id")
-							},
-							updateMessage: () => Effect.succeed(undefined),
-							deleteMessage: () => Effect.succeed(undefined),
-							addReaction: () => Effect.succeed(undefined),
-							removeReaction: () => Effect.succeed(undefined),
-							createThread: () => Effect.succeed("thread-id"),
-						}),
-				} as unknown as ChatSyncProviderRegistry,
-				discordApiClient: {
-					createWebhook: () => {
-						webhookProvisioned = true
-						return Effect.fail(new Error("webhook provisioning failed"))
-					},
-					executeWebhookMessage: () => Effect.fail(new Error("should not be called")),
-					updateWebhookMessage: () => Effect.succeed(undefined),
-					deleteWebhookMessage: () => Effect.succeed(undefined),
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => {
+							adapterCreateCalled = true
+							return Effect.succeed("bot-message-id")
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			discordApiClient: {
+				createMessage: () => {
+					adapterCreateCalled = true
+					return Effect.succeed("bot-message-id")
+				},
+							createWebhook: () => {
+								webhookProvisioned = true
+								return Effect.fail(
+								new Discord.DiscordApiError({
+									message: checkedReason,
+									status: 403,
+								}),
+							)
+						},
+						executeWebhookMessage: () => Effect.fail(new Error("should not be called")),
+						updateWebhookMessage: () => Effect.succeed(undefined),
+						deleteWebhookMessage: () => Effect.succeed(undefined),
 				} as unknown as Discord.DiscordApiClient,
 			})
 
-			const result = await runWorkerEffect(
-				DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
-					Effect.provide(layer),
-				),
-			)
+				const result = await runWorkerEffect(
+					DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+						Effect.provide(layer),
+					),
+				)
 
-			expect(result.status).toBe("synced")
-			expect(result.externalMessageId).toBe("bot-message-id")
-			expect(webhookProvisioned).toBe(true)
-			expect(adapterCreateCalled).toBe(true)
-		} finally {
-			if (originalToken === undefined) {
-				delete process.env.DISCORD_BOT_TOKEN
-			} else {
-				process.env.DISCORD_BOT_TOKEN = originalToken
+				expect(result.status).toBe("synced")
+				expect(result.externalMessageId).toBe("bot-message-id")
+				expect(webhookProvisioned).toBe(true)
+				expect(adapterCreateCalled).toBe(true)
+				const webhookState = (updatedSettings as
+					| {
+						outboundIdentity?: { strategy?: string }
+						webhookPermission?: { status?: string; checkedAt?: string; reason?: string }
+					}
+					| null | undefined)?.webhookPermission
+				const outboundIdentity = (updatedSettings as { outboundIdentity?: { strategy?: string } } | null | undefined)
+					?.outboundIdentity
+				expect(outboundIdentity?.strategy).toBe("fallback_bot")
+				expect(webhookState?.status).toBe("denied")
+				expect(webhookState?.reason).toContain("403")
+				expect(typeof webhookState?.checkedAt).toBe("string")
+				expect(adapterCreateCalled).toBe(true)
+				expect(webhookProvisioned).toBe(true)
+			} finally {
+				if (originalToken === undefined) {
+					delete process.env.DISCORD_BOT_TOKEN
+				} else {
+					process.env.DISCORD_BOT_TOKEN = originalToken
+				}
 			}
-		}
-	})
+		})
+
+		it("falls back to bot API when webhook provisioning fails for non-403 errors", async () => {
+			const originalToken = process.env.DISCORD_BOT_TOKEN
+			process.env.DISCORD_BOT_TOKEN = "unit-test-token"
+			let webhookProvisioned = false
+			let adapterCreateCalled = false
+			let updatedSettings: Record<string, unknown> | null = null
+
+			try {
+				const layer = makeWorkerLayerWithOverrides({
+					connectionRepo: {
+						findById: () =>
+							Effect.succeed(
+								Option.some({
+									id: SYNC_CONNECTION_ID,
+									organizationId: ORGANIZATION_ID,
+									provider: "discord",
+									status: "active",
+								}),
+						),
+						updateLastSyncedAt: () => Effect.succeed([]),
+					} as unknown as ChatSyncConnectionRepo,
+					channelLinkRepo: {
+						findByHazelChannel: () =>
+							Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID_SNOWFLAKE,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: DISCORD_WEBHOOK_EMPTY_SETTINGS,
+						}),
+							),
+						updateLastSyncedAt: () => Effect.succeed([]),
+						updateSettings: (id: SyncChannelLinkId, settings: Record<string, unknown> | null) => {
+							updatedSettings = settings
+							return Effect.succeed([{ id }] as any)
+						},
+					} as unknown as ChatSyncChannelLinkRepo,
+					messageLinkRepo: {
+						findByHazelMessage: () => Effect.succeed(Option.none()),
+						insert: () => Effect.succeed([{ id: "message-link-id" } as any]),
+					} as unknown as ChatSyncMessageLinkRepo,
+					eventReceiptRepo: {
+						claimByDedupeKey: () => Effect.succeed(true),
+						updateByDedupeKey: () => Effect.succeed([]),
+					} as unknown as ChatSyncEventReceiptRepo,
+					messageRepo: {
+						findById: () =>
+							Effect.succeed(
+								Option.some({
+									id: HAZEL_MESSAGE_ID,
+									channelId: HAZEL_CHANNEL_ID,
+									authorId: BOT_USER_ID,
+									content: "hello from hazel",
+									replyToMessageId: null,
+									threadChannelId: null,
+								}),
+							),
+					} as unknown as MessageRepo,
+					messageReactionRepo: {} as unknown as MessageReactionRepo,
+					channelRepo: {} as unknown as ChannelRepo,
+					integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+					userRepo: {
+						findById: () =>
+							Effect.succeed(
+								Option.some({
+									id: BOT_USER_ID,
+									firstName: "Alex",
+									lastName: "Doe",
+									avatarUrl: "https://avatar.example/discord",
+								}),
+							),
+					} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => {
+							adapterCreateCalled = true
+							return Effect.succeed("bot-message-id")
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			discordApiClient: {
+				createMessage: () => {
+					adapterCreateCalled = true
+					return Effect.succeed("bot-message-id")
+				},
+							createWebhook: () => {
+								webhookProvisioned = true
+								return Effect.fail(new Error("webhook provisioning failed"))
+							},
+						executeWebhookMessage: () => Effect.fail(new Error("should not be called")),
+						updateWebhookMessage: () => Effect.succeed(undefined),
+						deleteWebhookMessage: () => Effect.succeed(undefined),
+					} as unknown as Discord.DiscordApiClient,
+				})
+
+				const result = await runWorkerEffect(
+					DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+						Effect.provide(layer),
+					),
+				)
+
+				expect(result.status).toBe("synced")
+				expect(result.externalMessageId).toBe("bot-message-id")
+				expect(webhookProvisioned).toBe(true)
+				expect(adapterCreateCalled).toBe(true)
+				const webhookState = (updatedSettings as
+					| {
+						outboundIdentity?: { strategy?: string }
+						webhookPermission?: { status?: string; checkedAt?: string; reason?: string }
+					}
+					| null | undefined)?.webhookPermission
+				const outboundIdentity = (updatedSettings as { outboundIdentity?: { strategy?: string } } | null | undefined)
+					?.outboundIdentity
+				expect(outboundIdentity?.strategy).toBe("webhook")
+				expect(webhookState?.status).toBe("unknown")
+				expect(typeof webhookState?.checkedAt).toBe("string")
+			} finally {
+				if (originalToken === undefined) {
+					delete process.env.DISCORD_BOT_TOKEN
+				} else {
+					process.env.DISCORD_BOT_TOKEN = originalToken
+				}
+			}
+		})
 })
