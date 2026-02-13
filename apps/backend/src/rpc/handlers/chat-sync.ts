@@ -4,6 +4,7 @@ import {
 	IntegrationConnectionRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
+import { ExternalChannelId } from "@hazel/schema"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import {
 	ChatSyncChannelLinkExistsError,
@@ -30,6 +31,19 @@ const ensureOrgAccess = Effect.fn("chatSyncRpc.ensureOrgAccess")(function* (orga
 			}),
 		)
 	}
+})
+
+const normalizeChannelLinkSettings = (
+	settings: Record<string, unknown> | null | undefined,
+): Record<string, unknown> => ({
+	...(settings ?? {}),
+	outboundIdentity:
+		settings?.outboundIdentity ??
+		{
+			enabled: false,
+			strategy: "webhook",
+			providers: {},
+		},
 })
 
 export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
@@ -239,27 +253,31 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 
-							const [link] = yield* channelLinkRepo
-								.insert({
-									syncConnectionId: payload.syncConnectionId,
+								const [link] = yield* channelLinkRepo
+									.insert({
+										syncConnectionId: payload.syncConnectionId,
 									hazelChannelId: payload.hazelChannelId,
 									externalChannelId: payload.externalChannelId,
 									externalChannelName: payload.externalChannelName ?? null,
 									direction: payload.direction ?? "both",
 									isActive: true,
-									settings: payload.settings ?? null,
+									settings: normalizeChannelLinkSettings(payload.settings),
 									lastSyncedAt: null,
 									deletedAt: null,
 								})
-								.pipe(withSystemActor)
+									.pipe(withSystemActor)
 
-							const txid = yield* generateTransactionId()
-							return new ChatSyncChannelLinkResponse({
-								data: link,
-								transactionId: txid,
-							})
-						}),
-					)
+								const brandedLink = {
+									...link,
+									externalChannelId: link.externalChannelId as ExternalChannelId,
+								}
+								const txid = yield* generateTransactionId()
+								return new ChatSyncChannelLinkResponse({
+									data: brandedLink,
+									transactionId: txid,
+								})
+							}),
+						)
 					.pipe(
 						Effect.catchTag("ParseError", (error) =>
 							Effect.fail(

@@ -26,37 +26,39 @@ export class ChatSyncProviderApiError extends Schema.TaggedError<ChatSyncProvide
 	},
 ) {}
 
+import { ExternalChannelId, ExternalMessageId, ExternalThreadId } from "@hazel/schema"
+
 export interface ChatSyncProviderAdapter {
 	readonly provider: string
 	readonly createMessage: (params: {
-		externalChannelId: string
+		externalChannelId: ExternalChannelId
 		content: string
-		replyToExternalMessageId?: string
-	}) => Effect.Effect<string, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+		replyToExternalMessageId?: ExternalMessageId
+	}) => Effect.Effect<ExternalMessageId, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly updateMessage: (params: {
-		externalChannelId: string
-		externalMessageId: string
+		externalChannelId: ExternalChannelId
+		externalMessageId: ExternalMessageId
 		content: string
 	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly deleteMessage: (params: {
-		externalChannelId: string
-		externalMessageId: string
+		externalChannelId: ExternalChannelId
+		externalMessageId: ExternalMessageId
 	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly addReaction: (params: {
-		externalChannelId: string
-		externalMessageId: string
+		externalChannelId: ExternalChannelId
+		externalMessageId: ExternalMessageId
 		emoji: string
 	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly removeReaction: (params: {
-		externalChannelId: string
-		externalMessageId: string
+		externalChannelId: ExternalChannelId
+		externalMessageId: ExternalMessageId
 		emoji: string
 	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly createThread: (params: {
-		externalChannelId: string
-		externalMessageId: string
+		externalChannelId: ExternalChannelId
+		externalMessageId: ExternalMessageId
 		name: string
-	}) => Effect.Effect<string, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+	}) => Effect.Effect<ExternalThreadId, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 }
 
 const DISCORD_MAX_MESSAGE_LENGTH = 2000
@@ -182,12 +184,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						if (params.replyToExternalMessageId) {
 							yield* validateDiscordId(params.replyToExternalMessageId, "replyToExternalMessageId")
 						}
-						return yield* Discord.DiscordApiClient.createMessage({
-							channelId: params.externalChannelId,
-							content: params.content,
-							replyToMessageId: params.replyToExternalMessageId,
-							botToken: token,
-						}).pipe(
+							return yield* Discord.DiscordApiClient.createMessage({
+								channelId: params.externalChannelId,
+								content: params.content,
+								replyToMessageId: params.replyToExternalMessageId,
+								botToken: token,
+							}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
@@ -201,9 +203,10 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 										status: getStatusCode(error),
 										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
-							),
-						)
-					}),
+								),
+								Effect.map((messageId) => messageId as ExternalMessageId),
+							)
+						}),
 				updateMessage: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
@@ -228,13 +231,13 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 										message: error.message,
 										status: getStatusCode(error),
 										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
-									}),
-							),
-						)
-					}),
-				deleteMessage: (params) =>
-					Effect.gen(function* () {
-						const token = yield* getDiscordToken()
+											}),
+										),
+									)
+								}),
+					deleteMessage: (params) =>
+						Effect.gen(function* () {
+							const token = yield* getDiscordToken()
 						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 						yield* Discord.DiscordApiClient.deleteMessage({
@@ -247,17 +250,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
 							}),
-							Effect.mapError(
-								(error) =>
-									new ChatSyncProviderApiError({
-										provider: "discord",
-										message: error.message,
-										status: getStatusCode(error),
-										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
-									}),
-							),
-						)
-					}),
+									Effect.mapError(
+										(error) =>
+											new ChatSyncProviderApiError({
+												provider: "discord",
+												message: error.message,
+												status: getStatusCode(error),
+												detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
+											}),
+									),
+								)
+							}),
 				addReaction: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
@@ -314,12 +317,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							),
 						)
 					}),
-				createThread: (params) =>
-					Effect.gen(function* () {
-						const token = yield* getDiscordToken()
-						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
-						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
-						yield* validateDiscordThreadName(params.name)
+					createThread: (params) =>
+						Effect.gen(function* () {
+							const token = yield* getDiscordToken()
+							yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+							yield* validateDiscordId(params.externalMessageId, "externalMessageId")
+							yield* validateDiscordThreadName(params.name)
 						return yield* Discord.DiscordApiClient.createThread({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
@@ -331,17 +334,18 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
 							}),
-							Effect.mapError(
-								(error) =>
-									new ChatSyncProviderApiError({
-										provider: "discord",
-										message: error.message,
-										status: getStatusCode(error),
-										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
-									}),
-							),
-						)
-					}),
+								Effect.mapError(
+									(error) =>
+										new ChatSyncProviderApiError({
+											provider: "discord",
+											message: error.message,
+											status: getStatusCode(error),
+											detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
+										}),
+								),
+								Effect.map((threadId) => threadId as ExternalThreadId),
+							)
+						}),
 			}
 
 			const adapters = {

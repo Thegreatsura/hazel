@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import {
 	ChannelId,
+	ExternalChannelId,
 	IntegrationConnectionId,
 	OrganizationId,
 	SyncChannelLinkId,
@@ -78,7 +79,7 @@ export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncC
 	{
 		syncConnectionId: SyncConnectionId,
 		hazelChannelId: ChannelId,
-		externalChannelId: Schema.String,
+		externalChannelId: ExternalChannelId,
 	},
 ) {}
 
@@ -97,7 +98,7 @@ export class CreateChatSyncChannelLinkRequest extends Schema.Class<CreateChatSyn
 	"CreateChatSyncChannelLinkRequest",
 )({
 	hazelChannelId: ChannelId,
-	externalChannelId: Schema.String,
+	externalChannelId: ExternalChannelId,
 	externalChannelName: Schema.NullishOr(Schema.String),
 	direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),
 	settings: Schema.NullishOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),

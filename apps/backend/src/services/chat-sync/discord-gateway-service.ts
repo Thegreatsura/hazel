@@ -3,6 +3,13 @@ import { FetchHttpClient } from "@effect/platform"
 import { BunSocket } from "@effect/platform-bun"
 import { ChatSyncChannelLinkRepo } from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
+import type {
+	ExternalChannelId,
+	ExternalMessageId,
+	ExternalThreadId,
+	ExternalUserId,
+	ExternalWebhookId,
+} from "@hazel/schema"
 import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
 import { Config, Effect, Layer, Option, Redacted, Ref } from "effect"
@@ -25,6 +32,7 @@ interface DiscordMessageCreateEvent {
 	id?: string
 	channel_id?: string
 	content?: string
+	webhook_id?: string
 	author?: DiscordMessageAuthor
 	message_reference?: {
 		message_id?: string
@@ -36,6 +44,7 @@ interface DiscordMessageUpdateEvent {
 	id?: string
 	channel_id?: string
 	content?: string
+	webhook_id?: string
 	author?: DiscordMessageAuthor
 	edited_timestamp?: string | null
 }
@@ -43,6 +52,7 @@ interface DiscordMessageUpdateEvent {
 interface DiscordMessageDeleteEvent {
 	id?: string
 	channel_id?: string
+	webhook_id?: string
 }
 
 interface DiscordReactionEmoji {
@@ -171,166 +181,192 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 				return Option.isSome(botUserId) && botUserId.value === authorId
 			})
 
-		const ingestMessageCreateEvent = Effect.fn("DiscordGatewayService.ingestMessageCreateEvent")(
-			function* (event: DiscordMessageCreateEvent) {
-				if (!event.id || !event.channel_id || typeof event.content !== "string") return
-				if (event.author?.bot) return
-				if (yield* isCurrentBotAuthor(event.author?.id)) return
+			const ingestMessageCreateEvent = Effect.fn("DiscordGatewayService.ingestMessageCreateEvent")(
+				function* (event: DiscordMessageCreateEvent) {
+					if (!event.id || !event.channel_id || typeof event.content !== "string") return
+					if (event.author?.bot) return
+					if (yield* isCurrentBotAuthor(event.author?.id)) return
 
-				const externalAuthorId = event.author?.id ?? null
-				const externalAuthorDisplayName = formatDiscordDisplayName(event.author)
-				const externalAuthorAvatarUrl = buildAuthorAvatarUrl(event.author)
+					const externalChannelId = event.channel_id as ExternalChannelId
+					const externalMessageId = event.id as ExternalMessageId
+					const externalAuthorId = event.author?.id ? (event.author.id as ExternalUserId) : null
+					const externalAuthorDisplayName = formatDiscordDisplayName(event.author)
+					const externalAuthorAvatarUrl = buildAuthorAvatarUrl(event.author)
+					const externalReplyToMessageId = event.message_reference?.message_id
+						? (event.message_reference.message_id as ExternalMessageId)
+						: null
+					const externalWebhookId = event.webhook_id as ExternalWebhookId | undefined
+
+					const links = yield* channelLinkRepo
+						.findActiveByExternalChannel(externalChannelId)
+						.pipe(withSystemActor)
+
+					for (const link of links) {
+						if (link.direction === "hazel_to_external") continue
+							yield* discordSyncWorker.ingestMessageCreate({
+								syncConnectionId: link.syncConnectionId,
+								externalChannelId,
+								externalMessageId,
+								content: event.content,
+								externalAuthorId: externalAuthorId ?? undefined,
+								externalAuthorDisplayName,
+								externalAuthorAvatarUrl,
+								externalReplyToMessageId,
+								externalThreadId: null,
+								externalWebhookId,
+								dedupeKey: `discord:gateway:create:${externalMessageId}`,
+							})
+						}
+				},
+			)
+
+			const ingestMessageUpdateEvent = Effect.fn("DiscordGatewayService.ingestMessageUpdateEvent")(
+				function* (event: DiscordMessageUpdateEvent) {
+					if (!event.id || !event.channel_id || typeof event.content !== "string") return
+					if (event.author?.bot) return
+					if (yield* isCurrentBotAuthor(event.author?.id)) return
+
+					const externalChannelId = event.channel_id as ExternalChannelId
+					const externalMessageId = event.id as ExternalMessageId
+					const externalWebhookId = event.webhook_id as ExternalWebhookId | undefined
+
+					const links = yield* channelLinkRepo
+						.findActiveByExternalChannel(externalChannelId)
+						.pipe(withSystemActor)
+
+					for (const link of links) {
+						if (link.direction === "hazel_to_external") continue
+						const updateVersion =
+							event.edited_timestamp ??
+							createHash("sha256")
+								.update(`${externalMessageId}:${event.content ?? ""}`)
+								.digest("hex")
+								.slice(0, 16)
+						yield* discordSyncWorker.ingestMessageUpdate({
+							syncConnectionId: link.syncConnectionId,
+							externalChannelId,
+							externalMessageId,
+							externalWebhookId,
+							content: event.content,
+							dedupeKey: `discord:gateway:update:${externalMessageId}:${updateVersion}`,
+						})
+					}
+				},
+			)
+
+			const ingestMessageDeleteEvent = Effect.fn("DiscordGatewayService.ingestMessageDeleteEvent")(
+				function* (event: DiscordMessageDeleteEvent) {
+					if (!event.id || !event.channel_id) return
+
+					const externalChannelId = event.channel_id as ExternalChannelId
+					const externalMessageId = event.id as ExternalMessageId
+					const externalWebhookId = event.webhook_id as ExternalWebhookId | undefined
+
+					const links = yield* channelLinkRepo
+						.findActiveByExternalChannel(externalChannelId)
+						.pipe(withSystemActor)
+
+					for (const link of links) {
+						if (link.direction === "hazel_to_external") continue
+								yield* discordSyncWorker.ingestMessageDelete({
+									syncConnectionId: link.syncConnectionId,
+									externalChannelId,
+									externalMessageId,
+									externalWebhookId,
+									dedupeKey: `discord:gateway:delete:${externalMessageId}`,
+								})
+						}
+				},
+			)
+			const ingestMessageReactionAddEvent = Effect.fn(
+				"DiscordGatewayService.ingestMessageReactionAddEvent",
+			)(function* (event: DiscordMessageReactionAddEvent) {
+				if (!event.channel_id || !event.message_id || !event.user_id) return
+				if (yield* isCurrentBotAuthor(event.user_id)) return
+
+				const emoji = formatDiscordEmoji(event.emoji)
+				if (!emoji) return
+				const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
+				const externalChannelId = event.channel_id as ExternalChannelId
+				const externalMessageId = event.message_id as ExternalMessageId
+				const externalUserId = event.user_id as ExternalUserId
 
 				const links = yield* channelLinkRepo
-					.findActiveByExternalChannel(event.channel_id)
+					.findActiveByExternalChannel(externalChannelId)
 					.pipe(withSystemActor)
 
 				for (const link of links) {
 					if (link.direction === "hazel_to_external") continue
-					yield* discordSyncWorker.ingestMessageCreate({
+					yield* discordSyncWorker.ingestReactionAdd({
 						syncConnectionId: link.syncConnectionId,
-						externalChannelId: event.channel_id,
-						externalMessageId: event.id,
-						content: event.content,
-						externalAuthorId: externalAuthorId ?? undefined,
+						externalChannelId,
+						externalMessageId,
+						externalUserId,
 						externalAuthorDisplayName,
 						externalAuthorAvatarUrl,
-						externalReplyToMessageId: event.message_reference?.message_id ?? null,
-						externalThreadId: null,
-						dedupeKey: `discord:gateway:create:${event.id}`,
+						emoji,
+						dedupeKey: `discord:gateway:reaction:add:${externalChannelId}:${externalMessageId}:${externalUserId}:${emoji}`,
 					})
 				}
-			},
-		)
+			})
 
-		const ingestMessageUpdateEvent = Effect.fn("DiscordGatewayService.ingestMessageUpdateEvent")(
-			function* (event: DiscordMessageUpdateEvent) {
-				if (!event.id || !event.channel_id || typeof event.content !== "string") return
-				if (event.author?.bot) return
-				if (yield* isCurrentBotAuthor(event.author?.id)) return
+			const ingestMessageReactionRemoveEvent = Effect.fn(
+				"DiscordGatewayService.ingestMessageReactionRemoveEvent",
+			)(function* (event: DiscordMessageReactionRemoveEvent) {
+				if (!event.channel_id || !event.message_id || !event.user_id) return
+				if (yield* isCurrentBotAuthor(event.user_id)) return
+
+				const emoji = formatDiscordEmoji(event.emoji)
+				if (!emoji) return
+				const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
+				const externalChannelId = event.channel_id as ExternalChannelId
+				const externalMessageId = event.message_id as ExternalMessageId
+				const externalUserId = event.user_id as ExternalUserId
 
 				const links = yield* channelLinkRepo
-					.findActiveByExternalChannel(event.channel_id)
+					.findActiveByExternalChannel(externalChannelId)
 					.pipe(withSystemActor)
 
 				for (const link of links) {
 					if (link.direction === "hazel_to_external") continue
-					const updateVersion =
-						event.edited_timestamp ??
-						createHash("sha256")
-							.update(`${event.id}:${event.content ?? ""}`)
-							.digest("hex")
-							.slice(0, 16)
-					yield* discordSyncWorker.ingestMessageUpdate({
+					yield* discordSyncWorker.ingestReactionRemove({
 						syncConnectionId: link.syncConnectionId,
-						externalChannelId: event.channel_id,
-						externalMessageId: event.id,
-						content: event.content,
-						dedupeKey: `discord:gateway:update:${event.id}:${updateVersion}`,
+						externalChannelId,
+						externalMessageId,
+						externalUserId,
+						externalAuthorDisplayName,
+						externalAuthorAvatarUrl,
+						emoji,
+						dedupeKey: `discord:gateway:reaction:remove:${externalChannelId}:${externalMessageId}:${externalUserId}:${emoji}`,
 					})
 				}
-			},
-		)
+			})
 
-		const ingestMessageDeleteEvent = Effect.fn("DiscordGatewayService.ingestMessageDeleteEvent")(
-			function* (event: DiscordMessageDeleteEvent) {
-				if (!event.id || !event.channel_id) return
+			const ingestThreadCreateEvent = Effect.fn("DiscordGatewayService.ingestThreadCreateEvent")(
+				function* (event: DiscordThreadCreateEvent) {
+					if (!event.id || !event.parent_id) return
+					if (event.type !== undefined && event.type !== 11 && event.type !== 12) return
 
-				const links = yield* channelLinkRepo
-					.findActiveByExternalChannel(event.channel_id)
-					.pipe(withSystemActor)
+					const externalParentChannelId = event.parent_id as ExternalChannelId
+					const externalThreadId = event.id as ExternalThreadId
 
-				for (const link of links) {
-					if (link.direction === "hazel_to_external") continue
-					yield* discordSyncWorker.ingestMessageDelete({
-						syncConnectionId: link.syncConnectionId,
-						externalChannelId: event.channel_id,
-						externalMessageId: event.id,
-						dedupeKey: `discord:gateway:delete:${event.id}`,
-					})
-				}
-			},
-		)
-		const ingestMessageReactionAddEvent = Effect.fn(
-			"DiscordGatewayService.ingestMessageReactionAddEvent",
-		)(function* (event: DiscordMessageReactionAddEvent) {
-			if (!event.channel_id || !event.message_id || !event.user_id) return
-			if (yield* isCurrentBotAuthor(event.user_id)) return
+					const links = yield* channelLinkRepo
+						.findActiveByExternalChannel(externalParentChannelId)
+						.pipe(withSystemActor)
 
-			const emoji = formatDiscordEmoji(event.emoji)
-			if (!emoji) return
-			const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
-
-			const links = yield* channelLinkRepo
-				.findActiveByExternalChannel(event.channel_id)
-				.pipe(withSystemActor)
-
-			for (const link of links) {
-				if (link.direction === "hazel_to_external") continue
-				yield* discordSyncWorker.ingestReactionAdd({
-					syncConnectionId: link.syncConnectionId,
-					externalChannelId: event.channel_id,
-					externalMessageId: event.message_id,
-					externalUserId: event.user_id,
-					externalAuthorDisplayName,
-					externalAuthorAvatarUrl,
-					emoji,
-					dedupeKey: `discord:gateway:reaction:add:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
-				})
-			}
-		})
-
-		const ingestMessageReactionRemoveEvent = Effect.fn(
-			"DiscordGatewayService.ingestMessageReactionRemoveEvent",
-		)(function* (event: DiscordMessageReactionRemoveEvent) {
-			if (!event.channel_id || !event.message_id || !event.user_id) return
-			if (yield* isCurrentBotAuthor(event.user_id)) return
-
-			const emoji = formatDiscordEmoji(event.emoji)
-			if (!emoji) return
-			const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
-
-			const links = yield* channelLinkRepo
-				.findActiveByExternalChannel(event.channel_id)
-				.pipe(withSystemActor)
-
-			for (const link of links) {
-				if (link.direction === "hazel_to_external") continue
-				yield* discordSyncWorker.ingestReactionRemove({
-					syncConnectionId: link.syncConnectionId,
-					externalChannelId: event.channel_id,
-					externalMessageId: event.message_id,
-					externalUserId: event.user_id,
-					externalAuthorDisplayName,
-					externalAuthorAvatarUrl,
-					emoji,
-					dedupeKey: `discord:gateway:reaction:remove:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
-				})
-			}
-		})
-
-		const ingestThreadCreateEvent = Effect.fn("DiscordGatewayService.ingestThreadCreateEvent")(
-			function* (event: DiscordThreadCreateEvent) {
-				if (!event.id || !event.parent_id) return
-				if (event.type !== undefined && event.type !== 11 && event.type !== 12) return
-
-				const links = yield* channelLinkRepo
-					.findActiveByExternalChannel(event.parent_id)
-					.pipe(withSystemActor)
-
-				for (const link of links) {
-					if (link.direction === "hazel_to_external") continue
-					yield* discordSyncWorker.ingestThreadCreate({
-						syncConnectionId: link.syncConnectionId,
-						externalParentChannelId: event.parent_id,
-						externalThreadId: event.id,
-						externalRootMessageId: event.id,
-						name: event.name ?? "Thread",
-						dedupeKey: `discord:gateway:thread:create:${event.id}`,
-					})
-				}
-			},
-		)
+					for (const link of links) {
+						if (link.direction === "hazel_to_external") continue
+						yield* discordSyncWorker.ingestThreadCreate({
+							syncConnectionId: link.syncConnectionId,
+							externalParentChannelId,
+							externalThreadId,
+							externalRootMessageId: null,
+							name: event.name ?? "Thread",
+							dedupeKey: `discord:gateway:thread:create:${externalThreadId}`,
+						})
+					}
+				},
+			)
 
 		const onReady = Effect.fn("DiscordGatewayService.onReady")(function* (event: DiscordReadyEvent) {
 			if (!event.user?.id) {

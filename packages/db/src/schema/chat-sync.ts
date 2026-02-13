@@ -144,6 +144,12 @@ export const chatSyncMessageLinksTable = pgTable(
 	],
 )
 
+export type ChatSyncOutboundIdentitySettings = {
+	readonly enabled: boolean
+	readonly strategy: "webhook" | "fallback_bot"
+	readonly providers: Record<string, Record<string, unknown>>
+}
+
 export const chatSyncEventReceiptsTable = pgTable(
 	"chat_sync_event_receipts",
 	{

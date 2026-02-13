@@ -15,6 +15,7 @@ import {
 	ChatSyncConnectionRepo,
 	IntegrationConnectionRepo,
 } from "@hazel/backend-core"
+import { ExternalChannelId } from "@hazel/schema"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { HttpApiBuilder } from "@effect/platform"
 import { Effect, Option } from "effect"
@@ -38,6 +39,19 @@ const toInternalServerError = (message: string, error: unknown) =>
 		message,
 		detail: String(error),
 	})
+
+const normalizeChannelLinkSettings = (
+	settings: Record<string, unknown> | null | undefined,
+): Record<string, unknown> => ({
+	...(settings ?? {}),
+	outboundIdentity:
+		settings?.outboundIdentity ??
+		{
+			enabled: false,
+			strategy: "webhook",
+			providers: {},
+		},
+})
 
 export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (handlers) =>
 	Effect.gen(function* () {
@@ -212,22 +226,26 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						)
 					}
 
-					const [link] = yield* channelLinkRepo
-						.insert({
-							syncConnectionId: path.syncConnectionId,
-							hazelChannelId: payload.hazelChannelId,
+				const [link] = yield* channelLinkRepo
+							.insert({
+								syncConnectionId: path.syncConnectionId,
+								hazelChannelId: payload.hazelChannelId,
 							externalChannelId: payload.externalChannelId,
 							externalChannelName: payload.externalChannelName ?? null,
 							direction: payload.direction ?? "both",
 							isActive: true,
-							settings: payload.settings ?? null,
+							settings: normalizeChannelLinkSettings(payload.settings),
 							lastSyncedAt: null,
-							deletedAt: null,
-						})
-						.pipe(withSystemActor)
+								deletedAt: null,
+							})
+							.pipe(withSystemActor)
 
+					const brandedLink = {
+						...link,
+						externalChannelId: link.externalChannelId as ExternalChannelId,
+					}
 					const txid = yield* generateTransactionId()
-					return new ChatSyncChannelLinkResponse({ data: link, transactionId: txid })
+					return new ChatSyncChannelLinkResponse({ data: brandedLink, transactionId: txid })
 				}).pipe(
 					Effect.catchTag("ParseError", (error) =>
 						Effect.fail(toInternalServerError("Invalid channel link data", error)),

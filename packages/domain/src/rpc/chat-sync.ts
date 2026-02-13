@@ -1,6 +1,7 @@
 import { RpcGroup } from "@effect/rpc"
 import {
 	ChannelId,
+	ExternalChannelId,
 	IntegrationConnectionId,
 	OrganizationId,
 	SyncChannelLinkId,
@@ -75,7 +76,7 @@ export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncC
 	{
 		syncConnectionId: SyncConnectionId,
 		hazelChannelId: ChannelId,
-		externalChannelId: Schema.String,
+		externalChannelId: ExternalChannelId,
 	},
 ) {}
 
@@ -121,7 +122,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		payload: Schema.Struct({
 			syncConnectionId: SyncConnectionId,
 			hazelChannelId: ChannelId,
-			externalChannelId: Schema.String,
+			externalChannelId: ExternalChannelId,
 			externalChannelName: Schema.optional(Schema.String),
 			direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),
 			settings: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),

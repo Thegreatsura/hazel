@@ -1,4 +1,11 @@
-import { ChannelId, MessageId, SyncChannelLinkId, SyncMessageLinkId } from "@hazel/schema"
+import {
+	ChannelId,
+	ExternalMessageId,
+	ExternalThreadId,
+	MessageId,
+	SyncChannelLinkId,
+	SyncMessageLinkId,
+} from "@hazel/schema"
 import { Schema } from "effect"
 import { ChatSyncReceiptSource } from "./chat-sync-event-receipt-model"
 import * as M from "./utils"
@@ -8,12 +15,12 @@ export class Model extends M.Class<Model>("ChatSyncMessageLink")({
 	id: M.Generated(SyncMessageLinkId),
 	channelLinkId: SyncChannelLinkId,
 	hazelMessageId: MessageId,
-	externalMessageId: Schema.String,
+	externalMessageId: ExternalMessageId,
 	source: ChatSyncReceiptSource,
 	rootHazelMessageId: Schema.NullOr(MessageId),
-	rootExternalMessageId: Schema.NullOr(Schema.String),
+	rootExternalMessageId: Schema.NullOr(ExternalMessageId),
 	hazelThreadChannelId: Schema.NullOr(ChannelId),
-	externalThreadId: Schema.NullOr(Schema.String),
+	externalThreadId: Schema.NullOr(ExternalThreadId),
 	lastSyncedAt: M.Generated(JsonDate),
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(Schema.NullOr(JsonDate)),

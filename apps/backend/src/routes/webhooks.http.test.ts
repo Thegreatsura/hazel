@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import {
 	compareSequinWebhookEventsByCommitOrder,
 	sortSequinWebhookEventsByCommitOrder,
 	processSequinWebhookEventsInCommitOrder,
 	syncSequinWebhookEventToDiscord,
 } from "./webhooks.http.ts"
-import type { SequinWebhookEvent } from "@hazel/domain/http"
+import { SequinWebhookPayload, type SequinWebhookEvent } from "@hazel/domain/http"
 
 const metadataDefaults = {
 	idempotency_key: "idempotency-default",
@@ -48,7 +48,6 @@ const makeReactionRecord = (id: string) => ({
 	userId: "user-1",
 	emoji: "🔥",
 	createdAt: "2026-02-01T00:00:00.000Z",
-	updatedAt: null,
 })
 
 const makeEvent = (
@@ -73,6 +72,36 @@ const makeEvent = (
 		changes: null,
 	} as unknown as SequinWebhookEvent
 }
+
+describe("sequin webhook payload decoding", () => {
+	it("accepts message_reactions payloads without updatedAt", () => {
+		Schema.decodeUnknownSync(SequinWebhookPayload)({
+			data: [
+				{
+					record: {
+						id: "reaction-1",
+						messageId: "message-1",
+						channelId: "channel-1",
+						userId: "user-1",
+						emoji: "🔥",
+						createdAt: "2026-02-13T00:48:12.792694Z",
+					},
+					metadata: {
+						...metadataDefaults,
+						idempotency_key: "Njk3MDI2NzYzNTkyOjA=",
+						commit_lsn: 697026763592,
+						commit_idx: 0,
+						record_pks: ["reaction-1"],
+						table_name: "message_reactions",
+						commit_timestamp: "2026-02-13T00:48:12.817130Z",
+					},
+					action: "insert",
+					changes: null,
+				},
+			],
+		})
+	})
+})
 
 describe("sequin webhook sorting", () => {
 	it("sorts events by commit timestamp, commit LSN, and commit idx", () => {

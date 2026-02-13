@@ -1,7 +1,13 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { policyRequire } from "@hazel/domain"
 import { ChatSyncMessageLink } from "@hazel/domain/models"
-import type { MessageId, SyncChannelLinkId, SyncMessageLinkId } from "@hazel/schema"
+import type {
+	ExternalMessageId,
+	ExternalThreadId,
+	MessageId,
+	SyncChannelLinkId,
+	SyncMessageLinkId,
+} from "@hazel/schema"
 import { Effect, Option } from "effect"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
@@ -21,6 +27,43 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 			)
 			const db = yield* Database.Database
 
+			const normalizeMessageLink = <
+				T extends {
+					externalMessageId: string
+					rootExternalMessageId: string | null
+					externalThreadId: string | null
+				},
+			>(
+				row: T,
+			) => ({
+				...row,
+				externalMessageId: row.externalMessageId as ExternalMessageId,
+				rootExternalMessageId:
+					row.rootExternalMessageId === null ? null : (row.rootExternalMessageId as ExternalMessageId),
+				externalThreadId: row.externalThreadId === null ? null : (row.externalThreadId as ExternalThreadId),
+			})
+
+			const normalizeMessageLinkRows = <T extends {
+				externalMessageId: string
+				rootExternalMessageId: string | null
+				externalThreadId: string | null
+			}>(rows: readonly T[]) => rows.map(normalizeMessageLink)
+
+			const normalizeMessageLinkOption = <
+				T extends {
+					externalMessageId: string
+					rootExternalMessageId: string | null
+					externalThreadId: string | null
+				},
+			>(
+				value: Option.Option<T>,
+			) => Option.map(value, normalizeMessageLink)
+
+			const insert = (...args: Parameters<typeof baseRepo.insert>) =>
+				(baseRepo.insert(...args).pipe(Effect.map(normalizeMessageLinkRows)) as ReturnType<
+					typeof baseRepo.insert
+				>)
+
 			const findByChannelLink = (channelLinkId: SyncChannelLinkId, tx?: TxFn) =>
 				db.makeQuery(
 					(execute, data: { channelLinkId: SyncChannelLinkId }) =>
@@ -36,7 +79,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 								),
 						),
 					policyRequire("ChatSyncMessageLink", "select"),
-				)({ channelLinkId }, tx)
+				)({ channelLinkId }, tx).pipe(Effect.map((results) => normalizeMessageLinkRows(results)))
 
 			const findByHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -64,14 +107,14 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 										),
 									)
 									.limit(1),
-							),
-						policyRequire("ChatSyncMessageLink", "select"),
+						),
+					policyRequire("ChatSyncMessageLink", "select"),
 					)({ channelLinkId, hazelMessageId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption)))
 
 			const findByExternalMessage = (
 				channelLinkId: SyncChannelLinkId,
-				externalMessageId: string,
+				externalMessageId: ExternalMessageId,
 				tx?: TxFn,
 			) =>
 				db
@@ -80,7 +123,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 							execute,
 							data: {
 								channelLinkId: SyncChannelLinkId
-								externalMessageId: string
+								externalMessageId: ExternalMessageId
 							},
 						) =>
 							execute((client) =>
@@ -98,10 +141,10 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 										),
 									)
 									.limit(1),
-							),
-						policyRequire("ChatSyncMessageLink", "select"),
+						),
+					policyRequire("ChatSyncMessageLink", "select"),
 					)({ channelLinkId, externalMessageId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption)))
 
 			const findByRootHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -132,7 +175,9 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 								),
 						),
 					policyRequire("ChatSyncMessageLink", "select"),
-				)({ channelLinkId, rootHazelMessageId }, tx)
+				)({ channelLinkId, rootHazelMessageId }, tx).pipe(
+					Effect.map((results) => Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption)),
+				)
 
 			const updateLastSyncedAt = (id: SyncMessageLinkId, tx?: TxFn) =>
 				db.makeQuery(
@@ -168,6 +213,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 
 			return {
 				...baseRepo,
+				insert,
 				findByChannelLink,
 				findByHazelMessage,
 				findByExternalMessage,

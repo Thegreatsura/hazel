@@ -41,6 +41,11 @@ const DiscordGuildApiResponse = Schema.Struct({
 	owner: Schema.optionalWith(Schema.Boolean, { default: () => false }),
 })
 
+const DiscordWebhookCreateResponse = Schema.Struct({
+	id: Schema.String,
+	token: Schema.String,
+})
+
 const DiscordGuildChannelApiResponse = Schema.Struct({
 	id: Schema.String,
 	guild_id: Schema.String,
@@ -275,6 +280,141 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			return body.id
 		})
 
+		const createWebhook = Effect.fn("DiscordApiClient.createWebhook")(function* (params: {
+			channelId: string
+			botToken: string
+		}) {
+			const response = yield* makeBotClient(params.botToken)
+				.post(`${DISCORD_API_BASE_URL}/channels/${params.channelId}/webhooks`, {
+					body: HttpBody.text(
+						JSON.stringify({
+							name: "Hazel Discord Sync",
+						}),
+						"application/json",
+					),
+					headers: {
+						"Content-Type": "application/json",
+					},
+				})
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+
+			const body = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(DiscordWebhookCreateResponse)),
+				Effect.mapError(
+					(cause) =>
+						new DiscordApiError({
+							message: "Failed to parse Discord create webhook response",
+							cause,
+						}),
+				),
+			)
+
+			return {
+				webhookId: body.id,
+				webhookToken: body.token,
+			}
+		})
+
+		const executeWebhookMessage = Effect.fn("DiscordApiClient.executeWebhookMessage")(function* (params: {
+			webhookId: string
+			webhookToken: string
+			content: string
+			replyToExternalMessageId?: string
+			username?: string
+			avatarUrl?: string
+		}) {
+			const payload: {
+				content: string
+				username?: string
+				avatar_url?: string
+				message_reference?: {
+					message_id: string
+				}
+			} = {
+				content: params.content,
+			}
+			if (params.username) {
+				payload.username = params.username
+			}
+			if (params.avatarUrl) {
+				payload.avatar_url = params.avatarUrl
+			}
+			if (params.replyToExternalMessageId) {
+				payload.message_reference = {
+					message_id: params.replyToExternalMessageId,
+				}
+			}
+
+			const response = yield* httpClient
+				.post(`${DISCORD_API_BASE_URL}/webhooks/${params.webhookId}/${params.webhookToken}/messages?wait=true`, {
+					body: HttpBody.text(JSON.stringify(payload), "application/json"),
+					headers: {
+						"Content-Type": "application/json",
+					},
+				})
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+
+			const body = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(DiscordMessageCreateResponse)),
+				Effect.mapError(
+					(cause) =>
+						new DiscordApiError({
+							message: "Failed to parse Discord execute webhook message response",
+							cause,
+						}),
+				),
+			)
+
+			return body.id
+		})
+
+		const updateWebhookMessage = Effect.fn("DiscordApiClient.updateWebhookMessage")(function* (params: {
+			webhookId: string
+			webhookToken: string
+			webhookMessageId: string
+			content: string
+		}) {
+			const response = yield* httpClient
+				.patch(
+					`${DISCORD_API_BASE_URL}/webhooks/${params.webhookId}/${params.webhookToken}/messages/${params.webhookMessageId}`,
+					{
+						body: HttpBody.text(JSON.stringify({ content: params.content }), "application/json"),
+						headers: {
+							"Content-Type": "application/json",
+						},
+					},
+				)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+		})
+
+		const deleteWebhookMessage = Effect.fn("DiscordApiClient.deleteWebhookMessage")(function* (params: {
+			webhookId: string
+			webhookToken: string
+			webhookMessageId: string
+		}) {
+			const response = yield* httpClient
+				.del(
+					`${DISCORD_API_BASE_URL}/webhooks/${params.webhookId}/${params.webhookToken}/messages/${params.webhookMessageId}`,
+				)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+		})
+
 		const updateMessage = Effect.fn("DiscordApiClient.updateMessage")(function* (params: {
 			channelId: string
 			messageId: string
@@ -396,6 +536,10 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			createMessage,
 			updateMessage,
 			deleteMessage,
+			createWebhook,
+			executeWebhookMessage,
+			updateWebhookMessage,
+			deleteWebhookMessage,
 			addReaction,
 			removeReaction,
 			createThread,
