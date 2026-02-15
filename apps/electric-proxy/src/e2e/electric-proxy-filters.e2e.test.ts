@@ -279,7 +279,7 @@ const buildUserShapeUrl = async (
 	table: AllowedTable,
 	viewer: AuthenticatedUser,
 	options?: { offset?: string; handle?: string; nonce?: string },
-): Promise<URL> => {
+): Promise<string> => {
 	const where = await Effect.runPromise(getWhereClauseForTable(table, viewer))
 	const nonce = options?.nonce ?? SHAPE_NONCE
 	const nonceWhereClause = `(${where.whereClause}) AND ('${nonce}' = '${nonce}')`
@@ -289,8 +289,7 @@ const buildUserShapeUrl = async (
 	if (options?.handle) {
 		url.searchParams.set("handle", options.handle)
 	}
-	applyWhereToElectricUrl(url, { ...where, whereClause: nonceWhereClause })
-	return url
+	return applyWhereToElectricUrl(url, { ...where, whereClause: nonceWhereClause })
 }
 
 const buildBotProxyUrl = (table: BotAllowedTable, options?: { offset?: string; handle?: string }): string => {
@@ -377,7 +376,7 @@ const waitForSyncCheck = async (options: {
 
 const fetchInitialCursor = async (table: AllowedTable): Promise<DeltaCursor> => {
 	const snapshotUrl = await buildUserShapeUrl(table, fixture.viewer, { offset: "-1" })
-	const snapshot = await fetchShapeWithMeta(snapshotUrl.toString())
+	const snapshot = await fetchShapeWithMeta(snapshotUrl)
 	if (snapshot.status !== 200 || !snapshot.handle || !snapshot.offset) {
 		throw new Error(
 			`Failed to establish cursor for ${table}: status=${snapshot.status}, handle=${String(snapshot.handle)}, offset=${String(snapshot.offset)}`,
@@ -394,11 +393,11 @@ const fetchUserDeltaWithRefetch = async (
 		handle: cursor.handle,
 		offset: cursor.offset,
 	})
-	const delta = await fetchShapeWithMeta(deltaUrl.toString())
+	const delta = await fetchShapeWithMeta(deltaUrl)
 
 	if (delta.status === 409) {
 		const snapshotUrl = await buildUserShapeUrl(table, fixture.viewer, { offset: "-1" })
-		const snapshot = await fetchShapeWithMeta(snapshotUrl.toString())
+		const snapshot = await fetchShapeWithMeta(snapshotUrl)
 		if (snapshot.status !== 200 || !snapshot.handle || !snapshot.offset) {
 			throw new Error(
 				`409 refetch failed for ${table}: status=${snapshot.status}, handle=${String(snapshot.handle)}, offset=${String(snapshot.offset)}`,
@@ -1052,7 +1051,7 @@ describe("electric-proxy filter E2E (real Electric)", () => {
 
 			await waitFor(
 				async () => {
-					const result = await fetchShapeWithMeta(shapeUrl.toString())
+					const result = await fetchShapeWithMeta(shapeUrl)
 					lastRows = result.rows
 					lastStatus = result.status
 
@@ -1080,7 +1079,7 @@ describe("electric-proxy filter E2E (real Electric)", () => {
 
 	it("verifies filtered message content values are exactly the visible ones", async () => {
 		const shapeUrl = await buildUserShapeUrl("messages", fixture.viewer, { offset: "-1" })
-		const result = await fetchShapeWithMeta(shapeUrl.toString())
+		const result = await fetchShapeWithMeta(shapeUrl)
 		expect(result.status).toBe(200)
 		expectOnlyValues(
 			result.rows,
@@ -1351,7 +1350,7 @@ WHERE id = '${deletedMessageId}';
 					offset: "-1",
 					nonce: finalNonce,
 				})
-				const finalSnapshot = await fetchShapeWithMeta(finalSnapshotUrl.toString())
+				const finalSnapshot = await fetchShapeWithMeta(finalSnapshotUrl)
 				if (finalSnapshot.status !== 200) return false
 				return !collectIds(finalSnapshot.rows).includes(deletedMessageId)
 			},
