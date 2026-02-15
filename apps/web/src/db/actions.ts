@@ -27,6 +27,7 @@ import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { optimisticAction } from "../../../../libs/effect-electric-db-collection/src"
 import {
+	attachmentCollection,
 	channelCollection,
 	channelMemberCollection,
 	channelSectionCollection,
@@ -53,7 +54,7 @@ const MessageRetrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
 )
 
 export const sendMessageAction = optimisticAction({
-	collections: [messageCollection],
+	collections: [messageCollection, attachmentCollection],
 	runtime: runtime,
 
 	onMutate: (props: {
@@ -80,6 +81,15 @@ export const sendMessageAction = optimisticAction({
 			updatedAt: null,
 			deletedAt: null,
 		})
+
+		// Optimistically link attachments to the new message
+		if (props.attachmentIds && props.attachmentIds.length > 0) {
+			for (const attachmentId of props.attachmentIds) {
+				attachmentCollection.update(attachmentId, (attachment) => {
+					attachment.messageId = messageId
+				})
+			}
+		}
 
 		return { messageId }
 	},

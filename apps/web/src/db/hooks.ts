@@ -134,13 +134,15 @@ export const useChannelWithCurrentUser = (channelId: ChannelId) => {
 }
 
 export const useAttachments = (messageId: MessageId) => {
-	const { data: attachments, ...rest } = useLiveQuery((q) =>
-		q
-			.from({
-				attachments: attachmentCollection,
-			})
-			.where(({ attachments }) => eq(attachments.messageId, messageId))
-			.orderBy(({ attachments }) => attachments.uploadedAt, "asc"),
+	const { data: attachments, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({
+					attachments: attachmentCollection,
+				})
+				.where(({ attachments }) => eq(attachments.messageId, messageId))
+				.orderBy(({ attachments }) => attachments.uploadedAt, "asc"),
+		[messageId],
 	)
 
 	return {
