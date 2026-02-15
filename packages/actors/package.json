@@ -17,7 +17,7 @@
 		"@hazel/rivet-effect": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"effect": "catalog:effect",
-		"jose": "^6.0.11",
+		"jose": "^6.1.3",
 		"rivetkit": "2.0.42"
 	},
 	"devDependencies": {
