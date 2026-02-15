@@ -21,43 +21,11 @@ import { applyWhereToElectricUrl, getWhereClauseParamStats } from "./tables/wher
 // CORS HELPERS
 // =============================================================================
 
-const allowedOrigins = [
-	"http://localhost:3000",
-	"https://app.hazel.sh",
-	"tauri://localhost",
-	"http://tauri.localhost",
-]
-/**
- * Check if an origin is allowed for user flow
- * - Configured ALLOWED_ORIGIN (e.g., https://app.hazel.chat or http://localhost:3000)
- * - tauri://localhost for Tauri desktop apps (Tauri 1.x)
- * - http://tauri.localhost for Tauri desktop apps (Tauri 2.x)
- */
-function isAllowedOrigin(origin: string | null, allowedOrigin: string): boolean {
-	if (!origin) return false
-	return origin === allowedOrigin || allowedOrigins.includes(origin)
-}
-
-/**
- * Get CORS headers for user flow response
- * Note: When using credentials, we must specify exact origin instead of "*"
- */
-function getUserCorsHeaders(allowedOrigin: string, requestOrigin: string | null): Record<string, string> {
-	// Echo back the origin if it's allowed, otherwise return "null"
-	const origin = isAllowedOrigin(requestOrigin, allowedOrigin) ? requestOrigin! : "null"
-	return {
-		"Access-Control-Allow-Origin": origin,
-		"Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type, Authorization",
-		"Access-Control-Allow-Credentials": "true",
-		Vary: "Origin",
-	}
-}
-
-const BOT_CORS_HEADERS: Record<string, string> = {
+const CORS_HEADERS: Record<string, string> = {
 	"Access-Control-Allow-Origin": "*",
 	"Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
 	"Access-Control-Allow-Headers": "Content-Type, Authorization",
+	"Access-Control-Expose-Headers": "*",
 }
 
 const REQUEST_ID_HEADER_NAMES = ["x-request-id", "x-correlation-id", "cf-ray"] as const
@@ -96,14 +64,9 @@ const handleUserRequest = (request: Request) => {
 			yield* Effect.annotateCurrentSpan("http.request_id", requestId)
 		}
 
-		const config = yield* ProxyConfigService
-		const allowedOrigin = config.allowedOrigin
-		const requestOrigin = request.headers.get("Origin")
-		const corsHeaders = getUserCorsHeaders(allowedOrigin, requestOrigin)
-
 		// Handle CORS preflight
 		if (request.method === "OPTIONS") {
-			return new Response(null, { status: 204, headers: corsHeaders })
+			return new Response(null, { status: 204, headers: CORS_HEADERS })
 		}
 
 		// Method check
@@ -112,7 +75,7 @@ const handleUserRequest = (request: Request) => {
 			yield* Effect.annotateCurrentSpan("http.response.status_code", 405)
 			return new Response("Method not allowed", {
 				status: 405,
-				headers: { Allow: "GET, DELETE, OPTIONS", ...corsHeaders },
+				headers: { Allow: "GET, DELETE, OPTIONS", ...CORS_HEADERS },
 			})
 		}
 
@@ -129,7 +92,7 @@ const handleUserRequest = (request: Request) => {
 			yield* Effect.annotateCurrentSpan("http.response.status_code", tableParam ? 403 : 400)
 			return new Response(JSON.stringify({ error: tableValidation.error }), {
 				status: tableParam ? 403 : 400,
-				headers: { "Content-Type": "application/json", ...corsHeaders },
+				headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 			})
 		}
 
@@ -159,7 +122,7 @@ const handleUserRequest = (request: Request) => {
 
 		// Add CORS headers to response
 		const headers = new Headers(response.headers)
-		for (const [key, value] of Object.entries(corsHeaders)) {
+		for (const [key, value] of Object.entries(CORS_HEADERS)) {
 			headers.set(key, value)
 		}
 
@@ -172,8 +135,6 @@ const handleUserRequest = (request: Request) => {
 		// Auth errors → 401
 		Effect.catchTag("ProxyAuthenticationError", (error) =>
 			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
 				yield* annotateHandledError(401, "ProxyAuthenticationError")
 				yield* Effect.logInfo("Authentication failed", { detail: error.detail })
 				yield* Metric.increment(proxyAuthFailures).pipe(
@@ -188,10 +149,7 @@ const handleUserRequest = (request: Request) => {
 					}),
 					{
 						status: 401,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
+						headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 					},
 				)
 			}),
@@ -199,18 +157,13 @@ const handleUserRequest = (request: Request) => {
 		// Access/table errors → 500
 		Effect.catchTag("TableAccessError", (error: TableAccessError) =>
 			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
 				yield* annotateHandledError(500, "TableAccessError")
 				yield* Effect.logError("Table access error", { error: error.message, table: error.table })
 				return new Response(
 					JSON.stringify({ error: error.message, detail: error.detail, table: error.table }),
 					{
 						status: 500,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
+						headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 					},
 				)
 			}),
@@ -218,24 +171,17 @@ const handleUserRequest = (request: Request) => {
 		// Upstream errors → 502
 		Effect.catchTag("ElectricProxyError", (error: ElectricProxyError) =>
 			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
 				yield* annotateHandledError(502, "ElectricProxyError")
 				yield* Effect.logError("Electric proxy error", { error: error.message })
 				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
 					status: 502,
-					headers: {
-						"Content-Type": "application/json",
-						...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-					},
+					headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 				})
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
 		Effect.catchAll((error) =>
 			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
 				yield* Effect.logError("Unhandled error in user flow", {
@@ -250,10 +196,7 @@ const handleUserRequest = (request: Request) => {
 					}),
 					{
 						status: 500,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
+						headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 					},
 				)
 			}),
@@ -301,7 +244,7 @@ const handleBotRequest = (request: Request) => {
 
 		// Handle CORS preflight
 		if (request.method === "OPTIONS") {
-			return new Response(null, { status: 204, headers: BOT_CORS_HEADERS })
+			return new Response(null, { status: 204, headers: CORS_HEADERS })
 		}
 
 		// Method check
@@ -310,7 +253,7 @@ const handleBotRequest = (request: Request) => {
 			yield* Effect.annotateCurrentSpan("http.response.status_code", 405)
 			return new Response("Method not allowed", {
 				status: 405,
-				headers: { Allow: "GET, DELETE, OPTIONS", ...BOT_CORS_HEADERS },
+				headers: { Allow: "GET, DELETE, OPTIONS", ...CORS_HEADERS },
 			})
 		}
 
@@ -327,7 +270,7 @@ const handleBotRequest = (request: Request) => {
 			yield* Effect.annotateCurrentSpan("http.response.status_code", tableParam ? 403 : 400)
 			return new Response(JSON.stringify({ error: tableValidation.error }), {
 				status: tableParam ? 403 : 400,
-				headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+				headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 			})
 		}
 
@@ -357,7 +300,7 @@ const handleBotRequest = (request: Request) => {
 
 		// Add CORS headers to response
 		const headers = new Headers(response.headers)
-		for (const [key, value] of Object.entries(BOT_CORS_HEADERS)) {
+		for (const [key, value] of Object.entries(CORS_HEADERS)) {
 			headers.set(key, value)
 		}
 
@@ -386,7 +329,7 @@ const handleBotRequest = (request: Request) => {
 					}),
 					{
 						status: 401,
-						headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+						headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 					},
 				)
 			}),
@@ -405,7 +348,7 @@ const handleBotRequest = (request: Request) => {
 						entityId: error.entityId,
 						entityType: error.entityType,
 					}),
-					{ status: 500, headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS } },
+					{ status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } },
 				)
 			}),
 		),
@@ -415,7 +358,7 @@ const handleBotRequest = (request: Request) => {
 				yield* Effect.logError("Bot table access error", { error: error.message, table: error.table })
 				return new Response(
 					JSON.stringify({ error: error.message, detail: error.detail, table: error.table }),
-					{ status: 500, headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS } },
+					{ status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } },
 				)
 			}),
 		),
@@ -425,7 +368,7 @@ const handleBotRequest = (request: Request) => {
 				yield* Effect.logError("Electric proxy error (bot)", { error: error.message })
 				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
 					status: 502,
-					headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+					headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 				})
 			}),
 		),
@@ -443,7 +386,7 @@ const handleBotRequest = (request: Request) => {
 					}),
 					{
 						status: 500,
-						headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+						headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 					},
 				)
 			}),
