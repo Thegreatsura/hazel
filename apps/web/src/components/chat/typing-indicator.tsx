@@ -21,12 +21,12 @@ export function TypingIndicator() {
 	}
 
 	return (
-		<div className="absolute bottom-full left-0 pb-1 pl-1">
+		<div className="absolute bottom-full left-4 pb-1">
 			<div className="flex h-3 items-center gap-2 text-muted-fg text-xs">
 				<div className="flex gap-1">
-					<span className="inline-block size-2 animate-bounce rounded-full bg-muted-fg [animation-delay:-0.3s]" />
-					<span className="inline-block size-2 animate-bounce rounded-full bg-muted-fg [animation-delay:-0.15s]" />
-					<span className="inline-block size-2 animate-bounce rounded-full bg-muted-fg" />
+					<span className="inline-block size-1.5 animate-bounce rounded-full bg-muted-fg [animation-delay:-0.3s]" />
+					<span className="inline-block size-1.5 animate-bounce rounded-full bg-muted-fg [animation-delay:-0.15s]" />
+					<span className="inline-block size-1.5 animate-bounce rounded-full bg-muted-fg" />
 				</div>
 				<span>{typingText()}</span>
 			</div>
