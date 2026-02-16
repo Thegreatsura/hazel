@@ -54,7 +54,11 @@ const MessageRetrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
 )
 
 export const sendMessageAction = optimisticAction({
-	collections: [messageCollection, attachmentCollection],
+	// Only sync on messageCollection - attachments are updated in the same backend transaction,
+	// but the attachments Electric stream won't contain the txid unless attachment rows were actually
+	// modified (i.e., when attachments are provided). Syncing on messageCollection alone is sufficient
+	// to confirm the transaction committed.
+	collections: [messageCollection],
 	runtime: runtime,
 
 	onMutate: (props: {
@@ -125,6 +129,14 @@ export const sendMessageAction = optimisticAction({
 			}).pipe(Effect.retry(scheduleWithCallback))
 
 			// No manual sync needed - automatic sync on messageCollection!
+			console.debug(
+				`[txid-debug] sendMessage RPC result.transactionId:`,
+				result.transactionId,
+				`type:`,
+				typeof result.transactionId,
+				`full result keys:`,
+				Object.keys(result),
+			)
 			return { data: result, transactionId: result.transactionId }
 		}),
 })

@@ -295,7 +295,16 @@ export function effectElectricCollectionOptions(
 		txid: Txid,
 		timeout: number = 30000,
 	): Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError> => {
+		const collectionLabel = config.id ?? "unknown"
+		console.debug(
+			`[txid-debug] [${collectionLabel}] awaitTxIdEffect called with txid:`,
+			txid,
+			`type:`,
+			typeof txid,
+		)
+
 		if (typeof txid !== "number") {
+			console.debug(`[txid-debug] [${collectionLabel}] INVALID txid type: ${typeof txid}, value:`, txid)
 			return Effect.fail(
 				new InvalidTxIdError({
 					message: `Expected txid to be a number, got ${typeof txid}`,
@@ -304,9 +313,28 @@ export function effectElectricCollectionOptions(
 			)
 		}
 
+		// Log current state of seenTxids for debugging
+		console.debug(
+			`[txid-debug] [${collectionLabel}] Current seenTxids count:`,
+			standardConfig.utils.awaitTxId.length,
+			`Checking if txid ${txid} is already seen...`,
+		)
+
 		return Effect.tryPromise({
-			try: () => standardConfig.utils.awaitTxId(txid, timeout),
+			try: () => {
+				console.debug(
+					`[txid-debug] [${collectionLabel}] Calling underlying awaitTxId(${txid}, ${timeout})`,
+				)
+				return standardConfig.utils.awaitTxId(txid, timeout).then((result) => {
+					console.debug(
+						`[txid-debug] [${collectionLabel}] awaitTxId resolved for txid ${txid}, result:`,
+						result,
+					)
+					return result
+				})
+			},
 			catch: (error) => {
+				console.debug(`[txid-debug] [${collectionLabel}] awaitTxId FAILED for txid ${txid}:`, error)
 				if (error instanceof Error && error.message.toLowerCase().includes("timeout")) {
 					return new TxIdTimeoutError({
 						message: `Timeout waiting for txid ${txid}`,

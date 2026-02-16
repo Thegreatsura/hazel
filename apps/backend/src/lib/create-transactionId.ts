@@ -27,7 +27,13 @@ export const generateTransactionId = Effect.fn("generateTransactionId")(function
 		client.execute(`SELECT pg_current_xact_id()::xid::text as txid`),
 	).pipe(
 		Effect.map((rows) => rows[0]?.txid as string),
+		Effect.tap((rawTxid) =>
+			Effect.log(`[txid-debug] Raw PostgreSQL txid string: "${rawTxid}", type: ${typeof rawTxid}`),
+		),
 		Effect.flatMap((txid) => Schema.decode(TransactionIdFromString)(txid)),
+		Effect.tap((decodedTxid) =>
+			Effect.log(`[txid-debug] Decoded transactionId: ${decodedTxid}, type: ${typeof decodedTxid}`),
+		),
 		Effect.catchTags({
 			DatabaseError: (err) => Effect.die(`Database error generating transaction ID: ${err}`),
 			ParseError: (err) => Effect.die(`Failed to parse transaction ID: ${err}`),

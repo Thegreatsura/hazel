@@ -252,6 +252,19 @@ export function optimisticAction<
 
 					mutationResult = exit.value
 
+					console.debug(
+						`[txid-debug] Mutation completed. transactionId:`,
+						mutationResult.transactionId,
+						`type:`,
+						typeof mutationResult.transactionId,
+					)
+					console.debug(
+						`[txid-debug] Starting sync on collections:`,
+						normalizedCollections.map((c) => c.name),
+						`with txid:`,
+						mutationResult.transactionId,
+					)
+
 					// Run automatic sync on ALL collections using Effect.all
 					const syncEffect = syncAllCollections(
 						normalizedCollections,
@@ -269,6 +282,12 @@ export function optimisticAction<
 
 					if (Exit.isFailure(syncExit)) {
 						const cause = syncExit.cause
+						console.debug(
+							`[txid-debug] Sync FAILED for txid:`,
+							mutationResult.transactionId,
+							`cause:`,
+							Cause.pretty(cause),
+						)
 						if (cause._tag === "Fail") {
 							throw cause.error // SyncError
 						}
@@ -277,6 +296,7 @@ export function optimisticAction<
 							cause: Cause.pretty(cause),
 						})
 					}
+					console.debug(`[txid-debug] Sync SUCCEEDED for txid:`, mutationResult.transactionId)
 
 					return mutationResult.data
 				},
