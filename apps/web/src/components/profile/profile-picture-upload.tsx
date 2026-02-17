@@ -54,8 +54,10 @@ export function ProfilePictureUpload({
 				console.error(result.cause)
 				toast.error("Failed to reset profile picture")
 			}
-		} finally {
 			setIsResetting(false)
+		} catch (error) {
+			setIsResetting(false)
+			throw error
 		}
 	}
 

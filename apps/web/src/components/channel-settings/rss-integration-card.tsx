@@ -30,7 +30,9 @@ export function RssIntegrationCard({ channelId }: RssIntegrationCardProps) {
 
 	const listSubscriptions = useAtomSet(listRssSubscriptionsMutation, { mode: "promiseExit" })
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	listSubscriptionsRef.current = listSubscriptions
+	useEffect(() => {
+		listSubscriptionsRef.current = listSubscriptions
+	}, [listSubscriptions])
 
 	const fetchSubscriptions = useCallback(async () => {
 		setIsLoading(true)

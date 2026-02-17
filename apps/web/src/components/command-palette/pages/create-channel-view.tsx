@@ -37,16 +37,16 @@ export function CreateChannelView({ onClose, onBack }: CreateChannelViewProps) {
 	const navigate = useNavigate()
 	const { currentPage, updateCreateChannelState } = useCommandPaletteContext()
 
+	const createChannel = useAtomSet(createChannelAction, {
+		mode: "promiseExit",
+	})
+
 	// Type guard to ensure we're on the create-channel page
 	if (currentPage.type !== "create-channel") {
 		return null
 	}
 
 	const { name, channelType, error, isSubmitting } = currentPage
-
-	const createChannel = useAtomSet(createChannelAction, {
-		mode: "promiseExit",
-	})
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()

@@ -1,4 +1,4 @@
-import { createContext, memo, use, useMemo, useRef, useState } from "react"
+import { createContext, memo, use, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import type { IntegrationConnection } from "@hazel/domain/models"
@@ -375,7 +375,7 @@ function ThinkingChip({
 }: ThinkingChipProps) {
 	const durationMs = useMemo(() => {
 		if (!step.startedAt) return null
-		const endTime = step.completedAt ?? Date.now()
+		const endTime = step.completedAt ?? step.startedAt
 		return endTime - step.startedAt
 	}, [step.startedAt, step.completedAt])
 
@@ -668,21 +668,26 @@ function StepGroup({ group, currentIndex, globalFailed }: StepGroupProps) {
 	const prevStatusRef = useRef(group.thinking?.status)
 	const prevGlobalFailedRef = useRef(globalFailed)
 
-	// Auto-collapse thinking when status TRANSITIONS to completed/failed (render-time adjustment)
-	if (group.thinking?.status !== prevStatusRef.current || globalFailed !== prevGlobalFailedRef.current) {
-		if (group.thinking && expandedId === group.thinking.id) {
-			const prevStatus = prevStatusRef.current
-			const newStatus = group.thinking.status
-			if (prevStatus === "active" && (newStatus === "completed" || newStatus === "failed")) {
-				setExpandedId(null)
+	// Auto-collapse thinking when status TRANSITIONS to completed/failed
+	useEffect(() => {
+		if (
+			group.thinking?.status !== prevStatusRef.current ||
+			globalFailed !== prevGlobalFailedRef.current
+		) {
+			if (group.thinking && expandedId === group.thinking.id) {
+				const prevStatus = prevStatusRef.current
+				const newStatus = group.thinking.status
+				if (prevStatus === "active" && (newStatus === "completed" || newStatus === "failed")) {
+					setExpandedId(null)
+				}
+				if (globalFailed && !prevGlobalFailedRef.current) {
+					setExpandedId(null)
+				}
 			}
-			if (globalFailed && !prevGlobalFailedRef.current) {
-				setExpandedId(null)
-			}
+			prevStatusRef.current = group.thinking?.status
+			prevGlobalFailedRef.current = globalFailed
 		}
-		prevStatusRef.current = group.thinking?.status
-		prevGlobalFailedRef.current = globalFailed
-	}
+	}, [group.thinking?.status, globalFailed, group.thinking, expandedId])
 
 	const expandedThinking = group.thinking && expandedId === group.thinking.id
 	const expandedTool = group.toolCalls.find((t) => t.id === expandedId)

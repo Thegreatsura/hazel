@@ -50,8 +50,10 @@ export function ChangeRoleModal() {
 				.unwrap()
 
 			handleClose()
-		} finally {
 			setIsSubmitting(false)
+		} catch (error) {
+			setIsSubmitting(false)
+			throw error
 		}
 	}, [selectedRole, metadata, handleClose])
 

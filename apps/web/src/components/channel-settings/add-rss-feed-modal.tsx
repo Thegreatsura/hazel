@@ -39,7 +39,10 @@ export function AddRssFeedModal({ channelId, isOpen, onClose, onSuccess }: AddRs
 	const isValidUrl = (() => {
 		try {
 			const url = new URL(feedUrl.trim())
-			return url.protocol === "https:" || url.protocol === "http:"
+			const protocol = url.protocol
+			if (protocol === "https:") return true
+			if (protocol === "http:") return true
+			return false
 		} catch {
 			return false
 		}

@@ -2,7 +2,7 @@
 
 import type { UserId } from "@hazel/schema"
 import { pipe } from "effect"
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react"
 import { createEditor, Editor, Node, Range, Text, Transforms, type Descendant } from "slate"
 import { withHistory } from "slate-history"
 import { Editable, ReactEditor, Slate, withReact, type RenderLeafProps } from "slate-react"
@@ -70,15 +70,9 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 	) => {
 		const { organizationId } = useOrganization()
 		const { user } = useAuth()
-		const editorRef = useRef<ReturnType<typeof createEditor> | null>(null)
 
-		// Create editor once
-		const editor = useMemo(() => {
-			if (editorRef.current) return editorRef.current
-			const e = pipe(createEditor(), withHistory, withReact, withSingleLine)
-			editorRef.current = e
-			return e
-		}, [])
+		// Create editor once using useState lazy initializer
+		const [editor] = useState(() => pipe(createEditor(), withHistory, withReact, withSingleLine))
 
 		// Autocomplete state
 		const [autocomplete, setAutocomplete] = useState<FilterAutocompleteState>(initialAutocompleteState)

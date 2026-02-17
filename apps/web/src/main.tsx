@@ -59,7 +59,10 @@ function DeferredPostHog({ children }: { children: ReactNode }) {
 	}> | null>(null)
 
 	useEffect(() => {
-		import("posthog-js/react").then((m) => setProvider(() => m.PostHogProvider))
+		import("posthog-js/react").then((m) => {
+			const Provider = m.PostHogProvider
+			setProvider(() => Provider)
+		})
 	}, [])
 
 	if (!PostHogProvider) return <>{children}</>

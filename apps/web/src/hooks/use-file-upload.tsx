@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
-import { uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
+import { type UploadErrorType, uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 
 interface UseFileUploadOptions {
 	organizationId: OrganizationId
@@ -59,6 +59,7 @@ export function useFileUpload({
 			const abortController = new AbortController()
 			abortControllersRef.current.set(trackingId, abortController)
 
+			const contentType = file.type || "application/octet-stream"
 			try {
 				// Step 1: Get presigned URL from unified endpoint (creates attachment with "uploading" status)
 				const presignRes = await presignMutation({
@@ -66,7 +67,7 @@ export function useFileUpload({
 						type: "attachment" as const,
 						fileName: file.name,
 						fileSize: file.size,
-						contentType: file.type || "application/octet-stream",
+						contentType,
 						organizationId,
 						channelId,
 					},
@@ -94,7 +95,9 @@ export function useFileUpload({
 					signal: abortController.signal,
 					onProgress: (percent) => {
 						setUploadProgress((prev) => ({ ...prev, [trackingId]: percent }))
-						onProgress?.(trackingId, percent)
+						if (onProgress) {
+							onProgress(trackingId, percent)
+						}
 					},
 				})
 
@@ -111,8 +114,12 @@ export function useFileUpload({
 								reason: `Storage upload failed: ${uploadResult.errorType}`,
 							},
 						})
+						let errorType: UploadErrorType = "server"
+						if (uploadResult.errorType) {
+							errorType = uploadResult.errorType
+						}
 						toast.error("Upload failed", {
-							description: uploadErrorMessages[uploadResult.errorType ?? "server"],
+							description: uploadErrorMessages[errorType],
 						})
 					} else {
 						// Still mark as failed for aborted uploads

@@ -2,7 +2,7 @@ import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
 import { useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
-import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import { editingMessageAtomFamily } from "~/atoms/chat-atoms"
@@ -142,9 +142,11 @@ function MessageListContent({
 	const editingMessageId = useAtomValue(editingMessageAtomFamily(channelId))
 
 	// Keep targetRef in sync with context state
-	if (state.targetRef) {
-		targetRef.current = state.targetRef
-	}
+	useEffect(() => {
+		if (state.targetRef) {
+			targetRef.current = state.targetRef
+		}
+	}, [state.targetRef])
 
 	// Hook for clearing notifications when messages become visible
 	const { onVisibleMessagesChange } = useVisibleMessageNotificationCleaner({

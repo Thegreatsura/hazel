@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { AutocompleteOption } from "./types"
 
 export interface UseSlateAutocompleteProps {
@@ -39,12 +39,14 @@ export function useSlateAutocomplete({
 }: UseSlateAutocompleteProps): UseSlateAutocompleteReturn {
 	const [activeIndex, setActiveIndex] = useState(0)
 
-	// Reset index when closing (render-time adjustment)
+	// Reset index when closing
 	const prevIsOpenRef = useRef(isOpen)
-	if (!isOpen && prevIsOpenRef.current) {
-		setActiveIndex(0)
-	}
-	prevIsOpenRef.current = isOpen
+	useEffect(() => {
+		if (!isOpen && prevIsOpenRef.current) {
+			setActiveIndex(0)
+		}
+		prevIsOpenRef.current = isOpen
+	}, [isOpen])
 
 	// Clamp index to valid range (derived value)
 	const clampedIndex = itemCount > 0 ? Math.min(activeIndex, Math.max(0, itemCount - 1)) : 0

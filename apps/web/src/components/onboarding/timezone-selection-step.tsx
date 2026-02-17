@@ -74,7 +74,9 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 	const updateUser = useAtomSet(updateUserMutation, { mode: "promiseExit" })
 
 	const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-	const [selectedTimezone, setSelectedTimezone] = useState<string | null>(defaultTimezone || browserTimezone)
+	const [selectedTimezone, setSelectedTimezone] = useState<string | null>(
+		defaultTimezone || browserTimezone,
+	)
 	const detectedTimezone = browserTimezone
 	const [searchQuery, setSearchQuery] = useState("")
 	const [debouncedQuery, setDebouncedQuery] = useState("")

@@ -25,12 +25,12 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 		setIsOpen(false)
 	}
 
-	// Reset search when dialog closes (render-time adjustment)
-	const prevIsOpenRef = useRef(isOpen)
-	if (prevIsOpenRef.current && !isOpen) {
-		setSearchQuery("")
-	}
-	prevIsOpenRef.current = isOpen
+	const handleOpenChange = useCallback((open: boolean) => {
+		setIsOpen(open)
+		if (!open) {
+			setSearchQuery("")
+		}
+	}, [])
 
 	// Mirror frimousse search input value to our state for custom emoji filtering
 	useEffect(() => {
@@ -50,15 +50,8 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 		return () => searchInput.removeEventListener("input", handleInput)
 	}, [isOpen])
 
-	const handleCustomEmojiSelect = useCallback(
-		(emoji: { emoji: string; label: string; imageUrl?: string }) => {
-			handleEmojiSelect(emoji)
-		},
-		[onEmojiSelect],
-	)
-
 	return (
-		<DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+		<DialogTrigger isOpen={isOpen} onOpenChange={handleOpenChange}>
 			{children}
 			<Popover>
 				<Dialog aria-label="Emoji picker" className="rounded-lg">
@@ -70,7 +63,7 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 								<CustomEmojiSection
 									organizationId={organizationId}
 									searchQuery={searchQuery}
-									onEmojiSelect={handleCustomEmojiSelect}
+									onEmojiSelect={handleEmojiSelect}
 								/>
 							)}
 							<EmojiPickerFooter />

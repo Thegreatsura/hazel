@@ -65,7 +65,9 @@ function IntegrationsPage() {
 	})
 
 	const listWebhooksRef = useRef(listWebhooks)
-	listWebhooksRef.current = listWebhooks
+	useEffect(() => {
+		listWebhooksRef.current = listWebhooks
+	}, [listWebhooks])
 
 	const fetchWebhooks = useCallback(async () => {
 		setIsLoading(true)

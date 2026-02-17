@@ -217,7 +217,7 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 					images={viewerImages}
 					initialIndex={selectedIndex}
 					author={selectedImage?.user ?? undefined}
-					createdAt={selectedImage?.uploadedAt.getTime() ?? Date.now()}
+					createdAt={selectedImage?.uploadedAt.getTime() ?? 0}
 				/>
 			)}
 		</>

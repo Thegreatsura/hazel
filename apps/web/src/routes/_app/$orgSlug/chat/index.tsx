@@ -85,7 +85,7 @@ function RouteComponent() {
 		}
 
 		return { publicChannels: public_, privateChannels: private_, dmChannels: dms }
-	}, [channelsData, me?.id])
+	}, [channelsData, me])
 
 	if (channelsLoading) {
 		return (

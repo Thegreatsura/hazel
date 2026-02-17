@@ -39,7 +39,9 @@ export function GitHubIntegrationCard({
 
 	const listSubscriptions = useAtomSet(listGitHubSubscriptionsMutation, { mode: "promiseExit" })
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	listSubscriptionsRef.current = listSubscriptions
+	useEffect(() => {
+		listSubscriptionsRef.current = listSubscriptions
+	}, [listSubscriptions])
 
 	const fetchSubscriptions = useCallback(async () => {
 		setIsLoading(true)

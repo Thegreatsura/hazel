@@ -251,6 +251,7 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ channelId, organizationId, children, onMessageSent }: ChatProviderProps) {
+	"use no memo"
 	const { user } = useAuth()
 
 	const sendMessageMutation = useAtomSet(sendMessageAction, { mode: "promiseExit" })

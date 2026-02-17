@@ -10,8 +10,9 @@ export function LinkPreview({ url }: { url: string }) {
 	const isLoading = Result.isInitial(previewResult)
 
 	const host = useMemo(() => {
+		const resolvedUrl = og?.url || url
 		try {
-			return new URL(og?.url || url).host
+			return new URL(resolvedUrl).host
 		} catch {
 			return ""
 		}

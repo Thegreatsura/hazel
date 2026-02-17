@@ -43,8 +43,10 @@ export function NotificationsSidebar() {
 		setIsMarkingAll(true)
 		try {
 			await markAllAsRead()
-		} finally {
 			setIsMarkingAll(false)
+		} catch (error) {
+			setIsMarkingAll(false)
+			throw error
 		}
 	}
 

@@ -116,9 +116,10 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 
 	const handleSave = async () => {
 		setIsSubmitting(true)
+		const statusMessage = message || null
 		try {
 			const expiresAt = getExpirationDate(expiration, customDate, customTime)
-			const exit = await setCustomStatus(emoji, message || null, expiresAt, pauseNotifications)
+			const exit = await setCustomStatus(emoji, statusMessage, expiresAt, pauseNotifications)
 
 			if (exit) {
 				exitToast(exit)
@@ -126,9 +127,11 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 					.successMessage("Status updated")
 					.run()
 			}
-		} finally {
+		} catch (error) {
 			setIsSubmitting(false)
+			throw error
 		}
+		setIsSubmitting(false)
 	}
 
 	const handleClear = async () => {
@@ -150,9 +153,11 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 					.successMessage("Status cleared")
 					.run()
 			}
-		} finally {
+		} catch (error) {
 			setIsSubmitting(false)
+			throw error
 		}
+		setIsSubmitting(false)
 	}
 
 	const handleClose = () => {

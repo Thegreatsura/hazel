@@ -93,14 +93,16 @@ function IntegrationConfigPage() {
 	// Derive isVerifying from pending + connection state
 	const isVerifying = pendingVerification && !isConnected
 
-	// Set pending verification when OAuth callback succeeds (render-time adjustment)
+	// Set pending verification when OAuth callback succeeds
 	const prevConnectionStatusRef = useRef(connection_status)
-	if (connection_status !== prevConnectionStatusRef.current) {
-		if (connection_status === "success") {
-			setPendingVerification(true)
+	useEffect(() => {
+		if (connection_status !== prevConnectionStatusRef.current) {
+			if (connection_status === "success") {
+				setPendingVerification(true)
+			}
+			prevConnectionStatusRef.current = connection_status
 		}
-		prevConnectionStatusRef.current = connection_status
-	}
+	}, [connection_status])
 
 	// Handle OAuth callback side effects (toast + clear search params)
 	useEffect(() => {

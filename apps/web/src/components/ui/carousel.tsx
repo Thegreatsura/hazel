@@ -103,13 +103,15 @@ const Carousel = ({
 		}
 	}, [api, setApi])
 
-	// Sync scroll state when API first becomes available (render-time adjustment)
+	// Sync scroll state when API first becomes available
 	const prevApiRef = useRef<CarouselApi | undefined>(undefined)
-	if (api && api !== prevApiRef.current) {
-		setCanScrollPrev(api.canScrollPrev())
-		setCanScrollNext(api.canScrollNext())
-	}
-	prevApiRef.current = api
+	useEffect(() => {
+		if (api && api !== prevApiRef.current) {
+			setCanScrollPrev(api.canScrollPrev())
+			setCanScrollNext(api.canScrollNext())
+		}
+		prevApiRef.current = api
+	}, [api])
 
 	useEffect(() => {
 		if (!api) {

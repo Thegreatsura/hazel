@@ -45,19 +45,24 @@ export function FeedbackModal({ isOpen, onOpenChange }: FeedbackModalProps) {
 		onSubmit: async ({ value }) => {
 			setIsSubmitting(true)
 
+			const orgId = organizationId ?? undefined
 			try {
-				posthog?.capture("feedback_submitted", {
-					category: value.category,
-					message: value.message,
-					organizationId: organizationId ?? undefined,
-				})
+				if (posthog) {
+					posthog.capture("feedback_submitted", {
+						category: value.category,
+						message: value.message,
+						organizationId: orgId,
+					})
+				}
 
 				toast.success("Thank you for your feedback!")
 				onOpenChange(false)
 				form.reset()
-			} finally {
+			} catch (error) {
 				setIsSubmitting(false)
+				throw error
 			}
+			setIsSubmitting(false)
 		},
 	})
 

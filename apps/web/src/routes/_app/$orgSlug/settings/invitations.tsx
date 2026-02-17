@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/invitations")({
 })
 
 function InvitationsSettings() {
+	const [now] = useState(Date.now)
 	const [showInviteModal, setShowInviteModal] = useState(false)
 	const [resendingId, setResendingId] = useState<InvitationId | null>(null)
 	const [revokingId, setRevokingId] = useState<InvitationId | null>(null)
@@ -101,8 +102,10 @@ function InvitationsSettings() {
 					isRetryable: false,
 				}))
 				.run()
-		} finally {
 			setResendingId(null)
+		} catch (error) {
+			setResendingId(null)
+			throw error
 		}
 	}
 
@@ -124,8 +127,10 @@ function InvitationsSettings() {
 					isRetryable: false,
 				}))
 				.run()
-		} finally {
 			setRevokingId(null)
+		} catch (error) {
+			setRevokingId(null)
+			throw error
 		}
 	}
 
@@ -209,7 +214,7 @@ function InvitationsSettings() {
 											<td className="px-4 py-4">
 												<p className="text-muted-fg text-sm">
 													{formatTimeRemaining(
-														invitation.expiresAt.getTime() - Date.now(),
+														invitation.expiresAt.getTime() - now,
 													)}
 												</p>
 											</td>

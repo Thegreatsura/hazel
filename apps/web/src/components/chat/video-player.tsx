@@ -103,14 +103,16 @@ function VideoPlayerProvider({ src, children, controlsHideDelay = 3000 }: VideoP
 		}
 	}, [isPlaying, isDragging, controlsHideDelay])
 
-	// Show controls when play/drag state changes (render-time adjustment)
+	// Show controls when play/drag state changes
 	const prevIsPlayingRef = useRef(isPlaying)
 	const prevIsDraggingRef = useRef(isDragging)
-	if (isPlaying !== prevIsPlayingRef.current || isDragging !== prevIsDraggingRef.current) {
-		setShowControls(true)
-		prevIsPlayingRef.current = isPlaying
-		prevIsDraggingRef.current = isDragging
-	}
+	useEffect(() => {
+		if (isPlaying !== prevIsPlayingRef.current || isDragging !== prevIsDraggingRef.current) {
+			setShowControls(true)
+			prevIsPlayingRef.current = isPlaying
+			prevIsDraggingRef.current = isDragging
+		}
+	}, [isPlaying, isDragging])
 
 	// Auto-hide controls after delay during playback
 	useEffect(() => {
@@ -266,6 +268,7 @@ function Container({ children }: ContainerProps) {
 }
 
 function Video() {
+	"use no memo"
 	const { refs, src, actions } = useVideoPlayer()
 
 	return (
@@ -343,6 +346,7 @@ function Controls({ children }: ControlsProps) {
 }
 
 function ProgressBar() {
+	"use no memo"
 	const { state, actions, refs } = useVideoPlayer()
 
 	const handleProgressClick = useCallback(

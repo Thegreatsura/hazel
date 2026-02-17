@@ -41,7 +41,7 @@ export function GifEmbed({ url, author, createdAt }: GifEmbedProps) {
 				images={viewerImages}
 				initialIndex={0}
 				author={author}
-				createdAt={createdAt ?? Date.now()}
+				createdAt={createdAt ?? 0}
 			/>
 		</div>
 	)

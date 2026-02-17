@@ -50,13 +50,15 @@ export function RequestIntegrationModal({ isOpen, onOpenChange }: RequestIntegra
 
 			setIsSubmitting(true)
 
+			const integrationUrl = value.integrationUrl || undefined
+			const description = value.description || undefined
 			try {
 				const exit = await createRequest({
 					payload: {
 						organizationId,
 						integrationName: value.integrationName,
-						integrationUrl: value.integrationUrl || undefined,
-						description: value.description || undefined,
+						integrationUrl,
+						description,
 					},
 				})
 
@@ -71,9 +73,11 @@ export function RequestIntegrationModal({ isOpen, onOpenChange }: RequestIntegra
 						description: "Please try again later.",
 					})
 				}
-			} finally {
+			} catch (error) {
 				setIsSubmitting(false)
+				throw error
 			}
+			setIsSubmitting(false)
 		},
 	})
 

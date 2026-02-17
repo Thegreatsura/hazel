@@ -99,8 +99,10 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 			if (Exit.isSuccess(exit)) {
 				onContinue(filledEmails)
 			}
-		} finally {
 			setIsLoading(false)
+		} catch (error) {
+			setIsLoading(false)
+			throw error
 		}
 	}
 

@@ -10,6 +10,8 @@ interface MessageHoverMeta {
 	isToolbarHovered: boolean
 }
 
+type SetHovered = (messageId: string | null, ref: HTMLDivElement | null) => void
+
 interface MessageHoverActions {
 	setHovered: (messageId: string | null, ref: HTMLDivElement | null) => void
 	setToolbarMenuOpen: (open: boolean) => void
@@ -49,8 +51,8 @@ interface MessageHoverProviderProps {
 export function MessageHoverProvider({ children, hideDelay = 200 }: MessageHoverProviderProps) {
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
-	const targetRef = useRef<HTMLDivElement | null>(null)
-	const isToolbarHoveredRef = useRef(false)
+	const [targetElement, setTargetElement] = useState<HTMLDivElement | null>(null)
+	const [isToolbarHovered, setIsToolbarHoveredState] = useState(false)
 	const hideTimeoutRef = useRef<number | null>(null)
 
 	const clearHideTimeout = useCallback(() => {
@@ -60,21 +62,21 @@ export function MessageHoverProvider({ children, hideDelay = 200 }: MessageHover
 		}
 	}, [])
 
-	const setHovered = useCallback(
+	const setHovered: SetHovered = useCallback(
 		(messageId: string | null, ref: HTMLDivElement | null) => {
 			if (messageId) {
 				clearHideTimeout()
 				setHoveredMessageId(messageId)
-				targetRef.current = ref
-			} else if (!isToolbarMenuOpen && !isToolbarHoveredRef.current) {
+				setTargetElement(ref)
+			} else if (!isToolbarMenuOpen && !isToolbarHovered) {
 				hideTimeoutRef.current = window.setTimeout(() => {
 					setHoveredMessageId(null)
-					targetRef.current = null
+					setTargetElement(null)
 					hideTimeoutRef.current = null
 				}, hideDelay)
 			}
 		},
-		[isToolbarMenuOpen, hideDelay, clearHideTimeout],
+		[isToolbarMenuOpen, isToolbarHovered, hideDelay, clearHideTimeout],
 	)
 
 	const setToolbarMenuOpen = useCallback((open: boolean) => {
@@ -83,7 +85,7 @@ export function MessageHoverProvider({ children, hideDelay = 200 }: MessageHover
 
 	const setToolbarHovered = useCallback(
 		(hovered: boolean) => {
-			isToolbarHoveredRef.current = hovered
+			setIsToolbarHoveredState(hovered)
 			if (hovered) {
 				clearHideTimeout()
 			}
@@ -94,14 +96,14 @@ export function MessageHoverProvider({ children, hideDelay = 200 }: MessageHover
 	const clearHover = useCallback(() => {
 		clearHideTimeout()
 		setHoveredMessageId(null)
-		targetRef.current = null
+		setTargetElement(null)
 	}, [clearHideTimeout])
 
 	const contextValue = useMemo<MessageHoverContextValue>(
 		() => ({
 			state: {
 				hoveredMessageId,
-				targetRef: targetRef.current,
+				targetRef: targetElement,
 			},
 			actions: {
 				setHovered,
@@ -111,10 +113,19 @@ export function MessageHoverProvider({ children, hideDelay = 200 }: MessageHover
 			},
 			meta: {
 				isToolbarMenuOpen,
-				isToolbarHovered: isToolbarHoveredRef.current,
+				isToolbarHovered,
 			},
 		}),
-		[hoveredMessageId, isToolbarMenuOpen, setHovered, setToolbarMenuOpen, setToolbarHovered, clearHover],
+		[
+			hoveredMessageId,
+			targetElement,
+			isToolbarMenuOpen,
+			isToolbarHovered,
+			setHovered,
+			setToolbarMenuOpen,
+			setToolbarHovered,
+			clearHover,
+		],
 	)
 
 	return <MessageHoverContext value={contextValue}>{children}</MessageHoverContext>

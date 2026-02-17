@@ -41,7 +41,9 @@ export function RssSubscriptionsSection({ organizationId }: RssSubscriptionsSect
 
 	// Ref to avoid stale closures
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	listSubscriptionsRef.current = listSubscriptions
+	useEffect(() => {
+		listSubscriptionsRef.current = listSubscriptions
+	}, [listSubscriptions])
 
 	// Query all channels in organization
 	const { data: channelsData } = useLiveQuery(

@@ -187,6 +187,7 @@ function CustomEmojisSettings() {
 		if (!selectedFile || !organizationId || !user) return
 
 		setIsSaving(true)
+		const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
 		try {
 			const result = await upload({
 				type: "custom-emoji",
@@ -196,7 +197,6 @@ function CustomEmojisSettings() {
 
 			if (!result) return
 
-			const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
 			if (!r2PublicUrl) {
 				toast.error("Configuration error", {
 					description: "Image upload is not configured. Please contact support.",
@@ -220,31 +220,33 @@ function CustomEmojisSettings() {
 				const failures = Cause.failures(createResult.cause)
 				const firstError = Chunk.head(failures)
 
-				if (
-					Option.isSome(firstError) &&
-					"_tag" in firstError.value &&
-					firstError.value._tag === "CustomEmojiDeletedExistsError"
-				) {
-					const err = firstError.value as {
-						customEmojiId: CustomEmojiId
-						name: string
-						imageUrl: string
+				if (Option.isSome(firstError)) {
+					if ("_tag" in firstError.value) {
+						if (firstError.value._tag === "CustomEmojiDeletedExistsError") {
+							const err = firstError.value as {
+								customEmojiId: CustomEmojiId
+								name: string
+								imageUrl: string
+							}
+							setRestoreTarget({
+								id: err.customEmojiId,
+								name: err.name,
+								imageUrl: err.imageUrl,
+								newImageUrl: publicUrl,
+							})
+							return
+						}
 					}
-					setRestoreTarget({
-						id: err.customEmojiId,
-						name: err.name,
-						imageUrl: err.imageUrl,
-						newImageUrl: publicUrl,
-					})
-				} else {
-					toast.error("Failed to create emoji", {
-						description: "The name may already be taken. Please try another.",
-					})
 				}
+				toast.error("Failed to create emoji", {
+					description: "The name may already be taken. Please try another.",
+				})
 			}
-		} finally {
+		} catch (error) {
 			setIsSaving(false)
+			throw error
 		}
+		setIsSaving(false)
 	}
 
 	const handleRestore = async () => {
@@ -267,9 +269,11 @@ function CustomEmojisSettings() {
 			} else {
 				toast.error("Failed to restore emoji")
 			}
-		} finally {
+		} catch (error) {
 			setIsSaving(false)
+			throw error
 		}
+		setIsSaving(false)
 	}
 
 	const handleDelete = async (emojiId: CustomEmojiId, emojiName: string) => {

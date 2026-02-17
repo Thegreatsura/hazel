@@ -63,7 +63,7 @@ export function useProfilePictureUpload() {
 			toast.success("Profile picture updated")
 			return publicUrl
 		},
-		[user?.id, upload, updateUserMutation, refreshCurrentUser],
+		[user, upload, updateUserMutation, refreshCurrentUser],
 	)
 
 	return {

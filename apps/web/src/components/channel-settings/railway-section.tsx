@@ -131,10 +131,11 @@ export function RailwaySection({
 	}
 
 	const handleCopy = async (value: string, type: "url" | "token") => {
+		const successMessage = type === "url" ? "URL copied" : "Token copied"
 		try {
 			await navigator.clipboard.writeText(value)
 			setCopied(type)
-			toast.success(type === "url" ? "URL copied" : "Token copied")
+			toast.success(successMessage)
 			setTimeout(() => setCopied(null), 2000)
 		} catch {
 			toast.error("Failed to copy")

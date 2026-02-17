@@ -157,7 +157,7 @@ export function HomeView({ navigateToPage, onClose }: HomeViewProps) {
 				// Filter out current user from display
 				otherMembers: members.filter((m) => m.userId !== user.id),
 			}))
-	}, [dmChannelData, user?.id])
+	}, [dmChannelData, user])
 
 	return (
 		<>

@@ -141,7 +141,7 @@ function MessageProvider({ message, variants, children }: MessageProviderProps) 
 			setEmojiUsage((prev) => ({ ...prev, [emoji]: (prev[emoji] || 0) + 1 }))
 			addReaction(message.id, message.channelId, emoji)
 		},
-		[message?.id, message?.channelId, setEmojiUsage, addReaction],
+		[message, setEmojiUsage, addReaction],
 	)
 
 	// Memoize reply click handler
@@ -157,44 +157,25 @@ function MessageProvider({ message, variants, children }: MessageProviderProps) 
 		}, 2000)
 	}, [message.replyToMessageId])
 
-	const contextValue = useMemo(
-		(): MessageContextValue => ({
-			message,
-			messageRef,
-			groupPosition,
-			highlight,
-			isGroupStart,
-			isGroupEnd,
-			isPinned,
-			isFirstNewMessage,
-			isHighlighted,
-			showAvatar,
-			isRepliedTo,
-			handleReaction,
-			handleReplyClick,
-			currentUserId: currentUser?.id,
-			// Coerce null to undefined for organizationId
-			organizationId: currentUser?.organizationId ?? undefined,
-			aggregatedReactions,
-		}),
-		[
-			message,
-			groupPosition,
-			highlight,
-			isGroupStart,
-			isGroupEnd,
-			isPinned,
-			isFirstNewMessage,
-			isHighlighted,
-			showAvatar,
-			isRepliedTo,
-			handleReaction,
-			handleReplyClick,
-			currentUser?.id,
-			currentUser?.organizationId,
-			aggregatedReactions,
-		],
-	)
+	const contextValue: MessageContextValue = {
+		message,
+		messageRef,
+		groupPosition,
+		highlight,
+		isGroupStart,
+		isGroupEnd,
+		isPinned,
+		isFirstNewMessage,
+		isHighlighted,
+		showAvatar,
+		isRepliedTo,
+		handleReaction,
+		handleReplyClick,
+		currentUserId: currentUser?.id,
+		// Coerce null to undefined for organizationId
+		organizationId: currentUser?.organizationId ?? undefined,
+		aggregatedReactions,
+	}
 
 	return <MessageContext value={contextValue}>{children}</MessageContext>
 }

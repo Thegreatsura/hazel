@@ -3,7 +3,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { Exit, pipe } from "effect"
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { Descendant } from "slate"
 import { createEditor, Editor, Range, Element as SlateElement, Transforms } from "slate"
 import { withHistory } from "slate-history"
@@ -330,6 +330,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		},
 		ref,
 	) => {
+		"use no memo"
 		const containerRef = useRef<HTMLDivElement>(null)
 
 		// Autocomplete state from Slate plugin
@@ -348,7 +349,9 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		// Stable reference for file paste handler to avoid editor recreation
 		const onFilePasteRef = useRef(onFilePaste)
-		onFilePasteRef.current = onFilePaste
+		useEffect(() => {
+			onFilePasteRef.current = onFilePaste
+		}, [onFilePaste])
 
 		// Create Slate editor with plugins
 		const editor = useMemo(

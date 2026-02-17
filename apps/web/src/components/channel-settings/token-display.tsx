@@ -19,10 +19,11 @@ export function TokenDisplay({ token, webhookUrl, onDismiss }: TokenDisplayProps
 	const [isTokenVisible, setIsTokenVisible] = useState(false)
 
 	const handleCopy = async (value: string, field: "token" | "url") => {
+		const successMessage = field === "token" ? "Token copied" : "URL copied"
 		try {
 			await navigator.clipboard.writeText(value)
 			setCopiedField(field)
-			toast.success(field === "token" ? "Token copied" : "URL copied")
+			toast.success(successMessage)
 			setTimeout(() => setCopiedField(null), 2000)
 		} catch {
 			toast.error("Failed to copy to clipboard")

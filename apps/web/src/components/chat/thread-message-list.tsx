@@ -1,6 +1,6 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
@@ -45,9 +45,11 @@ function ThreadMessageListContent({ threadChannelId }: ThreadMessageListProps) {
 	const targetRef = useRef<HTMLDivElement | null>(null)
 
 	// Keep targetRef in sync with context state
-	if (state.targetRef) {
-		targetRef.current = state.targetRef
-	}
+	useEffect(() => {
+		if (state.targetRef) {
+			targetRef.current = state.targetRef
+		}
+	}, [state.targetRef])
 
 	// Query thread messages with author data using the new atom
 	const messagesResult = useAtomValue(threadMessagesWithAuthorAtomFamily({ threadChannelId }))

@@ -37,12 +37,8 @@ export function SearchView({ onClose }: SearchViewProps) {
 	// Use command palette context for state
 	const { currentPage, updateSearchState } = useCommandPaletteContext()
 
-	// Type guard to ensure we're on the search page
-	if (currentPage.type !== "search") {
-		return null
-	}
-
-	const searchState = currentPage as SearchPageState
+	const isSearchPage = currentPage.type === "search"
+	const searchState = isSearchPage ? (currentPage as SearchPageState) : null
 
 	// Recent searches (persisted separately in localStorage)
 	const recentSearches = useAtomValue(recentSearchesAtom)
@@ -57,8 +53,8 @@ export function SearchView({ onClose }: SearchViewProps) {
 
 	// Search results
 	const { results, isLoading, isEmpty, hasQuery } = useSearchQuery({
-		query: searchState.query,
-		filters: searchState.filters,
+		query: searchState?.query ?? "",
+		filters: searchState?.filters ?? [],
 		organizationId: organizationId ?? null,
 		userId: user?.id as UserId | undefined,
 	})
@@ -102,10 +98,10 @@ export function SearchView({ onClose }: SearchViewProps) {
 
 	// Handle backspace at start of input to remove last filter
 	const handleBackspaceAtStart = useCallback(() => {
-		if (searchState.filters.length > 0) {
+		if (searchState?.filters && searchState.filters.length > 0) {
 			removeFilter(searchState.filters.length - 1)
 		}
-	}, [searchState.filters.length, removeFilter])
+	}, [searchState, removeFilter])
 
 	// Handle arrow key navigation for search results OR recent searches
 	const handleArrowDown = useCallback(() => {
@@ -128,8 +124,8 @@ export function SearchView({ onClose }: SearchViewProps) {
 			// Save to recent searches
 			if (hasQuery) {
 				const newSearch: RecentSearch = {
-					query: searchState.query,
-					filters: searchState.filters,
+					query: searchState?.query ?? "",
+					filters: searchState?.filters ?? [],
 					timestamp: Date.now(),
 				}
 				setRecentSearches((prev) => {
@@ -152,7 +148,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 
 			onClose()
 		},
-		[hasQuery, searchState.query, searchState.filters, setRecentSearches, navigate, orgSlug, onClose],
+		[hasQuery, searchState?.query, searchState?.filters, setRecentSearches, navigate, orgSlug, onClose],
 	)
 
 	// Load a recent search
@@ -180,17 +176,17 @@ export function SearchView({ onClose }: SearchViewProps) {
 	// Handle result navigation and selection (or load recent search)
 	const handleSubmit = useCallback(() => {
 		if (hasQuery) {
-			const selectedResult = results[searchState.selectedIndex]
+			const selectedResult = results[searchState?.selectedIndex ?? 0]
 			if (selectedResult) {
 				navigateToResult(selectedResult)
 			}
 		} else if (recentSearches.length > 0) {
-			const selectedRecent = recentSearches[searchState.selectedIndex]
+			const selectedRecent = recentSearches[searchState?.selectedIndex ?? 0]
 			if (selectedRecent) {
 				loadRecentSearch(selectedRecent)
 			}
 		}
-	}, [hasQuery, results, recentSearches, searchState.selectedIndex, navigateToResult, loadRecentSearch])
+	}, [hasQuery, results, recentSearches, searchState?.selectedIndex, navigateToResult, loadRecentSearch])
 
 	// Clear search
 	const clearSearch = useCallback(() => {
@@ -204,6 +200,11 @@ export function SearchView({ onClose }: SearchViewProps) {
 		}))
 		editorRef.current?.focus()
 	}, [updateSearchState])
+
+	// Type guard to ensure we're on the search page
+	if (!isSearchPage || !searchState) {
+		return null
+	}
 
 	return (
 		<div className="flex max-h-[inherit] flex-col overflow-hidden">

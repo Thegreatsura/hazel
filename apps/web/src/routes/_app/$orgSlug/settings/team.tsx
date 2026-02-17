@@ -83,9 +83,9 @@ function TeamSettings() {
 	}
 
 	const handleRemoveUser = async (userId: UserId) => {
+		const membership = teamMembers?.find((m) => m.userId === userId)
+		if (!membership) return
 		try {
-			const membership = teamMembers?.find((m) => m.userId === userId)
-			if (!membership) return
 			const tx = organizationMemberCollection.delete(membership.id)
 
 			await tx.isPersisted.promise
@@ -95,8 +95,12 @@ function TeamSettings() {
 			})
 			setRemoveUserId(null)
 		} catch (error) {
+			let description = "An error occurred"
+			if (error instanceof Error) {
+				description = error.message
+			}
 			toast.error("Failed to remove member", {
-				description: error instanceof Error ? error.message : "An error occurred",
+				description,
 			})
 		}
 	}

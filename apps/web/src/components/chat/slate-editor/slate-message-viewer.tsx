@@ -40,6 +40,7 @@ interface SlateMessageViewerBaseProps {
 
 const SlateMessageViewerBase = memo(
 	({ content, className, resolveCustomEmojiUrl }: SlateMessageViewerBaseProps) => {
+		"use no memo"
 		// Create a readonly Slate editor
 		const editor = useMemo(() => withHistory(withReact(createEditor())), [])
 

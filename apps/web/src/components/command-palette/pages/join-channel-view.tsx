@@ -30,13 +30,6 @@ export function JoinChannelView({ onClose, onBack }: JoinChannelViewProps) {
 	const { user } = useAuth()
 	const { currentPage, updateJoinChannelState } = useCommandPaletteContext()
 
-	// Type guard to ensure we're on the join-channel page
-	if (currentPage.type !== "join-channel") {
-		return null
-	}
-
-	const { searchQuery } = currentPage
-
 	const joinChannel = useAtomSet(joinChannelAction, { mode: "promiseExit" })
 
 	// Get all channels the user is already a member of
@@ -72,6 +65,8 @@ export function JoinChannelView({ onClose, onBack }: JoinChannelViewProps) {
 		[user?.id, userChannels, organizationId],
 	)
 
+	const searchQuery = currentPage.type === "join-channel" ? currentPage.searchQuery : ""
+
 	const filteredChannels = useMemo(() => {
 		if (!unjoinedChannels) return []
 		if (!searchQuery.trim()) return unjoinedChannels
@@ -79,6 +74,11 @@ export function JoinChannelView({ onClose, onBack }: JoinChannelViewProps) {
 			channel.name.toLowerCase().includes(searchQuery.toLowerCase()),
 		)
 	}, [unjoinedChannels, searchQuery])
+
+	// Type guard to ensure we're on the join-channel page
+	if (currentPage.type !== "join-channel") {
+		return null
+	}
 
 	const handleJoinChannel = async (channelId: ChannelId) => {
 		if (!user?.id) {

@@ -108,6 +108,7 @@ function JoinPage() {
 					params: { orgSlug: slug },
 				})
 			}
+			setIsJoining(false)
 		} catch (error: any) {
 			if (error?._tag === "AlreadyMemberError") {
 				toast.info("You're already a member of this workspace")
@@ -116,7 +117,6 @@ function JoinPage() {
 					params: { orgSlug: slug },
 				})
 			}
-		} finally {
 			setIsJoining(false)
 		}
 	}

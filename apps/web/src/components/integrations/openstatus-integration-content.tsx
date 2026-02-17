@@ -40,7 +40,9 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 
 	// Use ref to avoid stale closures and unnecessary effect re-runs
 	const listWebhooksRef = useRef(listWebhooks)
-	listWebhooksRef.current = listWebhooks
+	useEffect(() => {
+		listWebhooksRef.current = listWebhooks
+	}, [listWebhooks])
 
 	// Query all channels in organization (public and private only, not DMs/threads)
 	const { data: channelsData } = useLiveQuery(
