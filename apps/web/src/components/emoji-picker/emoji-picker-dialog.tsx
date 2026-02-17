@@ -25,12 +25,16 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 		setIsOpen(false)
 	}
 
+	// Reset search when dialog closes (render-time adjustment)
+	const prevIsOpenRef = useRef(isOpen)
+	if (prevIsOpenRef.current && !isOpen) {
+		setSearchQuery("")
+	}
+	prevIsOpenRef.current = isOpen
+
 	// Mirror frimousse search input value to our state for custom emoji filtering
 	useEffect(() => {
-		if (!isOpen) {
-			setSearchQuery("")
-			return
-		}
+		if (!isOpen) return
 
 		const picker = pickerRef.current
 		if (!picker) return

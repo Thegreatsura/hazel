@@ -73,8 +73,9 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 	const { user } = useAuth()
 	const updateUser = useAtomSet(updateUserMutation, { mode: "promiseExit" })
 
-	const [selectedTimezone, setSelectedTimezone] = useState<string | null>(defaultTimezone || null)
-	const [detectedTimezone, setDetectedTimezone] = useState<string | null>(null)
+	const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+	const [selectedTimezone, setSelectedTimezone] = useState<string | null>(defaultTimezone || browserTimezone)
+	const detectedTimezone = browserTimezone
 	const [searchQuery, setSearchQuery] = useState("")
 	const [debouncedQuery, setDebouncedQuery] = useState("")
 	const [hoveredOffset, setHoveredOffset] = useState<number | null>(null)
@@ -90,19 +91,8 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 		return () => clearTimeout(timer)
 	}, [searchQuery])
 
-	// Auto-detect timezone on mount
-	useEffect(() => {
-		const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-		setDetectedTimezone(tz)
-		// Auto-select detected timezone if no default
-		if (!defaultTimezone) {
-			setSelectedTimezone(tz)
-		}
-	}, [defaultTimezone])
-
 	// Get city object for detected timezone (may not be in CITIES)
 	const detectedCity = useMemo(() => {
-		if (!detectedTimezone) return null
 		const fromCities = CITIES.find((c) => c.timezone === detectedTimezone)
 		if (fromCities) return fromCities
 		return timezoneToCity(detectedTimezone)

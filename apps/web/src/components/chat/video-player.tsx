@@ -103,14 +103,22 @@ function VideoPlayerProvider({ src, children, controlsHideDelay = 3000 }: VideoP
 		}
 	}, [isPlaying, isDragging, controlsHideDelay])
 
+	// Show controls when play/drag state changes (render-time adjustment)
+	const prevIsPlayingRef = useRef(isPlaying)
+	const prevIsDraggingRef = useRef(isDragging)
+	if (isPlaying !== prevIsPlayingRef.current || isDragging !== prevIsDraggingRef.current) {
+		setShowControls(true)
+		prevIsPlayingRef.current = isPlaying
+		prevIsDraggingRef.current = isDragging
+	}
+
+	// Auto-hide controls after delay during playback
 	useEffect(() => {
-		resetHideControlsTimer()
-		return () => {
-			if (hideControlsTimeoutRef.current) {
-				clearTimeout(hideControlsTimeoutRef.current)
-			}
+		if (isPlaying && !isDragging) {
+			const timeout = setTimeout(() => setShowControls(false), controlsHideDelay)
+			return () => clearTimeout(timeout)
 		}
-	}, [resetHideControlsTimer])
+	}, [isPlaying, isDragging, controlsHideDelay])
 
 	// Video event handlers - these are applied to the video element
 	useEffect(() => {

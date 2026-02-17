@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useRef, useState } from "react"
 import type { AutocompleteOption } from "./types"
 
 export interface UseSlateAutocompleteProps {
@@ -39,19 +39,15 @@ export function useSlateAutocomplete({
 }: UseSlateAutocompleteProps): UseSlateAutocompleteReturn {
 	const [activeIndex, setActiveIndex] = useState(0)
 
-	// Reset index when closing or when item count changes significantly
-	useEffect(() => {
-		if (!isOpen) {
-			setActiveIndex(0)
-		}
-	}, [isOpen])
+	// Reset index when closing (render-time adjustment)
+	const prevIsOpenRef = useRef(isOpen)
+	if (!isOpen && prevIsOpenRef.current) {
+		setActiveIndex(0)
+	}
+	prevIsOpenRef.current = isOpen
 
-	// Clamp index if it's out of bounds (e.g., items filtered down)
-	useEffect(() => {
-		if (activeIndex >= itemCount && itemCount > 0) {
-			setActiveIndex(itemCount - 1)
-		}
-	}, [activeIndex, itemCount])
+	// Clamp index to valid range (derived value)
+	const clampedIndex = itemCount > 0 ? Math.min(activeIndex, Math.max(0, itemCount - 1)) : 0
 
 	// Not using useCallback - avoids stale closure issues with activeIndex
 	const handleKeyDown = (event: React.KeyboardEvent): boolean => {
@@ -73,7 +69,7 @@ export function useSlateAutocomplete({
 			case "Enter":
 			case "Tab":
 				event.preventDefault()
-				onSelect(activeIndex)
+				onSelect(clampedIndex)
 				return true
 
 			case "Escape":
@@ -86,7 +82,7 @@ export function useSlateAutocomplete({
 	}
 
 	return {
-		activeIndex,
+		activeIndex: clampedIndex,
 		setActiveIndex,
 		handleKeyDown,
 	}

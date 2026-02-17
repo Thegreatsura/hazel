@@ -1,7 +1,7 @@
 import { IconChevronLeft } from "~/components/icons/icon-chevron-left"
 import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react"
-import { createContext, use, useCallback, useEffect, useLayoutEffect, useState } from "react"
+import { createContext, use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { twMerge } from "tailwind-merge"
 import { cx } from "~/lib/primitive"
 import { Button, type ButtonProps } from "./button"
@@ -103,12 +103,19 @@ const Carousel = ({
 		}
 	}, [api, setApi])
 
+	// Sync scroll state when API first becomes available (render-time adjustment)
+	const prevApiRef = useRef<CarouselApi | undefined>(undefined)
+	if (api && api !== prevApiRef.current) {
+		setCanScrollPrev(api.canScrollPrev())
+		setCanScrollNext(api.canScrollNext())
+	}
+	prevApiRef.current = api
+
 	useEffect(() => {
 		if (!api) {
 			return
 		}
 
-		onSelect(api)
 		api.on("reInit", onSelect)
 		api.on("select", onSelect)
 

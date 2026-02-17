@@ -3,7 +3,7 @@ import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
 import { Exit, Option } from "effect"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { GitHubSubscriptionsSection } from "~/components/integrations/github-subscriptions-section"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
@@ -81,7 +81,7 @@ function IntegrationConfigPage() {
 	const integration = getIntegrationById(integrationId)
 	const [isConnecting, setIsConnecting] = useState(false)
 	const [isDisconnecting, setIsDisconnecting] = useState(false)
-	const [isVerifying, setIsVerifying] = useState(false)
+	const [pendingVerification, setPendingVerification] = useState(false)
 
 	// Query connection from TanStack DB collection (real-time sync via Electric)
 	// Only used for OAuth-based integrations (not OpenStatus)
@@ -90,14 +90,23 @@ function IntegrationConfigPage() {
 		integrationId as IntegrationProvider,
 	)
 
-	// Handle OAuth callback result from URL params
+	// Derive isVerifying from pending + connection state
+	const isVerifying = pendingVerification && !isConnected
+
+	// Set pending verification when OAuth callback succeeds (render-time adjustment)
+	const prevConnectionStatusRef = useRef(connection_status)
+	if (connection_status !== prevConnectionStatusRef.current) {
+		if (connection_status === "success") {
+			setPendingVerification(true)
+		}
+		prevConnectionStatusRef.current = connection_status
+	}
+
+	// Handle OAuth callback side effects (toast + clear search params)
 	useEffect(() => {
 		if (!connection_status || !integration) return
 
 		if (connection_status === "success") {
-			setIsVerifying(true)
-
-			// Show success toast - the backend confirmed success via the URL param
 			toast.success(`Connected to ${integration.name}`, {
 				description: "Your account has been successfully connected.",
 			})
@@ -116,13 +125,6 @@ function IntegrationConfigPage() {
 			replace: true,
 		})
 	}, [connection_status, error_code, integration, orgSlug, integrationId, navigate])
-
-	// Stop verifying when Electric sync completes and connection becomes available
-	useEffect(() => {
-		if (isVerifying && isConnected) {
-			setIsVerifying(false)
-		}
-	}, [isVerifying, isConnected])
 
 	// Mutation for OAuth flow - get authorization URL then redirect
 	const getOAuthUrlMutation = useAtomSet(HazelApiClient.mutation("integrations", "getOAuthUrl"), {

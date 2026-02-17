@@ -3,7 +3,7 @@ import { IconClock } from "~/components/icons/icon-clock"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
@@ -80,11 +80,17 @@ function PopoverBody({ userId }: { userId: UserId }) {
 		user?.timezone ? formatUserLocalTime(user.timezone) : "",
 	)
 
+	// Sync local time when timezone changes (render-time adjustment)
+	const prevTimezoneRef = useRef(user?.timezone)
+	if (user?.timezone !== prevTimezoneRef.current) {
+		prevTimezoneRef.current = user?.timezone
+		if (user?.timezone) {
+			setLocalTime(formatUserLocalTime(user.timezone))
+		}
+	}
+
 	useEffect(() => {
 		if (!user?.timezone) return
-
-		// Update immediately when user changes
-		setLocalTime(formatUserLocalTime(user.timezone))
 
 		// Update every minute
 		const interval = setInterval(() => {

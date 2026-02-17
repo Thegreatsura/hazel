@@ -1,7 +1,7 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import IconCompany from "~/components/icons/icon-company"
 import IconCopy from "~/components/icons/icon-copy"
@@ -35,12 +35,14 @@ function GeneralSettings() {
 	const [name, setName] = useState(organization?.name ?? "")
 	const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-	// Sync local state when organization name changes from server
-	useEffect(() => {
+	// Sync local state when organization name changes from server (render-time adjustment)
+	const [prevOrgName, setPrevOrgName] = useState(organization?.name)
+	if (organization?.name !== prevOrgName) {
+		setPrevOrgName(organization?.name)
 		if (organization?.name) {
 			setName(organization.name)
 		}
-	}, [organization?.name])
+	}
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
