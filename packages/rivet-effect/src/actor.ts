@@ -1,7 +1,7 @@
 import { Cause, Context, Effect, Exit } from "effect"
 import type { ActorContext } from "rivetkit"
 import type { YieldWrap } from "effect/Utils"
-import { makeRuntimeExecutionError, StatePersistenceError } from "./errors.ts"
+import { StatePersistenceError } from "./errors.ts"
 import { runPromise, runPromiseExit } from "./runtime.ts"
 
 type AnyActorContext = ActorContext<any, any, any, any, any, any>
@@ -105,10 +105,6 @@ export const getKv = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 ) => Effect.succeed(c.kv)
 
-export const getQueue = <TState, TConnParams, TConnState, TVars, TInput>(
-	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-) => Effect.succeed((c as any).queue)
-
 export const saveState = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	opts: Parameters<typeof c.saveState>[0],
@@ -191,25 +187,3 @@ export function effect<TState, TConnParams, TConnState, TVars, TInput, AEff = vo
 	}
 }
 
-/**
- * Like {@link effect}, but catches all failures and wraps them in a `RuntimeExecutionError`.
- *
- * **Warning:** This erases typed error information. Prefer {@link effect} for handlers where
- * you want to handle specific error types. Use `tryEffect` only as an escape hatch for
- * top-level hooks where all errors should be treated uniformly.
- */
-export function tryEffect<TState, TConnParams, TConnState, TVars, TInput, AEff = void>(
-	genFn: (
-		c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-): (c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>) => Promise<AEff> {
-	return (c) => {
-		const gen = genFn(c)
-		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen).pipe(
-			Effect.catchAllCause((cause) => Effect.fail(makeRuntimeExecutionError("Hook.try", cause))),
-		)
-		return runEffectOnActorContext(c, eff)
-	}
-}
-
-export { tryEffect as try }

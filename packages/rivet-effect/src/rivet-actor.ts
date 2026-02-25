@@ -27,7 +27,6 @@ const wrapActorConfigWithRuntime = (
 	const hookKeys = [
 		"onCreate",
 		"onWake",
-		"run",
 		"onDestroy",
 		"onSleep",
 		"onStateChange",

@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Option } from "effect"
 import { describe, expect, it, vi } from "vitest"
 import * as Action from "./action.ts"
-import * as Hook from "./actor.ts"
+import * as Actor from "./actor.ts"
 import { OnCreate, OnStateChange } from "./lifecycle.ts"
 
 const createContext = () => {
@@ -27,7 +27,6 @@ const createContext = () => {
 		client: vi.fn(() => ({})),
 		db: {},
 		kv: {},
-		queue: { next: vi.fn() },
 		waitUntil,
 		abortSignal: new AbortController().signal,
 		sleep: vi.fn(),
@@ -52,37 +51,12 @@ describe("@hazel/rivet-effect wrappers", () => {
 		expect(state).toEqual({ count: 3 })
 	})
 
-	it("Action.try maps failures into RuntimeExecutionError", async () => {
-		const ctx = createContext()
-		const failingAction = Action.try(function* () {
-			return yield* Effect.fail("boom")
-		})
-
-		await expect(failingAction(ctx as any)).rejects.toMatchObject({
-			_tag: "RuntimeExecutionError",
-			operation: "Action.try",
-		})
-	})
-
-	it("Hook.try maps failures into RuntimeExecutionError and logs runtime failure", async () => {
-		const ctx = createContext()
-		const failingHook = Hook.try(function* () {
-			return yield* Effect.fail("boom")
-		})
-
-		await expect(failingHook(ctx as any)).rejects.toMatchObject({
-			_tag: "RuntimeExecutionError",
-			operation: "Hook.try",
-		})
-		expect(ctx.log.error).toHaveBeenCalledWith(expect.objectContaining({ msg: "actor effect failed" }))
-	})
-
 	it("saveState maps promise rejection into StatePersistenceError", async () => {
 		const ctx = createContext()
 		ctx.saveState = vi.fn(async () => {
 			throw new Error("write failure")
 		})
-		const exit = await Effect.runPromiseExit(Hook.saveState(ctx as any, { debounce: 0 } as any))
+		const exit = await Effect.runPromiseExit(Actor.saveState(ctx as any, { debounce: 0 } as any))
 
 		expect(Exit.isFailure(exit)).toBe(true)
 		if (Exit.isFailure(exit)) {
@@ -111,7 +85,7 @@ describe("@hazel/rivet-effect wrappers", () => {
 	it("OnCreate.effect runs async lifecycle and returns result", async () => {
 		const ctx = createContext()
 		const onCreate = OnCreate.effect(function* (c: any, input: { name: string }) {
-			yield* Hook.updateState(c, (s: { count: number }) => {
+			yield* Actor.updateState(c, (s: { count: number }) => {
 				s.count = 42
 			})
 			return input.name

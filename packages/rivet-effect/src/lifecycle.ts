@@ -63,15 +63,6 @@ export namespace OnWake {
 		makeAsyncLifecycle(genFn)
 }
 
-export namespace Run {
-	export const effect = <TState, TConnParams, TConnState, TVars, TInput, AEff = void>(
-		genFn: (
-			c: WakeContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-	): ((c: WakeContext<TState, TConnParams, TConnState, TVars, TInput, undefined>) => Promise<AEff>) =>
-		makeAsyncLifecycle(genFn)
-}
-
 export namespace OnDestroy {
 	export const effect = <TState, TConnParams, TConnState, TVars, TInput, AEff = void>(
 		genFn: (
