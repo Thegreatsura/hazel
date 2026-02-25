@@ -2,7 +2,7 @@ import { LanguageModel } from "@effect/ai"
 import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { FetchHttpClient } from "@effect/platform"
 import { Config, Effect, Layer, Schema } from "effect"
-import { runHazelBot } from "@hazel/bot-sdk"
+import { runHazelBot } from "@hazel-chat/bot-sdk"
 import { LinearApiClient } from "@hazel/integrations/linear"
 import { commands, IssueCommand, IssueifyCommand, GeneratedIssueSchema } from "./commands.ts"
 

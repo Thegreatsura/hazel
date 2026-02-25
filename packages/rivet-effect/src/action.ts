@@ -20,6 +20,7 @@ export {
 	getClient,
 	getDb,
 	getKv,
+	getQueue,
 	saveState,
 	waitUntil,
 	getAbortSignal,

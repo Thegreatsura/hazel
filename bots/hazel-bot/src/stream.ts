@@ -1,4 +1,4 @@
-import type { AIContentChunk } from "@hazel/bot-sdk"
+import type { AIContentChunk } from "@hazel-chat/bot-sdk"
 import type { Response } from "@effect/ai"
 import { Match } from "effect"
 

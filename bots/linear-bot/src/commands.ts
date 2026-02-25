@@ -1,4 +1,4 @@
-import { Command, CommandGroup } from "@hazel/bot-sdk"
+import { Command, CommandGroup } from "@hazel-chat/bot-sdk"
 import { Schema } from "effect"
 
 // ============================================================================

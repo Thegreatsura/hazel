@@ -5,7 +5,7 @@ import type { IntegrationConnection } from "@hazel/domain/models"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
 
-import type { HazelBotClient } from "@hazel/bot-sdk"
+import type { HazelBotClient } from "@hazel-chat/bot-sdk"
 import { GetCurrentTime, Calculate } from "./base.ts"
 import {
 	LinearGetAccountInfo,

@@ -105,6 +105,10 @@ export const getKv = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 ) => Effect.succeed(c.kv)
 
+export const getQueue = <TState, TConnParams, TConnState, TVars, TInput>(
+	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
+) => Effect.succeed((c as unknown as { queue: unknown }).queue)
+
 export const saveState = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	opts: Parameters<typeof c.saveState>[0],

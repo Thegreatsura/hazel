@@ -1,24 +1,99 @@
 {
-	"name": "@hazel/bot-sdk",
+	"name": "@hazel-chat/bot-sdk",
 	"version": "0.1.0",
-	"private": true,
+	"description": "Official SDK for building bots for Hazel Chat. Built with Effect-TS.",
 	"type": "module",
-	"main": "src/index.ts",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
 	"exports": {
-		".": "./src/index.ts",
-		"./bot-client": "./src/bot-client.ts",
-		"./config": "./src/config.ts",
-		"./auth": "./src/auth.ts",
-		"./types": "./src/types/index.ts",
-		"./errors": "./src/errors.ts",
-		"./services": "./src/services/index.ts",
-		"./layers": "./src/layers.ts"
+		".": {
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			}
+		},
+		"./bot-client": {
+			"import": {
+				"types": "./dist/bot-client.d.mts",
+				"default": "./dist/bot-client.mjs"
+			}
+		},
+		"./config": {
+			"import": {
+				"types": "./dist/config.d.mts",
+				"default": "./dist/config.mjs"
+			}
+		},
+		"./auth": {
+			"import": {
+				"types": "./dist/auth.d.mts",
+				"default": "./dist/auth.mjs"
+			}
+		},
+		"./types": {
+			"import": {
+				"types": "./dist/types/index.d.mts",
+				"default": "./dist/types/index.mjs"
+			}
+		},
+		"./errors": {
+			"import": {
+				"types": "./dist/errors.d.mts",
+				"default": "./dist/errors.mjs"
+			}
+		},
+		"./services": {
+			"import": {
+				"types": "./dist/services/index.d.mts",
+				"default": "./dist/services/index.mjs"
+			}
+		},
+		"./layers": {
+			"import": {
+				"types": "./dist/layers.d.mts",
+				"default": "./dist/layers.mjs"
+			}
+		}
 	},
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"build": "tsdown",
+		"prepublishOnly": "bun run build"
 	},
-	"dependencies": {
+	"peerDependencies": {
+		"effect": ">=3.19.0",
+		"@effect/platform": ">=0.94.0",
+		"@effect/platform-bun": ">=0.87.0",
+		"@effect/rpc": ">=0.73.0",
+		"@effect/experimental": ">=0.58.0",
+		"@effect/opentelemetry": ">=0.61.0",
+		"@effect/workflow": ">=0.16.0",
+		"@electric-sql/client": ">=1.5.0",
+		"jose": ">=6.0.0",
+		"rivetkit": ">=2.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@effect/opentelemetry": {
+			"optional": true
+		},
+		"jose": {
+			"optional": true
+		},
+		"rivetkit": {
+			"optional": true
+		},
+		"@effect/workflow": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
 		"@effect/experimental": "catalog:effect",
+		"@effect/language-service": "catalog:effect",
+		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/rpc": "catalog:effect",
@@ -27,12 +102,24 @@
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"effect": "catalog:effect"
-	},
-	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
 		"@types/bun": "1.3.8",
+		"effect": "catalog:effect",
+		"jose": "^6.1.3",
 		"msw": "^2.7.0",
+		"rivetkit": "2.0.42",
+		"tsdown": "^0.20.3",
 		"typescript": "^5.9.3"
+	},
+	"keywords": [
+		"hazel",
+		"bot",
+		"sdk",
+		"effect",
+		"effect-ts",
+		"electric-sql",
+		"chat"
+	],
+	"engines": {
+		"bun": ">=1.2.0"
 	}
 }

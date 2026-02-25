@@ -1,0 +1,37 @@
+import { defineConfig } from "tsdown"
+
+export default defineConfig({
+	entry: [
+		"src/index.ts",
+		"src/bot-client.ts",
+		"src/config.ts",
+		"src/auth.ts",
+		"src/types/index.ts",
+		"src/errors.ts",
+		"src/services/index.ts",
+		"src/layers.ts",
+	],
+	format: ["esm"],
+	outDir: "dist",
+	clean: true,
+	dts: { resolver: "tsc" },
+	target: "es2022",
+	platform: "node",
+	treeshake: true,
+	noExternal: [/^@hazel\//],
+	external: [
+		"effect",
+		/^@effect\//,
+		"@electric-sql/client",
+		"jose",
+		/^rivetkit/,
+		"effect-rpc-tanstack-devtools",
+		"@tanstack/devtools-event-client",
+		"react",
+		"drizzle-orm",
+		"@linear/sdk",
+		"he",
+		"rss-parser",
+	],
+	sourcemap: true,
+})

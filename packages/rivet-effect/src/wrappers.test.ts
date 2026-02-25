@@ -1,5 +1,5 @@
-import { Cause, Effect, Exit, Option } from "effect"
-import { describe, expect, it, vi } from "vitest"
+import { Effect, Exit } from "effect"
+import { describe, expect, it, vi } from "@effect/vitest"
 import * as Action from "./action.ts"
 import * as Actor from "./actor.ts"
 import { OnCreate, OnStateChange } from "./lifecycle.ts"
@@ -51,22 +51,20 @@ describe("@hazel/rivet-effect wrappers", () => {
 		expect(state).toEqual({ count: 3 })
 	})
 
-	it("saveState maps promise rejection into StatePersistenceError", async () => {
-		const ctx = createContext()
-		ctx.saveState = vi.fn(async () => {
-			throw new Error("write failure")
-		})
-		const exit = await Effect.runPromiseExit(Actor.saveState(ctx as any, { debounce: 0 } as any))
-
-		expect(Exit.isFailure(exit)).toBe(true)
-		if (Exit.isFailure(exit)) {
-			const failure = Cause.failureOption(exit.cause)
-			expect(Option.isSome(failure)).toBe(true)
-			if (Option.isSome(failure)) {
-				expect(failure.value).toMatchObject({ _tag: "StatePersistenceError" })
+	it.effect("saveState maps promise rejection into StatePersistenceError", () =>
+		Effect.gen(function* () {
+			const ctx = createContext()
+			ctx.saveState = vi.fn(async () => {
+				throw new Error("write failure")
+			})
+			const exit = yield* Effect.exit(Actor.saveState(ctx as any, { debounce: 0 } as any))
+			expect(Exit.isFailure(exit)).toBe(true)
+			if (Exit.isFailure(exit)) {
+				const failure = yield* Effect.succeed(exit.cause.toString())
+				expect(failure).toContain("StatePersistenceError")
 			}
-		}
-	})
+		}),
+	)
 
 	it("OnStateChange logs effect failures", async () => {
 		const ctx = createContext()

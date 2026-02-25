@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit, Option } from "effect"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "@effect/vitest"
 import type { AnyManagedRuntime } from "./runtime.ts"
 import { runPromise, runPromiseExit, setManagedRuntime } from "./runtime.ts"
 

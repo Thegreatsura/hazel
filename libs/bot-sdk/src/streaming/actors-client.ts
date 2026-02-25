@@ -7,10 +7,11 @@
  * Uses Effect.Service pattern for proper dependency injection and testability.
  */
 
-import { createActorsClient, type ActorsClient as RivetActorsClient } from "@hazel/actors/client"
+import { createActorsClient } from "@hazel/actors/client"
 import { Effect } from "effect"
 
-export type MessageActor = ReturnType<RivetActorsClient["message"]["getOrCreate"]>
+// biome-ignore lint/suspicious/noExplicitAny: Opaque type to avoid non-portable DTS references to @hazel/actors internals
+export type MessageActor = any
 
 /**
  * ActorsClient service interface
@@ -26,8 +27,10 @@ export interface ActorsClientService {
 
 	/**
 	 * The underlying RivetKit client (for advanced use cases)
+	 * Typed as ReturnType of createClient from rivetkit.
 	 */
-	readonly client: RivetActorsClient
+	// biome-ignore lint/suspicious/noExplicitAny: Opaque type to avoid non-portable DTS references
+	readonly client: any
 
 	/**
 	 * The bot token used for authentication
@@ -91,6 +94,6 @@ export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk
 			getMessageActor,
 			client,
 			botToken: config.botToken,
-		}
+		} as ActorsClientService
 	}),
 }) {}

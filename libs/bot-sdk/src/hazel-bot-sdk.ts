@@ -375,7 +375,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							),
 						client,
 						botToken: config.botToken,
-					} satisfies ActorsClientService)
+					} as ActorsClientService)
 				},
 			})
 

@@ -1,4 +1,4 @@
-import { runHazelBot } from "@hazel/bot-sdk"
+import { runHazelBot } from "@hazel-chat/bot-sdk"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
 import { LinearApiClient } from "@hazel/integrations/linear"
