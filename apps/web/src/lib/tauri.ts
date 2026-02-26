@@ -7,13 +7,14 @@
  * which is mounted via useAuth() in auth.tsx
  */
 
+import { isTauri as isTauriRuntime } from "@hazel/desktop/bridge"
 import { initNativeNotifications } from "./native-notifications"
 
 /**
  * Check if the app is running inside Tauri
  */
 export const isTauri = (): boolean => {
-	return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
+	return isTauriRuntime()
 }
 
 /**

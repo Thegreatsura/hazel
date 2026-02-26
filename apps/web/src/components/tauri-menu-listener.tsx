@@ -1,12 +1,11 @@
 import { useEffect } from "react"
 import { useAtomSet } from "@effect-atom/atom-react"
+import { getTauriEvent, type TauriEventApi } from "@hazel/desktop/bridge"
 import { useNavigate } from "@tanstack/react-router"
 import { modalAtomFamily } from "~/atoms/modal-atoms"
 import { checkForUpdates, tauriUpdateStateAtom } from "~/atoms/tauri-update-atoms"
 import { useOrganization } from "~/hooks/use-organization"
 import { isTauri } from "~/lib/tauri"
-
-type EventApi = typeof import("@tauri-apps/api/event")
 
 export function TauriMenuListener() {
 	const navigate = useNavigate()
@@ -18,7 +17,7 @@ export function TauriMenuListener() {
 	useEffect(() => {
 		if (!isTauri()) return
 
-		const event: EventApi | undefined = (window as any).__TAURI__?.event
+		const event: TauriEventApi | undefined = getTauriEvent()
 		if (!event) {
 			console.warn("[TauriMenuListener] Tauri event API not available")
 			return

@@ -5,12 +5,11 @@
  */
 
 import { Atom } from "@effect-atom/atom-react"
+import { getTauriProcess, getTauriUpdater, type TauriProcessApi, type TauriUpdaterApi } from "@hazel/desktop/bridge"
 import { Data, Duration, Effect } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 
-type UpdaterApi = typeof import("@tauri-apps/plugin-updater")
-type ProcessApi = typeof import("@tauri-apps/plugin-process")
-type TauriUpdate = Awaited<ReturnType<UpdaterApi["check"]>>
+type TauriUpdate = Awaited<ReturnType<TauriUpdaterApi["check"]>>
 type DownloadCallback = NonNullable<Parameters<NonNullable<TauriUpdate>["download"]>[0]>
 type DownloadEvent = Parameters<DownloadCallback>[0]
 
@@ -33,8 +32,8 @@ export class UpdateRelaunchError extends Data.TaggedError("UpdateRelaunchError")
 	message: string
 }> {}
 
-const updater: UpdaterApi | undefined = (window as any).__TAURI__?.updater
-const process: ProcessApi | undefined = (window as any).__TAURI__?.process
+const updater: TauriUpdaterApi | undefined = getTauriUpdater()
+const process: TauriProcessApi | undefined = getTauriProcess()
 
 /**
  * Update check state

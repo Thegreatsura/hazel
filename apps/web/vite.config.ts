@@ -13,8 +13,8 @@ import { VitePWA } from "vite-plugin-pwa"
 const host = process.env.TAURI_DEV_HOST
 const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
 
-// Read app version from tauri.conf.json (single source of truth)
-const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "src-tauri/tauri.conf.json"), "utf-8"))
+// Read app version from desktop tauri.conf.json (single source of truth)
+const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "../desktop/src-tauri/tauri.conf.json"), "utf-8"))
 const appVersion = tauriConfig.version
 
 // Resolve git commit SHA from environment (Railway) or git
@@ -37,8 +37,8 @@ export default defineConfig({
 				}
 			: undefined,
 		watch: {
-			// tell vite to ignore watching `src-tauri`
-			ignored: ["**/src-tauri/**"],
+			// Ignore native shell sources (owned by apps/desktop)
+			ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
 		},
 	},
 	envPrefix: ["VITE_", "TAURI_ENV_*"],

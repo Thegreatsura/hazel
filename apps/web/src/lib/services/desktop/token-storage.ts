@@ -4,11 +4,11 @@
  * @description Secure token storage using Tauri's encrypted store with Effect error safety
  */
 
+import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { TokenNotFoundError, TokenStoreError, TauriNotAvailableError } from "@hazel/domain/errors"
 import { Effect, Option } from "effect"
 
-type StoreApi = typeof import("@tauri-apps/plugin-store")
-type StoreInstance = Awaited<ReturnType<StoreApi["load"]>>
+type StoreInstance = Awaited<ReturnType<TauriStoreApi["load"]>>
 
 const STORE_NAME = "auth.json"
 const ACCESS_TOKEN_KEY = "access_token"
@@ -22,7 +22,7 @@ let storePromise: Promise<StoreInstance> | null = null
  * Get or create the store instance
  */
 const getStore = Effect.gen(function* () {
-	const storeApi: StoreApi | undefined = (window as any).__TAURI__?.store
+	const storeApi = getTauriStore()
 
 	if (!storeApi) {
 		return yield* Effect.fail(

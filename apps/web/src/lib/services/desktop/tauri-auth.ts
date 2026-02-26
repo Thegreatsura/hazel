@@ -7,6 +7,14 @@
  * web app POSTs auth data back to localhost server with nonce validation.
  */
 
+import {
+	getTauriCore as getBridgeTauriCore,
+	getTauriEvent as getBridgeTauriEvent,
+	getTauriOpener as getBridgeTauriOpener,
+	type TauriCoreApi,
+	type TauriEventApi,
+	type TauriOpenerApi,
+} from "@hazel/desktop/bridge"
 import type { OrganizationId } from "@hazel/schema"
 import {
 	MissingAuthCodeError,
@@ -17,10 +25,6 @@ import {
 import { Deferred, Duration, Effect, FiberId } from "effect"
 import { TokenExchange } from "./token-exchange"
 import { TokenStorage } from "./token-storage"
-
-type OpenerApi = typeof import("@tauri-apps/plugin-opener")
-type CoreApi = typeof import("@tauri-apps/api/core")
-type EventApi = typeof import("@tauri-apps/api/event")
 
 interface DesktopAuthOptions {
 	returnTo?: string
@@ -36,7 +40,7 @@ interface DesktopAuthResult {
  * Get Tauri opener API, failing if not available
  */
 const getTauriOpener = Effect.gen(function* () {
-	const opener: OpenerApi | undefined = (window as any).__TAURI__?.opener
+	const opener: TauriOpenerApi | undefined = getBridgeTauriOpener()
 	if (!opener) {
 		return yield* new TauriNotAvailableError({
 			message: "Tauri opener not available",
@@ -50,7 +54,7 @@ const getTauriOpener = Effect.gen(function* () {
  * Get Tauri core API, failing if not available
  */
 const getTauriCore = Effect.gen(function* () {
-	const core: CoreApi | undefined = (window as any).__TAURI__?.core
+	const core: TauriCoreApi | undefined = getBridgeTauriCore()
 	if (!core) {
 		return yield* Effect.fail(
 			new TauriNotAvailableError({
@@ -66,7 +70,7 @@ const getTauriCore = Effect.gen(function* () {
  * Get Tauri event API, failing if not available
  */
 const getTauriEvent = Effect.gen(function* () {
-	const event: EventApi | undefined = (window as any).__TAURI__?.event
+	const event: TauriEventApi | undefined = getBridgeTauriEvent()
 	if (!event) {
 		return yield* Effect.fail(
 			new TauriNotAvailableError({

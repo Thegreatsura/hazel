@@ -9,18 +9,17 @@
 
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import { SystemError } from "@effect/platform/Error"
+import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { Effect, Layer, Option } from "effect"
 
 const STORE_NAME = "settings.json"
 
-type StoreApi = typeof import("@tauri-apps/plugin-store")
-type StoreType = Awaited<ReturnType<StoreApi["load"]>>
-
-const store: StoreApi | undefined = (window as any).__TAURI__?.store
+type StoreType = Awaited<ReturnType<TauriStoreApi["load"]>>
 
 // Load store effect - separate from caching
 const loadStore: Effect.Effect<StoreType, SystemError> = Effect.tryPromise({
 	try: async () => {
+		const store = getTauriStore()
 		if (!store) throw new Error("Tauri store not available")
 		return store.load(STORE_NAME, { autoSave: true, defaults: {} })
 	},
