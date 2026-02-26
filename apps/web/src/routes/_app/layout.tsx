@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+import { clearDesktopTokens } from "~/atoms/desktop-auth"
 import { forceRefresh } from "~/lib/auth-token"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
@@ -35,6 +36,11 @@ function RouteComponent() {
 
 	const loginRetry = Number(search.loginRetry) || 0
 	const refreshAttemptedRef = useRef(false)
+	const navigateToDesktopLogin = useCallback(() => {
+		clearDesktopTokens().finally(() => {
+			router.navigate({ to: "/auth/desktop-login" })
+		})
+	}, [router])
 
 	// Handle redirect to login - must be in useEffect, not during render
 	useEffect(() => {
@@ -54,7 +60,7 @@ function RouteComponent() {
 					appRegistry.refresh(currentUserQueryAtom)
 				} else {
 					if (isTauri()) {
-						router.navigate({ to: "/auth/desktop-login" })
+						navigateToDesktopLogin()
 					} else {
 						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
 					}
@@ -64,11 +70,11 @@ function RouteComponent() {
 		}
 
 		if (isTauri()) {
-			router.navigate({ to: "/auth/desktop-login" })
+			navigateToDesktopLogin()
 		} else {
 			login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
 		}
-	}, [user, error, isLoading, login, router])
+	}, [user, error, isLoading, login, navigateToDesktopLogin])
 
 	// Handle session expiry events from token refresh failures (web and desktop)
 	// Attempt refresh before redirecting (Bug B fix)
@@ -83,7 +89,7 @@ function RouteComponent() {
 					isHandling = false
 				} else {
 					if (isTauri()) {
-						router.navigate({ to: "/auth/desktop-login" })
+						navigateToDesktopLogin()
 					} else {
 						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
 					}
@@ -93,7 +99,7 @@ function RouteComponent() {
 
 		window.addEventListener("auth:session-expired", handleSessionExpired)
 		return () => window.removeEventListener("auth:session-expired", handleSessionExpired)
-	}, [router, login])
+	}, [login, navigateToDesktopLogin])
 
 	const handleCopyEmail = async () => {
 		try {

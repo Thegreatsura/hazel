@@ -11,6 +11,7 @@ import { Atom } from "@effect-atom/atom-react"
 import { Clipboard } from "@effect/platform-browser"
 import type { OrganizationId } from "@hazel/schema"
 import { Duration, Effect, Layer, Option, Schema } from "effect"
+import { appRegistry } from "~/lib/registry"
 import { runtime } from "~/lib/services/common/runtime"
 import { TauriAuth } from "~/lib/services/desktop/tauri-auth"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
@@ -326,4 +327,25 @@ export const desktopTokenSchedulerAtom = Atom.make((get) => {
 export const getDesktopAccessToken = (): Promise<string | null> => {
 	if (!isTauri()) return Promise.resolve(null)
 	return getAccessTokenPromise()
+}
+
+export const clearDesktopTokens = (): Promise<void> => {
+	if (!isTauri()) return Promise.resolve()
+
+	return runtime.runPromise(
+		TokenStorage.clearTokens.pipe(
+			Effect.provide(TokenStorageLive),
+			Effect.catchAll((error) => {
+				console.error("[desktop-auth] Failed to clear tokens during recovery:", error)
+				return Effect.void
+			}),
+			Effect.ensuring(
+				Effect.sync(() => {
+					appRegistry.set(desktopTokensAtom, null)
+					appRegistry.set(desktopAuthStatusAtom, "idle")
+					appRegistry.set(desktopAuthErrorAtom, null)
+				}),
+			),
+		),
+	)
 }

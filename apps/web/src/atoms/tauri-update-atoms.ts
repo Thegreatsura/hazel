@@ -7,7 +7,6 @@
 import { Atom } from "@effect-atom/atom-react"
 import { getTauriProcess, getTauriUpdater, type TauriProcessApi, type TauriUpdaterApi } from "@hazel/desktop/bridge"
 import { Data, Duration, Effect } from "effect"
-import { runtime } from "~/lib/services/common/runtime"
 
 type TauriUpdate = Awaited<ReturnType<TauriUpdaterApi["check"]>>
 type DownloadCallback = NonNullable<Parameters<NonNullable<TauriUpdate>["download"]>[0]>
@@ -29,6 +28,10 @@ export class UpdateInstallError extends Data.TaggedError("UpdateInstallError")<{
 }> {}
 
 export class UpdateRelaunchError extends Data.TaggedError("UpdateRelaunchError")<{
+	message: string
+}> {}
+
+export class UpdateExitError extends Data.TaggedError("UpdateExitError")<{
 	message: string
 }> {}
 
@@ -75,7 +78,7 @@ export const UPDATE_CHECK_INTERVAL_MS = Duration.toMillis(Duration.hours(6))
  * This is a plain async function that works with React's useAtomSet.
  */
 export async function checkForUpdates(setUpdateState: (state: TauriUpdateState) => void): Promise<void> {
-	if (!updater || !process) return
+	if (!updater) return
 
 	setUpdateState({ _tag: "checking" })
 
@@ -113,8 +116,6 @@ export const createDownloadEffect = (
 	setDownloadState: (state: TauriDownloadState) => void,
 ) =>
 	Effect.gen(function* () {
-		if (!process) return
-
 		let downloadedBytes = 0
 		let totalBytes: number | undefined
 
@@ -166,11 +167,23 @@ export const createDownloadEffect = (
 		setDownloadState({ _tag: "restarting" })
 		yield* Effect.sleep(Duration.millis(500))
 
-		yield* Effect.tryPromise({
-			try: () => process!.relaunch(),
-			catch: () =>
+		if (!process) {
+			return yield* Effect.fail(
 				new UpdateRelaunchError({
-					message: "Update installed successfully. Please restart the app manually.",
+					message:
+						"Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
+				}),
+			)
+		}
+
+		yield* Effect.tryPromise({
+			try: () => process.relaunch(),
+			catch: (error) =>
+				new UpdateRelaunchError({
+					message:
+						error instanceof Error
+							? error.message
+							: "Automatic restart failed after installing the update.",
 				}),
 		})
 	}).pipe(
@@ -186,9 +199,33 @@ export const createDownloadEffect = (
 					setDownloadState({ _tag: "error", message: error.message })
 				}),
 			UpdateRelaunchError: (error) =>
-				Effect.sync(() => {
+				Effect.gen(function* () {
 					console.error("[update] Relaunch failed:", error.message)
-					setDownloadState({ _tag: "error", message: error.message })
+
+					if (!process) {
+						setDownloadState({
+							_tag: "error",
+							message:
+								"Update installed, but restart is unavailable. Please quit and reopen Hazel manually.",
+						})
+						return
+					}
+
+					yield* Effect.tryPromise({
+						try: () => process.exit(0),
+						catch: () =>
+							new UpdateExitError({
+								message:
+									"Update installed, but restart failed and Hazel could not quit automatically. Please quit and reopen Hazel manually.",
+							}),
+					}).pipe(
+						Effect.catchTag("UpdateExitError", (exitError) =>
+							Effect.sync(() => {
+								console.error("[update] Exit fallback failed:", exitError.message)
+								setDownloadState({ _tag: "error", message: exitError.message })
+							}),
+						),
+					)
 				}),
 		}),
 	)
@@ -196,4 +233,4 @@ export const createDownloadEffect = (
 /**
  * Check if we're in a Tauri environment
  */
-export const isTauriEnvironment = !!updater && !!process
+export const isTauriEnvironment = !!updater

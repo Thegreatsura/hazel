@@ -11,19 +11,16 @@ import {
 	desktopAuthStatusAtom,
 	desktopLoginAtom,
 	desktopLoginFromClipboardAtom,
-	getDesktopAccessToken,
 } from "~/atoms/desktop-auth"
 import { Logo } from "~/components/logo"
 import { Button } from "~/components/ui/button"
+import { shouldRedirectFromDesktopLogin } from "~/lib/desktop-login-guard"
 import { isTauri } from "~/lib/tauri"
 
 export const Route = createFileRoute("/auth/desktop-login")({
 	// Check for existing token before rendering - redirect to home if already logged in
 	loader: async () => {
-		if (!isTauri()) return null
-
-		const token = await getDesktopAccessToken()
-		if (token && token.trim().length > 10) {
+		if (await shouldRedirectFromDesktopLogin()) {
 			throw redirect({ to: "/" })
 		}
 		return null
