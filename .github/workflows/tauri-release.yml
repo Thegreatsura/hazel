@@ -40,7 +40,7 @@ jobs:
             - name: Rust cache
               uses: swatinem/rust-cache@v2
               with:
-                  workspaces: "./apps/web/src-tauri -> target"
+                  workspaces: "./apps/desktop/src-tauri -> target"
 
             - name: Install dependencies (Ubuntu)
               if: matrix.platform == 'ubuntu-22.04'
@@ -69,7 +69,7 @@ jobs:
                   VITE_WORKOS_CLIENT_ID: ${{ vars.VITE_WORKOS_CLIENT_ID }}
                   VITE_R2_PUBLIC_URL: ${{ vars.VITE_R2_PUBLIC_URL }}
               with:
-                  projectPath: apps/web
+                  projectPath: apps/desktop
                   tagName: v__VERSION__
                   releaseName: "Hazel v__VERSION__"
                   releaseBody: "See the assets to download this version and install."
