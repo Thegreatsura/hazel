@@ -14,7 +14,9 @@ const host = process.env.TAURI_DEV_HOST
 const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
 
 // Read app version from desktop tauri.conf.json (single source of truth)
-const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "../desktop/src-tauri/tauri.conf.json"), "utf-8"))
+const tauriConfig = JSON.parse(
+	readFileSync(resolve(__dirname, "../desktop/src-tauri/tauri.conf.json"), "utf-8"),
+)
 const appVersion = tauriConfig.version
 
 // Resolve git commit SHA from environment (Railway) or git

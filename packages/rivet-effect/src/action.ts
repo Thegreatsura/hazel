@@ -56,4 +56,3 @@ export function effect<
 		return runPromise(withContext, c)
 	}) as (c: ActionContext<TState, TConnParams, TConnState, TVars, TInput, undefined>, ...args: Args) => AEff
 }
-

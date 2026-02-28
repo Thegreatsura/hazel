@@ -22,9 +22,7 @@ import { Action } from "@hazel/rivet-effect"
 
 const save = Action.effect(function* (c) {
 	yield* Action.saveState(c, { debounce: 1000 }).pipe(
-		Effect.catchTag("StatePersistenceError", (err) =>
-			Effect.log(`Failed to save: ${err.message}`),
-		),
+		Effect.catchTag("StatePersistenceError", (err) => Effect.log(`Failed to save: ${err.message}`)),
 	)
 })
 ```

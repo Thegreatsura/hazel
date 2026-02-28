@@ -190,4 +190,3 @@ export function effect<TState, TConnParams, TConnState, TVars, TInput, AEff = vo
 		return runEffectOnActorContext(c, eff)
 	}
 }
-

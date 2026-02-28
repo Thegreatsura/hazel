@@ -29,7 +29,10 @@ export const next = <TState, TConnParams, TConnState, TVars, TInput>(
 	name: string,
 	opts?: QueueReceiveOptions,
 ): Effect.Effect<QueueMessage | undefined, never, never> =>
-	Effect.promise(() => (c as unknown as { queue: AnyQueue }).queue.next(name, opts) as Promise<QueueMessage | undefined>)
+	Effect.promise(
+		() =>
+			(c as unknown as { queue: AnyQueue }).queue.next(name, opts) as Promise<QueueMessage | undefined>,
+	)
 
 /**
  * Receives messages from multiple queues.
@@ -40,4 +43,9 @@ export const nextMultiple = <TState, TConnParams, TConnState, TVars, TInput>(
 	names: string[],
 	opts?: QueueReceiveOptions,
 ): Effect.Effect<QueueMessage[] | undefined, never, never> =>
-	Effect.promise(() => (c as unknown as { queue: AnyQueue }).queue.next(names, opts) as Promise<QueueMessage[] | undefined>)
+	Effect.promise(
+		() =>
+			(c as unknown as { queue: AnyQueue }).queue.next(names, opts) as Promise<
+				QueueMessage[] | undefined
+			>,
+	)

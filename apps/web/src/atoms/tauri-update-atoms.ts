@@ -5,7 +5,12 @@
  */
 
 import { Atom } from "@effect-atom/atom-react"
-import { getTauriProcess, getTauriUpdater, type TauriProcessApi, type TauriUpdaterApi } from "@hazel/desktop/bridge"
+import {
+	getTauriProcess,
+	getTauriUpdater,
+	type TauriProcessApi,
+	type TauriUpdaterApi,
+} from "@hazel/desktop/bridge"
 import { Data, Duration, Effect } from "effect"
 
 type TauriUpdate = Awaited<ReturnType<TauriUpdaterApi["check"]>>

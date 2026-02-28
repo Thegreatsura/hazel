@@ -585,12 +585,7 @@ function ConnectedState({
 				</div>
 			</div>
 			{showConfigureButton ? (
-				<Button
-					intent="secondary"
-					size="sm"
-					onPress={onConfigure}
-					isDisabled={isConfiguring}
-				>
+				<Button intent="secondary" size="sm" onPress={onConfigure} isDisabled={isConfiguring}>
 					{isConfiguring ? (
 						<>
 							<svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24">

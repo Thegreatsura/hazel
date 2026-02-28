@@ -140,11 +140,12 @@ createHazelBot({
 })
 
 // In your program:
-yield* bot.onMention((message) =>
-	Effect.gen(function* () {
-		yield* bot.message.reply(message, "You mentioned me! How can I help?")
-	}),
-)
+yield *
+	bot.onMention((message) =>
+		Effect.gen(function* () {
+			yield* bot.message.reply(message, "You mentioned me! How can I help?")
+		}),
+	)
 ```
 
 ## Error Handling
@@ -159,12 +160,13 @@ import {
 	CommandHandlerError,
 } from "@hazel-chat/bot-sdk"
 
-yield* bot.start.pipe(
-	Effect.catchTags({
-		AuthenticationError: (error) => Effect.logError(`Auth failed: ${error.message}`),
-		ShapeStreamCreateError: (error) => Effect.logError(`Stream failed: ${error.message}`),
-	}),
-)
+yield *
+	bot.start.pipe(
+		Effect.catchTags({
+			AuthenticationError: (error) => Effect.logError(`Auth failed: ${error.message}`),
+			ShapeStreamCreateError: (error) => Effect.logError(`Stream failed: ${error.message}`),
+		}),
+	)
 ```
 
 ## Architecture

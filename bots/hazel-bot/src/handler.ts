@@ -1,5 +1,9 @@
 import { LanguageModel } from "@effect/ai"
-import { generateIntegrationInstructions, type AIContentChunk, type HazelBotClient } from "@hazel-chat/bot-sdk"
+import {
+	generateIntegrationInstructions,
+	type AIContentChunk,
+	type HazelBotClient,
+} from "@hazel-chat/bot-sdk"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Cause, Config, Duration, Effect, Exit, Ref, Stream } from "effect"
 
