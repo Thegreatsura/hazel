@@ -14,7 +14,7 @@ export default defineConfig({
 	format: ["esm"],
 	outDir: "dist",
 	clean: true,
-	dts: { resolver: "tsc" },
+	dts: process.env.GENERATE_DTS ? { resolver: "tsc" } : false,
 	target: "es2022",
 	platform: "node",
 	treeshake: true,
