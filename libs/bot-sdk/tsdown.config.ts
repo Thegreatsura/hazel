@@ -25,8 +25,6 @@ export default defineConfig({
 		"@electric-sql/client",
 		"jose",
 		/^rivetkit/,
-		"effect-rpc-tanstack-devtools",
-		"@tanstack/devtools-event-client",
 		"react",
 		"drizzle-orm",
 		"@linear/sdk",
