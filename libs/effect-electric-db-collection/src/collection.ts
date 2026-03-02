@@ -261,7 +261,7 @@ export function effectElectricCollectionOptions<T extends Row<unknown>>(
 
 export function effectElectricCollectionOptions(
 	config: EffectElectricCollectionConfig<any, any, any, any, any>,
-): CollectionConfig<any, string | number, any> & {
+): CollectionConfig<any, string | number, any, any> & {
 	id?: string
 	utils: EffectElectricCollectionUtils
 	schema?: any
