@@ -20,6 +20,7 @@ import { SidebarItem, SidebarLabel, SidebarLink, SidebarTreeItem } from "~/compo
 import { moveChannelToSectionAction } from "~/db/actions"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePermission } from "~/hooks/use-permission"
 import { useScrollIntoViewOnActive } from "~/hooks/use-scroll-into-view-on-active"
 import { exitToastAsync } from "~/lib/toast-exit"
 
@@ -45,6 +46,7 @@ export const ChannelItem = memo(function ChannelItem({
 	sections = [],
 }: ChannelItemProps) {
 	const deleteChannelModal = useModal("delete-channel")
+	const { can } = usePermission()
 
 	const { slug } = useOrganization()
 	const navigate = useNavigate()
@@ -175,18 +177,20 @@ export const ChannelItem = memo(function ChannelItem({
 									<IconGear />
 									<MenuLabel>Settings</MenuLabel>
 								</MenuItem>
-								<MenuItem
-									intent="danger"
-									onAction={() =>
-										deleteChannelModal.open({
-											channelId: channel.id,
-											channelName: channel.name,
-										})
-									}
-								>
-									<IconTrash />
-									<MenuLabel>Delete</MenuLabel>
-								</MenuItem>
+								{can("channel.delete") && (
+									<MenuItem
+										intent="danger"
+										onAction={() =>
+											deleteChannelModal.open({
+												channelId: channel.id,
+												channelName: channel.name,
+											})
+										}
+									>
+										<IconTrash />
+										<MenuLabel>Delete</MenuLabel>
+									</MenuItem>
+								)}
 								<MenuSeparator />
 								<MenuItem intent="danger" onAction={handleLeave}>
 									<IconLeave />

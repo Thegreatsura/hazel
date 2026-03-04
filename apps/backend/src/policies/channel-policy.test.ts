@@ -42,20 +42,30 @@ const makePolicyLayer = (
 	)
 
 describe("ChannelPolicy", () => {
-	it("canCreate requires org membership", async () => {
+	it("canCreate allows admin/owner but denies member (via scope check)", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{
-				[`${TEST_ORG_ID}:${actor.id}`]: "member",
-			},
-			{},
+
+		const memberLayer = makePolicyLayer({ [`${TEST_ORG_ID}:${actor.id}`]: "member" }, {})
+		const adminLayer = makePolicyLayer({ [`${TEST_ORG_ID}:${actor.id}`]: "admin" }, {})
+		const ownerLayer = makePolicyLayer({ [`${TEST_ORG_ID}:${actor.id}`]: "owner" }, {})
+
+		const memberResult = await runWithActorEither(
+			ChannelPolicy.canCreate(TEST_ORG_ID),
+			memberLayer,
+			actor,
+		)
+		const adminResult = await runWithActorEither(ChannelPolicy.canCreate(TEST_ORG_ID), adminLayer, actor)
+		const ownerResult = await runWithActorEither(ChannelPolicy.canCreate(TEST_ORG_ID), ownerLayer, actor)
+		const noMembership = await runWithActorEither(
+			ChannelPolicy.canCreate(TEST_ALT_ORG_ID),
+			memberLayer,
+			actor,
 		)
 
-		const allowed = await runWithActorEither(ChannelPolicy.canCreate(TEST_ORG_ID), layer, actor)
-		const denied = await runWithActorEither(ChannelPolicy.canCreate(TEST_ALT_ORG_ID), layer, actor)
-
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(denied)).toBe(true)
+		expect(Either.isLeft(memberResult)).toBe(true)
+		expect(Either.isRight(adminResult)).toBe(true)
+		expect(Either.isRight(ownerResult)).toBe(true)
+		expect(Either.isLeft(noMembership)).toBe(true)
 	})
 
 	it("canUpdate allows org admins and maps not-found to UnauthorizedError", async () => {

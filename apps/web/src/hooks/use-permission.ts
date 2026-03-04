@@ -1,6 +1,7 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
-import { canPerform, RPC_SCOPE_MAP, type RpcActionName } from "@hazel/domain/scopes"
+import { canPerform, RPC_SCOPE_MAP } from "@hazel/domain/scopes"
+import type { RpcActionName } from "@hazel/domain/scopes"
 import type { OrganizationMember } from "@hazel/domain/models"
 import { organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"

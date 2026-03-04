@@ -43,6 +43,7 @@ import { useActiveThreads } from "~/db/hooks"
 import { useChannelUnreadCountMap } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAppHotkeyLabel } from "~/hooks/use-app-hotkey"
+import { usePermission } from "~/hooks/use-permission"
 import { useAuth } from "~/lib/auth"
 import IconCirclePlus from "../icons/icon-circle-plus"
 import IconEmoji1 from "../icons/icon-emoji-1"
@@ -59,7 +60,7 @@ interface ChannelSectionProps {
 	sectionId: ChannelSectionId | null
 	sectionDisplayId: ChannelSectionId | "default"
 	sectionName: string
-	onCreateChannel: () => void
+	onCreateChannel?: () => void
 	onJoinChannel: () => void
 	isEditable?: boolean
 	/** Map of parent channel IDs to their threads */
@@ -237,6 +238,8 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
 	const { unreadByChannel } = useChannelUnreadCountMap()
 	const hasTauriTitlebar = isTauriMacOS()
+	const { can } = usePermission()
+	const canCreateChannel = can("channel.create")
 
 	// Modal hooks
 	const createOrgModal = useModal("create-organization")
@@ -315,10 +318,12 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								<MenuSeparator />
 
 								<MenuSection>
-									<MenuItem onAction={() => newChannelModal.open()}>
-										<IconCirclePlus />
-										<MenuLabel>Create channel</MenuLabel>
-									</MenuItem>
+									{canCreateChannel && (
+										<MenuItem onAction={() => newChannelModal.open()}>
+											<IconCirclePlus />
+											<MenuLabel>Create channel</MenuLabel>
+										</MenuItem>
+									)}
 									<MenuItem onAction={() => createSectionModal.open()}>
 										<IconFolderPlus />
 										<MenuLabel>Create category</MenuLabel>
@@ -392,7 +397,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								sectionId={null}
 								sectionDisplayId="default"
 								sectionName="Channels"
-								onCreateChannel={() => newChannelModal.open()}
+								onCreateChannel={canCreateChannel ? () => newChannelModal.open() : undefined}
 								onJoinChannel={() => joinChannelModal.open()}
 								threadsByParent={threadsByParent}
 								sections={sections ?? []}
@@ -407,7 +412,9 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									sectionId={section.id}
 									sectionDisplayId={section.id}
 									sectionName={section.name}
-									onCreateChannel={() => newChannelModal.open()}
+									onCreateChannel={
+										canCreateChannel ? () => newChannelModal.open() : undefined
+									}
 									onJoinChannel={() => joinChannelModal.open()}
 									isEditable
 									threadsByParent={threadsByParent}

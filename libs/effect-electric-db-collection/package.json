@@ -13,7 +13,7 @@
 	},
 	"dependencies": {
 		"@effect-atom/atom": "catalog:effect",
-		"@electric-sql/client": "1.5.5",
+		"@electric-sql/client": "1.5.10",
 		"@standard-schema/spec": "^1.1.0",
 		"@tanstack/db": "0.5.30",
 		"@tanstack/electric-db-collection": "0.2.37",

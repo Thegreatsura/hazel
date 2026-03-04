@@ -38,6 +38,7 @@ import { TauriMenuListener } from "~/components/tauri-menu-listener"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useAppHotkey } from "~/hooks/use-app-hotkey"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePermission } from "~/hooks/use-permission"
 import { useAuth } from "~/lib/auth"
 import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
 import { PresenceProvider } from "~/providers/presence-provider"
@@ -45,16 +46,18 @@ import { PresenceProvider } from "~/providers/presence-provider"
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
 	loader: async () => {
-		const {
-			attachmentCollection,
-			channelCollection,
-			channelMemberCollection,
-			channelSectionCollection,
-			organizationCollection,
-			organizationMemberCollection,
-			userCollection,
-		} = await import("~/db/collections")
-		const { threadWithMemberCollection } = await import("~/db/materialized-collections")
+		const [
+			{
+				attachmentCollection,
+				channelCollection,
+				channelMemberCollection,
+				channelSectionCollection,
+				organizationCollection,
+				organizationMemberCollection,
+				userCollection,
+			},
+			{ threadWithMemberCollection },
+		] = await Promise.all([import("~/db/collections"), import("~/db/materialized-collections")])
 		await Promise.all([
 			channelCollection.preload(),
 			channelMemberCollection.preload(),
@@ -75,6 +78,7 @@ function RouteComponent() {
 	const [initialPage, setInitialPage] = useState<CommandPalettePageType>("home")
 	const { user, login } = useAuth()
 	const { organizationId, isLoading: isOrgLoading } = useOrganization()
+	const { can } = usePermission()
 	const isRedirecting = useRef(false)
 
 	// Modal state and actions from hooks
@@ -104,7 +108,7 @@ function RouteComponent() {
 	// Global keyboard shortcuts
 	useAppHotkey("commandPalette.open", openCommandPaletteHome)
 	useAppHotkey("search.open", openSearch)
-	useAppHotkey("channel.create", () => newChannelModal.open())
+	useAppHotkey("channel.create", () => can("channel.create") && newChannelModal.open())
 	useAppHotkey("dm.create", () => createDmModal.open())
 	useAppHotkey("invite.email", () => emailInviteModal.open())
 

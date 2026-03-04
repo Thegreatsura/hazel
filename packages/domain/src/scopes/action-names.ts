@@ -1,4 +1,3 @@
-import type { RpcGroup } from "@effect/rpc"
 import type {
 	AttachmentRpcs,
 	BotRpcs,
@@ -23,7 +22,10 @@ import type {
 	UserRpcs,
 } from "../rpc"
 
-type ActionOf<G> = RpcGroup.Rpcs<G>["_tag"]
+// Extract the Rpc union from a group via structural matching on its `requests` property,
+// bypassing the `string extends _tag ? never` guard in RpcGroup.Rpcs
+type RpcsOf<G> = G extends { readonly requests: ReadonlyMap<string, infer R> } ? R : never
+type ActionOf<G> = RpcsOf<G> extends { readonly _tag: infer T extends string } ? T : never
 
 /**
  * Union of all valid RPC action names (e.g. "message.create", "channel.delete").
@@ -51,3 +53,7 @@ export type RpcActionName =
 	| ActionOf<TypingIndicatorRpcs>
 	| ActionOf<UserPresenceStatusRpcs>
 	| ActionOf<UserRpcs>
+
+// Compile-time assertion: fails the build if RpcActionName ever regresses to `never`
+type _AssertNotNever<T> = [T] extends [never] ? { ERROR: "RpcActionName resolved to never" } : true
+declare const _check: _AssertNotNever<RpcActionName>
