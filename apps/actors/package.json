@@ -13,10 +13,10 @@
 		"@rivetkit/cloudflare-workers": "^2.1.6",
 		"rivetkit": "2.1.6"
 	},
-	"peerDependencies": {
-		"typescript": "5.9.3"
-	},
 	"devDependencies": {
 		"wrangler": "^4.70.0"
+	},
+	"peerDependencies": {
+		"typescript": "5.9.3"
 	}
 }

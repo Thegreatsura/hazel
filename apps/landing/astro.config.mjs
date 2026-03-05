@@ -6,6 +6,9 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineConfig({
 	site: "https://hazel.sh",
 	integrations: [react(), sitemap()],
+	redirects: {
+		"/download": "/desktop",
+	},
 	vite: {
 		plugins: [tailwindcss()],
 	},

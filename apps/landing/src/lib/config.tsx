@@ -34,7 +34,7 @@ export const siteConfig = {
 			{ id: 2, name: "Pricing", href: "/pricing" },
 			{ id: 3, name: "Integrations", href: "/integrations" },
 			{ id: 4, name: "Changelog", href: "/changelog" },
-			{ id: 5, name: "Desktop", href: "/download" },
+			{ id: 5, name: "Desktop", href: "/desktop" },
 			{ id: 6, name: "GitHub", href: "https://github.com/hazelchat/hazel" },
 		],
 	},
@@ -636,8 +636,8 @@ export const siteConfig = {
 		},
 	},
 	pricing: {
-		title: "Pricing that scales with you",
-		description: "Free for open source projects and small teams. Upgrade when you're ready.",
+		title: "Free while in beta",
+		description: "Hazel is free for everyone during the beta. Paid plans coming soon.",
 		pricingItems: [
 			{
 				name: "Free",
@@ -646,55 +646,16 @@ export const siteConfig = {
 				period: "month",
 				yearlyPrice: "$0",
 				features: [
-					"Up to 10 team members",
+					"Unlimited team members",
 					"Unlimited channels & messages",
 					"GitHub integration",
 					"Desktop & web app",
 					"Full-text message search",
 					"Community support",
 				],
-				description: "Perfect for small teams and open source projects",
+				description: "Everything you need to get started",
 				buttonText: "Start Free",
-				buttonColor: "bg-accent text-primary",
-				isPopular: false,
-			},
-			{
-				name: "Pro",
-				href: "https://app.hazel.sh",
-				price: "$8",
-				period: "month",
-				yearlyPrice: "$80",
-				features: [
-					"Unlimited team members",
-					"All Free features",
-					"Linear & GitHub integrations",
-					"Custom bots & webhooks",
-					"AI-powered search & summaries",
-					"SSO authentication",
-					"Priority support",
-					"Advanced admin controls",
-				],
-				description: "For growing teams that need advanced integrations",
-				buttonText: "Upgrade to Pro",
 				buttonColor: "bg-secondary text-white",
-				isPopular: true,
-			},
-			{
-				name: "Enterprise",
-				href: "mailto:sales@hazel.sh",
-				price: "Custom",
-				period: "month",
-				yearlyPrice: "Custom",
-				features: [
-					"Everything in Pro",
-					"Self-hosted deployment",
-					"SAML SSO & SCIM provisioning",
-					"Audit logs & compliance",
-					"Dedicated support & SLA",
-				],
-				description: "For organizations that need full control and compliance",
-				buttonText: "Contact Sales",
-				buttonColor: "bg-primary text-primary-foreground",
 				isPopular: false,
 			},
 		],
@@ -709,8 +670,8 @@ export const siteConfig = {
 				<p>
 					We switched from Slack to Hazel and never looked back. The GitHub integration is native,
 					not bolted on.
-					<Highlight>PR reviews happen right in our team channels now.</Highlight> Exactly what a dev
-					team needs.
+					<Highlight>PR reviews happen right in our team channels now.</Highlight> Exactly what a
+					dev team needs.
 				</p>
 			),
 		},
@@ -792,7 +753,9 @@ export const siteConfig = {
 				<p>
 					The fact that Hazel is open source means we can audit the code and contribute back. That
 					trust factor is huge for us.
-					<Highlight>Transparency isn&apos;t just a feature, it&apos;s the foundation.</Highlight>{" "}
+					<Highlight>
+						Transparency isn&apos;t just a feature, it&apos;s the foundation.
+					</Highlight>{" "}
 					Love what this team is building.
 				</p>
 			),
@@ -806,8 +769,8 @@ export const siteConfig = {
 				<p>
 					As a designer, I care about the small details. Hazel&apos;s UI is clean, fast, and
 					doesn&apos;t get in the way.
-					<Highlight>It&apos;s the first chat app that feels thoughtfully designed.</Highlight>{" "}
-					Even file sharing and media previews are polished.
+					<Highlight>It&apos;s the first chat app that feels thoughtfully designed.</Highlight> Even
+					file sharing and media previews are polished.
 				</p>
 			),
 		},
@@ -820,10 +783,8 @@ export const siteConfig = {
 				<p>
 					We needed a solution with strong security and SSO support. Hazel delivered with WorkOS
 					integration out of the box.
-					<Highlight>
-						Enterprise-grade auth without enterprise-grade complexity.
-					</Highlight>{" "}
-					Perfect for regulated industries.
+					<Highlight>Enterprise-grade auth without enterprise-grade complexity.</Highlight> Perfect
+					for regulated industries.
 				</p>
 			),
 		},
@@ -956,7 +917,7 @@ export const siteConfig = {
 			links: [
 				{ id: 1, title: "Features", url: "/features" },
 				{ id: 2, title: "Pricing", url: "/pricing" },
-				{ id: 3, title: "Desktop App", url: "/download" },
+				{ id: 3, title: "Desktop App", url: "/desktop" },
 				{ id: 4, title: "Integrations", url: "/integrations" },
 			],
 		},
