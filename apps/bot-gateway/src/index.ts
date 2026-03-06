@@ -13,6 +13,7 @@ import { Redis } from "@hazel/effect-bun"
 import type { BotId } from "@hazel/schema"
 import type { ServerWebSocket } from "bun"
 import { Config, ConfigProvider, Deferred, Effect, Layer, Option, Ref, Runtime, Schema } from "effect"
+import { TracerLive } from "./observability/tracer"
 
 const DEFAULT_PORT = 3034
 const DEFAULT_DURABLE_STREAMS_URL = "http://localhost:4437/v1/stream"
@@ -36,6 +37,68 @@ async function hashToken(token: string): Promise<string> {
 
 const responseText = (response: Response): Promise<string> =>
 	response.text().catch(() => `${response.status} ${response.statusText}`)
+
+const annotateResponseStatus = (status: number) =>
+	Effect.all([
+		Effect.annotateCurrentSpan("http.status_code", status),
+		Effect.annotateCurrentSpan("http.response.status_code", status),
+	]).pipe(Effect.asVoid)
+
+const annotateHttpRequest = (route: string, method: string) =>
+	Effect.all([
+		Effect.annotateCurrentSpan("http.route", route),
+		Effect.annotateCurrentSpan("http.method", method),
+		Effect.annotateCurrentSpan("http.request.method", method),
+	]).pipe(Effect.asVoid)
+
+const annotateErrorType = (errorType: string) => Effect.annotateCurrentSpan("error.type", errorType)
+
+const annotateSessionContext = (options: {
+	sessionId?: string
+	botId?: BotId
+	botName?: string
+	resumeOffset?: string
+	nextOffset?: string
+	resumed?: boolean
+	op?: string
+}) =>
+	Effect.all([
+		...(options.sessionId
+			? [Effect.annotateCurrentSpan("gateway.session_id", options.sessionId)]
+			: []),
+		...(options.botId ? [Effect.annotateCurrentSpan("bot.id", options.botId)] : []),
+		...(options.botName ? [Effect.annotateCurrentSpan("bot.name", options.botName)] : []),
+		...(options.resumeOffset
+			? [Effect.annotateCurrentSpan("gateway.resume_offset", options.resumeOffset)]
+			: []),
+		...(options.nextOffset ? [Effect.annotateCurrentSpan("gateway.next_offset", options.nextOffset)] : []),
+		...(options.resumed !== undefined
+			? [Effect.annotateCurrentSpan("gateway.resumed", options.resumed)]
+			: []),
+		...(options.op ? [Effect.annotateCurrentSpan("gateway.op", options.op)] : []),
+	]).pipe(Effect.asVoid)
+
+const annotateReconnectReason = (reason: string) =>
+	Effect.annotateCurrentSpan("gateway.reconnect_reason", reason)
+
+const decodePayload = (payload: string | BufferSource) => {
+	if (typeof payload === "string") {
+		return payload
+	}
+	if (payload instanceof ArrayBuffer) {
+		return new TextDecoder().decode(new Uint8Array(payload))
+	}
+	return new TextDecoder().decode(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength))
+}
+
+const extractGatewayOp = (payload: string | BufferSource): string | undefined => {
+	try {
+		const raw = JSON.parse(decodePayload(payload)) as { op?: unknown }
+		return typeof raw.op === "string" ? raw.op : undefined
+	} catch {
+		return undefined
+	}
+}
 
 class GatewayConfig extends Effect.Service<GatewayConfig>()("GatewayConfig", {
 	accessors: true,
@@ -329,18 +392,6 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 					}),
 			})
 
-		const decodePayload = (payload: string | BufferSource) => {
-			if (typeof payload === "string") {
-				return payload
-			}
-			if (payload instanceof ArrayBuffer) {
-				return new TextDecoder().decode(new Uint8Array(payload))
-			}
-			return new TextDecoder().decode(
-				new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength),
-			)
-		}
-
 		const startDeliveryLoop = (id: string) =>
 			Effect.gen(function* () {
 				while (true) {
@@ -349,50 +400,76 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						return
 					}
 
-					const batch = yield* durableStreams.readBatch(session.botId, session.currentOffset)
-					if (batch.events.length === 0) {
+					yield* Effect.gen(function* () {
+						yield* annotateSessionContext({
+							sessionId: id,
+							botId: session.botId,
+							botName: session.botName,
+							resumeOffset: session.currentOffset,
+						})
+
+						const batch = yield* durableStreams.readBatch(session.botId, session.currentOffset)
+						yield* Effect.annotateCurrentSpan("gateway.batch_size", batch.events.length)
+						yield* annotateSessionContext({
+							sessionId: id,
+							botId: session.botId,
+							botName: session.botName,
+							nextOffset: batch.nextOffset,
+						})
+
+						if (batch.events.length === 0) {
+							yield* updateSession(id, (current) => ({
+								...current,
+								currentOffset: batch.nextOffset,
+							}))
+							return
+						}
+
+						const ackDeferred = yield* Deferred.make<void, GatewayProtocolError>()
 						yield* updateSession(id, (current) => ({
 							...current,
-							currentOffset: batch.nextOffset,
+							pendingAck: {
+								nextOffset: batch.nextOffset,
+								deferred: ackDeferred,
+							},
 						}))
-						continue
-					}
 
-					const ackDeferred = yield* Deferred.make<void, GatewayProtocolError>()
-					yield* updateSession(id, (current) => ({
-						...current,
-						pendingAck: {
+						yield* sendFrame(session.socket, {
+							op: "DISPATCH",
+							sessionId: id,
+							events: batch.events,
 							nextOffset: batch.nextOffset,
-							deferred: ackDeferred,
-						},
-					}))
+						})
 
-					yield* sendFrame(session.socket, {
-						op: "DISPATCH",
-						sessionId: id,
-						events: batch.events,
-						nextOffset: batch.nextOffset,
-					})
-
-					const ackResult = yield* Deferred.await(ackDeferred).pipe(
-						Effect.timeoutFail({
-							onTimeout: () =>
-								new GatewayProtocolError({
-									message: `Timed out waiting for ACK from session ${id}`,
-								}),
-							duration: config.batchAckTimeoutMs,
-						}),
-					)
-					void ackResult
+						const ackResult = yield* Deferred.await(ackDeferred).pipe(
+							Effect.timeoutFail({
+								onTimeout: () =>
+									new GatewayProtocolError({
+										message: `Timed out waiting for ACK from session ${id}`,
+									}),
+								duration: config.batchAckTimeoutMs,
+							}),
+						)
+						void ackResult
+					}).pipe(Effect.withSpan("botGateway.deliveryBatch"))
 				}
 			}).pipe(
 				Effect.catchTags({
 					DurableStreamGatewayError: (error: DurableStreamGatewayError) =>
-						Effect.logWarning("Gateway delivery loop failed", { error, sessionId: id }).pipe(
+						Effect.gen(function* () {
+							yield* annotateErrorType("DurableStreamGatewayError")
+							yield* annotateReconnectReason("durable_stream_unavailable")
+							yield* Effect.logWarning("Gateway delivery loop failed", { error, sessionId: id })
+						}).pipe(
 							Effect.zipRight(
 								Effect.gen(function* () {
 									const session = yield* getSession(id)
 									if (session) {
+										yield* annotateSessionContext({
+											sessionId: id,
+											botId: session.botId,
+											botName: session.botName,
+										})
 										yield* sendFrame(session.socket, {
 											op: "RECONNECT",
 											reason: "durable_stream_unavailable",
@@ -405,14 +482,23 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 							),
 						),
 					GatewayProtocolError: (error: GatewayProtocolError) =>
-						Effect.logWarning("Gateway delivery loop protocol failure", {
-							error,
-							sessionId: id,
+						Effect.gen(function* () {
+							yield* annotateErrorType("GatewayProtocolError")
+							yield* annotateReconnectReason(error.message)
+							yield* Effect.logWarning("Gateway delivery loop protocol failure", {
+								error,
+								sessionId: id,
+							})
 						}).pipe(
 							Effect.zipRight(
 								Effect.gen(function* () {
 									const session = yield* getSession(id)
 									if (session) {
+										yield* annotateSessionContext({
+											sessionId: id,
+											botId: session.botId,
+											botName: session.botName,
+										})
 										yield* sendFrame(session.socket, {
 											op: "RECONNECT",
 											reason: error.message,
@@ -433,8 +519,17 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 		) {
 			const bot = yield* validateBotToken(frame.botToken)
 			const id = resumeSessionId ?? sessionId()
+			yield* annotateSessionContext({
+				sessionId: id,
+				botId: bot.id,
+				botName: bot.name,
+				resumeOffset: frame.resumeOffset,
+				resumed,
+				op: "IDENTIFY",
+			})
 			const leaseClaimed = yield* tryClaimLease(bot.id, id)
 			if (!leaseClaimed) {
+				yield* annotateErrorType("GatewayProtocolError")
 				yield* sendFrame(socket, {
 					op: "INVALID_SESSION",
 					reason: "another active session already owns this bot token",
@@ -481,6 +576,10 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 		) =>
 			Effect.gen(function* () {
 				const frame = yield* parseClientFrame(decodePayload(rawPayload))
+				yield* annotateSessionContext({
+					sessionId: socket.data.sessionId ?? ("sessionId" in frame ? frame.sessionId : undefined),
+					op: frame.op,
+				})
 				switch (frame.op) {
 					case "IDENTIFY": {
 						yield* identify(socket, frame, false)
@@ -504,6 +603,11 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						if (id) {
 							const session = yield* getSession(id)
 							if (session) {
+								yield* annotateSessionContext({
+									sessionId: id,
+									botId: session.botId,
+									botName: session.botName,
+								})
 								yield* renewLease(session.botId, id)
 							}
 						}
@@ -522,6 +626,12 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 							return
 						}
 
+						yield* annotateSessionContext({
+							sessionId: frame.sessionId,
+							botId: session.botId,
+							botName: session.botName,
+							nextOffset: frame.nextOffset,
+						})
 						yield* updateSession(frame.sessionId, (current) => ({
 							...current,
 							currentOffset: frame.nextOffset,
@@ -534,15 +644,22 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 			}).pipe(
 				Effect.catchTags({
 					GatewayAuthError: (error) =>
-						sendFrame(socket, {
-							op: "INVALID_SESSION",
-							reason: error.message,
+						Effect.gen(function* () {
+							yield* annotateErrorType("GatewayAuthError")
+							yield* sendFrame(socket, {
+								op: "INVALID_SESSION",
+								reason: error.message,
+							})
 						}),
 					GatewayProtocolError: (error) =>
-						sendFrame(socket, {
-							op: "INVALID_SESSION",
-							reason: error.message,
-						}).pipe(Effect.zipRight(Effect.sync(() => socket.close(1008, error.message)))),
+						Effect.gen(function* () {
+							yield* annotateErrorType("GatewayProtocolError")
+							yield* sendFrame(socket, {
+								op: "INVALID_SESSION",
+								reason: error.message,
+							})
+							yield* Effect.sync(() => socket.close(1008, error.message))
+						}),
 				}),
 			)
 
@@ -557,6 +674,11 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 					return
 				}
 
+				yield* annotateSessionContext({
+					sessionId: id,
+					botId: session.botId,
+					botName: session.botName,
+				})
 				session.closed = true
 				if (session.pendingAck) {
 					yield* Deferred.fail(
@@ -606,12 +728,56 @@ const MainLive = Layer.mergeAll(
 	Redis.Default,
 	DurableStreamClientLive,
 	BotGatewayHubLive,
+	TracerLive,
 ).pipe(Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())))
 
 const program = Effect.gen(function* () {
 	const config = yield* GatewayConfig
 	const hub = yield* BotGatewayHub
 	const runtime = (yield* Effect.runtime<any>()) as Runtime.Runtime<never>
+
+	const handleStreamProxyRequest = (request: Request, url: URL) =>
+		Effect.gen(function* () {
+			yield* annotateHttpRequest("/bot-gateway/stream", request.method)
+			const authHeader = request.headers.get("Authorization")
+			if (!authHeader || !authHeader.startsWith("Bearer ")) {
+				yield* annotateErrorType("GatewayAuthError")
+				yield* annotateResponseStatus(401)
+				return new Response("Missing bot token", { status: 401 })
+			}
+			const bot = yield* hub.validateBotToken(authHeader.slice(7))
+			yield* annotateSessionContext({
+				botId: bot.id,
+				botName: bot.name,
+			})
+			const upstream = yield* hub.proxyRead(bot.id, url.searchParams)
+			const body = yield* Effect.promise(() => upstream.text())
+			yield* annotateResponseStatus(upstream.status)
+			return new Response(body, {
+				status: upstream.status,
+				headers: upstream.headers,
+			})
+		}).pipe(
+			Effect.catchTag("GatewayAuthError", (error) =>
+				Effect.gen(function* () {
+					yield* annotateErrorType("GatewayAuthError")
+					yield* annotateResponseStatus(401)
+					return new Response(error.message, { status: 401 })
+				}),
+			),
+			Effect.catchTag("DurableStreamGatewayError", (error) =>
+				Effect.gen(function* () {
+					yield* annotateErrorType("DurableStreamGatewayError")
+					yield* annotateResponseStatus(503)
+					return new Response(error.message, { status: 503 })
+				}),
+			),
+			Effect.withSpan("botGateway.http.streamProxy"),
+			Effect.annotateLogs({
+				route: "/bot-gateway/stream",
+				method: request.method,
+			}),
+		)
 
 	const server = yield* Effect.acquireRelease(
 		Effect.sync(() =>
@@ -624,48 +790,75 @@ const program = Effect.gen(function* () {
 					}
 
 					if (request.method === "GET" && url.pathname === "/bot-gateway/ws") {
-						if (server.upgrade(request, { data: { sessionId: null } })) {
-							return undefined
-						}
-						return new Response("Failed to upgrade websocket", { status: 400 })
+						return Runtime.runPromise(runtime)(
+							Effect.gen(function* () {
+								yield* annotateHttpRequest("/bot-gateway/ws", request.method)
+								if (server.upgrade(request, { data: { sessionId: null } })) {
+									return undefined
+								}
+								yield* annotateErrorType("WebSocketUpgradeError")
+								yield* annotateResponseStatus(400)
+								return new Response("Failed to upgrade websocket", { status: 400 })
+							}).pipe(
+								Effect.withSpan("botGateway.http.websocketUpgrade"),
+								Effect.annotateLogs({
+									route: "/bot-gateway/ws",
+									method: request.method,
+								}),
+							),
+						)
 					}
 
 					if (request.method === "GET" && url.pathname === "/bot-gateway/stream") {
-						return Runtime.runPromise(runtime)(
-							Effect.gen(function* () {
-								const authHeader = request.headers.get("Authorization")
-								if (!authHeader || !authHeader.startsWith("Bearer ")) {
-									return new Response("Missing bot token", { status: 401 })
-								}
-								const bot = yield* hub.validateBotToken(authHeader.slice(7))
-								const upstream = yield* hub.proxyRead(bot.id, url.searchParams)
-								const body = yield* Effect.promise(() => upstream.text())
-								return new Response(body, {
-									status: upstream.status,
-									headers: upstream.headers,
-								})
-							}).pipe(
-								Effect.catchTag("GatewayAuthError", (error) =>
-									Effect.succeed(new Response(error.message, { status: 401 })),
-								),
-								Effect.catchTag("DurableStreamGatewayError", (error) =>
-									Effect.succeed(new Response(error.message, { status: 503 })),
-								),
-							),
-						)
+						return Runtime.runPromise(runtime)(handleStreamProxyRequest(request, url))
 					}
 
 					return new Response("Not found", { status: 404 })
 				},
 				websocket: {
 					open(socket) {
-						Runtime.runFork(runtime)(hub.onOpen(socket))
+						Runtime.runFork(runtime)(
+							Effect.gen(function* () {
+								yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
+								yield* hub.onOpen(socket)
+							}).pipe(
+								Effect.withSpan("botGateway.websocket.open"),
+								Effect.annotateLogs({ route: "/bot-gateway/ws" }),
+							),
+						)
 					},
 					message(socket, message) {
-						Runtime.runFork(runtime)(hub.onMessage(socket, message))
+						const op = extractGatewayOp(message)
+						Runtime.runFork(runtime)(
+							Effect.gen(function* () {
+								yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
+								yield* annotateSessionContext({
+									sessionId: socket.data.sessionId ?? undefined,
+									op,
+								})
+								yield* hub.onMessage(socket, message)
+							}).pipe(
+								Effect.withSpan("botGateway.websocket.message"),
+								Effect.annotateLogs({
+									route: "/bot-gateway/ws",
+									op,
+								}),
+							),
+						)
 					},
 					close(socket) {
-						Runtime.runFork(runtime)(hub.onClose(socket))
+						Runtime.runFork(runtime)(
+							Effect.gen(function* () {
+								yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
+								yield* annotateSessionContext({
+									sessionId: socket.data.sessionId ?? undefined,
+								})
+								yield* hub.onClose(socket)
+							}).pipe(
+								Effect.withSpan("botGateway.websocket.close"),
+								Effect.annotateLogs({ route: "/bot-gateway/ws" }),
+							),
+						)
 					},
 				},
 			}),
