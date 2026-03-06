@@ -75,9 +75,7 @@ export interface ActorsClientConfig {
 export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
 	accessors: true,
 	effect: Effect.fn("ActorsClient.create")(function* (config: ActorsClientConfig) {
-		const endpoint =
-			config.endpoint ??
-			"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+		const endpoint = config.endpoint ?? "https://rivet.hazel.sh"
 		const client = createActorsClient(endpoint)
 
 		yield* Effect.annotateCurrentSpan("endpoint", endpoint)

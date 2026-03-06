@@ -9,7 +9,7 @@ import { messageActor } from "./actors/message-actor"
  * - Production: Connects to Rivet Cloud via RIVET_ENDPOINT
  *
  * Data flow:
- * 1. Client connects to Engine (port 6420 local, or api.rivet.dev production)
+ * 1. Client connects to Engine (port 6420 local, or rivet.hazel.sh production)
  * 2. Engine calls /api/rivet/start on this serverless backend to run actors
  * 3. Actor state is persisted by the Engine
  *

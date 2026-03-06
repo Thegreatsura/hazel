@@ -26,7 +26,7 @@ import type { Registry } from "./registry"
 export function createActorsClient(endpoint?: string) {
 	// Clients connect to the Rivet Engine:
 	// - Local dev: Engine spawned by actors service on port 6420
-	// - Production: Rivet Cloud endpoint (api.rivet.dev)
+	// - Production: rivet.hazel.sh
 	const url =
 		endpoint ?? process.env.RIVET_PUBLIC_ENDPOINT ?? process.env.RIVET_URL ?? "http://localhost:6420"
 	return createClient<Registry>(url)

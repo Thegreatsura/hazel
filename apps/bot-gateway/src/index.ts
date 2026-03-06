@@ -63,15 +63,15 @@ const annotateSessionContext = (options: {
 	op?: string
 }) =>
 	Effect.all([
-		...(options.sessionId
-			? [Effect.annotateCurrentSpan("gateway.session_id", options.sessionId)]
-			: []),
+		...(options.sessionId ? [Effect.annotateCurrentSpan("gateway.session_id", options.sessionId)] : []),
 		...(options.botId ? [Effect.annotateCurrentSpan("bot.id", options.botId)] : []),
 		...(options.botName ? [Effect.annotateCurrentSpan("bot.name", options.botName)] : []),
 		...(options.resumeOffset
 			? [Effect.annotateCurrentSpan("gateway.resume_offset", options.resumeOffset)]
 			: []),
-		...(options.nextOffset ? [Effect.annotateCurrentSpan("gateway.next_offset", options.nextOffset)] : []),
+		...(options.nextOffset
+			? [Effect.annotateCurrentSpan("gateway.next_offset", options.nextOffset)]
+			: []),
 		...(options.resumed !== undefined
 			? [Effect.annotateCurrentSpan("gateway.resumed", options.resumed)]
 			: []),

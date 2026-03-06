@@ -7,8 +7,7 @@
 
 import { Config } from "effect"
 
-const DEFAULT_ACTORS_URL =
-	"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+const DEFAULT_ACTORS_URL = "https://rivet.hazel.sh"
 
 /**
  * Bot environment configuration schema

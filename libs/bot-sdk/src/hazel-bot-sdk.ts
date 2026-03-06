@@ -95,8 +95,7 @@ import {
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
 
-const DEFAULT_ACTORS_ENDPOINT =
-	"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+const DEFAULT_ACTORS_ENDPOINT = "https://rivet.hazel.sh"
 
 /**
  * Internal configuration context for HazelBotClient
@@ -1672,7 +1671,7 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 
 	/**
 	 * Actors/Rivet endpoint for live state streaming
-	 * @default "https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+	 * @default "https://rivet.hazel.sh"
 	 * @example "http://localhost:6420" // For local development
 	 */
 	readonly actorsEndpoint?: string
