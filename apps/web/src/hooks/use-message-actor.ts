@@ -69,9 +69,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function normalizeMessageActorError(error: unknown): string {
-	return isTemporaryActorServiceError(error)
-		? ACTOR_SERVICE_ERROR_UI_MESSAGE
-		: getErrorMessage(error)
+	return isTemporaryActorServiceError(error) ? ACTOR_SERVICE_ERROR_UI_MESSAGE : getErrorMessage(error)
 }
 
 /**
@@ -108,6 +106,7 @@ export function useMessageActor(
 	const connectionRef = useRef<ReturnType<
 		ReturnType<typeof rivetClient.message.getOrCreate>["connect"]
 	> | null>(null)
+	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	// Sync state from cache when cached prop changes (e.g., after database update with steps)
 	useEffect(() => {
@@ -148,6 +147,11 @@ export function useMessageActor(
 			conn.onOpen(() => {
 				if (disposed) return
 				setIsConnected(true)
+				// Clear pending error — reconnect succeeded
+				if (errorTimeoutRef.current) {
+					clearTimeout(errorTimeoutRef.current)
+					errorTimeoutRef.current = null
+				}
 				// Fetch initial state
 				if (conn?.getState) {
 					conn.getState().then((state) => {
@@ -165,23 +169,42 @@ export function useMessageActor(
 				if (disposed) return
 				console.error("[useMessageActor] Connection error:", err)
 				setIsConnected(false)
-				safeSetState((prev) => {
-					if (prev.text || prev.steps.length > 0) {
-						return prev
-					}
 
-					return {
-						...prev,
-						status: "failed",
-						error: normalizeMessageActorError(err),
-						completedAt: Date.now(),
-						isStreaming: false,
-					}
-				})
+				// Clear any existing error timeout
+				if (errorTimeoutRef.current) {
+					clearTimeout(errorTimeoutRef.current)
+				}
+
+				// Delay showing error — RivetKit auto-reconnects in ~250ms.
+				// Only show error if reconnect doesn't succeed within 3s.
+				errorTimeoutRef.current = setTimeout(() => {
+					errorTimeoutRef.current = null
+					safeSetState((prev) => {
+						if (prev.text || prev.steps.length > 0 || prev.status === "active") {
+							return prev
+						}
+
+						return {
+							...prev,
+							status: "failed",
+							error: normalizeMessageActorError(err),
+							completedAt: Date.now(),
+							isStreaming: false,
+						}
+					})
+				}, 3000)
 			})
+
+			const clearErrorTimeout = () => {
+				if (errorTimeoutRef.current) {
+					clearTimeout(errorTimeoutRef.current)
+					errorTimeoutRef.current = null
+				}
+			}
 
 			// Actor events - using centralized types
 			conn.on("started", (payload: MessageActorEvents["started"]) => {
+				clearErrorTimeout()
 				safeSetState((prev) => ({
 					...prev,
 					status: "active",
@@ -199,6 +222,7 @@ export function useMessageActor(
 			})
 
 			conn.on("textChunk", (payload: MessageActorEvents["textChunk"]) => {
+				clearErrorTimeout()
 				safeSetState((prev) => ({
 					...prev,
 					text: payload.fullText,
@@ -219,6 +243,7 @@ export function useMessageActor(
 			})
 
 			conn.on("completed", (payload: MessageActorEvents["completed"]) => {
+				clearErrorTimeout()
 				safeSetState((prev) => ({
 					...prev,
 					status: "completed",
@@ -241,6 +266,7 @@ export function useMessageActor(
 
 			// Step events
 			conn.on("stepAdded", (payload: MessageActorEvents["stepAdded"]) => {
+				clearErrorTimeout()
 				safeSetState((prev) => ({
 					...prev,
 					steps: [...prev.steps, payload.step],
@@ -279,6 +305,10 @@ export function useMessageActor(
 
 		return () => {
 			disposed = true
+			if (errorTimeoutRef.current) {
+				clearTimeout(errorTimeoutRef.current)
+				errorTimeoutRef.current = null
+			}
 			if (conn) {
 				conn.dispose()
 			}
