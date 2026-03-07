@@ -108,7 +108,7 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 	const headers = new Headers(response.headers)
 	headers.delete("content-encoding")
 	headers.delete("content-length")
-	headers.set("vary", "cookie")
+	headers.set("vary", "Authorization")
 	headers.set("X-Accel-Buffering", "no")
 
 	return new Response(response.body, {
