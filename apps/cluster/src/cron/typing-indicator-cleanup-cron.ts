@@ -27,12 +27,14 @@ export const TypingIndicatorCleanupCronLayer = ClusterCron.make({
 				}),
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.deleted_count", deleted.length)
+
 		if (deleted.length > 0) {
 			yield* Effect.logDebug("Deleted stale typing indicators", {
 				count: deleted.length,
 				thresholdMs: TYPING_INDICATOR_STALE_MS,
 			})
 		}
-	}),
+	}).pipe(Effect.withSpan("cron.TypingIndicatorCleanup")),
 	skipIfOlderThan: Duration.minutes(1),
 })

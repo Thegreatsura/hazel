@@ -39,6 +39,8 @@ export const PresenceCleanupCronLayer = ClusterCron.make({
 				),
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.stale_count", staleUsers.length)
+
 		if (staleUsers.length === 0) {
 			return
 		}
@@ -60,6 +62,6 @@ export const PresenceCleanupCronLayer = ClusterCron.make({
 		yield* Effect.logInfo(`Marked ${staleUsers.length} users as offline`, {
 			userIds: userIds.slice(0, 10), // Log first 10 for debugging
 		})
-	}),
+	}).pipe(Effect.withSpan("cron.PresenceCleanup")),
 	skipIfOlderThan: Duration.minutes(2),
 })

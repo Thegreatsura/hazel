@@ -26,11 +26,18 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 			Effect.gen(function* () {
 				const externalId = Integrations.makeIntegrationBotExternalId(provider)
 
+				yield* Effect.annotateCurrentSpan("cache.system", "memory")
+				yield* Effect.annotateCurrentSpan("cache.name", "bot-user")
+				yield* Effect.annotateCurrentSpan("cache.operation", "get")
+
 				// Check cache first
 				const cached = cache.get(externalId)
 				if (cached) {
+					yield* Effect.annotateCurrentSpan("cache.result", "hit")
 					return Option.some(cached)
 				}
+
+				yield* Effect.annotateCurrentSpan("cache.result", "miss")
 
 				// Query database
 				const results = yield* db
@@ -72,7 +79,11 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 				})
 
 				return Option.some(userId)
-			})
+			}).pipe(
+				Effect.withSpan("BotUserService.getBotUserId", {
+					attributes: { "bot.provider": provider },
+				}),
+			)
 
 		/**
 		 * Get GitHub bot user ID.
@@ -94,8 +105,9 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 			yield* Effect.logDebug("Warming bot user cache...")
 			const providers = ["github", "linear", "figma", "notion", "rss"] as const
 			yield* Effect.forEach(providers, (p) => getBotUserId(p), { concurrency: "unbounded" })
+			yield* Effect.annotateCurrentSpan("cache.warmed_count", cache.size)
 			yield* Effect.logDebug(`Bot user cache warmed with ${cache.size} entries`)
-		})
+		}).pipe(Effect.withSpan("BotUserService.warmCache"))
 
 		return {
 			getBotUserId,

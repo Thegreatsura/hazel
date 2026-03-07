@@ -52,6 +52,8 @@ export const RssPollCronLayer = ClusterCron.make({
 				),
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.due_count", dueSubscriptions.length)
+
 		if (dueSubscriptions.length === 0) {
 			return
 		}
@@ -108,7 +110,8 @@ export const RssPollCronLayer = ClusterCron.make({
 			{ concurrency: 5 },
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.triggered_count", dueSubscriptions.length)
 		yield* Effect.logInfo(`RSS Poll: Triggered workflows for ${dueSubscriptions.length} feeds`)
-	}),
+	}).pipe(Effect.withSpan("cron.RssPoll")),
 	skipIfOlderThan: Duration.minutes(10),
 })

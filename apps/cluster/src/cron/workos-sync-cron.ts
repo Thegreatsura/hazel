@@ -12,6 +12,8 @@ export const WorkOSSyncCronLayer = ClusterCron.make({
 	execute: Effect.gen(function* () {
 		yield* Effect.logDebug("Starting scheduled WorkOS sync...")
 		const result = yield* WorkOSSync.syncAll
+		yield* Effect.annotateCurrentSpan("cron.duration_ms", result.endTime - result.startTime)
+		yield* Effect.annotateCurrentSpan("cron.total_errors", result.totalErrors)
 		yield* Effect.logDebug("WorkOS sync completed", {
 			users: result.users,
 			organizations: result.organizations,
@@ -20,6 +22,6 @@ export const WorkOSSyncCronLayer = ClusterCron.make({
 			totalErrors: result.totalErrors,
 			durationMs: result.endTime - result.startTime,
 		})
-	}),
+	}).pipe(Effect.withSpan("cron.WorkOSSync")),
 	skipIfOlderThan: Duration.minutes(5),
 })

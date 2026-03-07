@@ -38,9 +38,11 @@ export const UploadCleanupCronLayer = ClusterCron.make({
 				.returning({ id: schema.attachmentsTable.id }),
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.marked_count", result.length)
+
 		if (result.length > 0) {
 			yield* Effect.logInfo(`UploadCleanup: Marked ${result.length} stale uploads as failed`)
 		}
-	}),
+	}).pipe(Effect.withSpan("cron.UploadCleanup")),
 	skipIfOlderThan: Duration.hours(2),
 })

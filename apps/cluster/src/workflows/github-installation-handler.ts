@@ -4,7 +4,11 @@ import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"
 
 export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.GitHubInstallationWorkflowPayload) {
+	Effect.fn("workflow.GitHubInstallation")(function* (payload: Cluster.GitHubInstallationWorkflowPayload) {
+		yield* Effect.annotateCurrentSpan("workflow.action", payload.action)
+		yield* Effect.annotateCurrentSpan("workflow.installation_id", payload.installationId)
+		yield* Effect.annotateCurrentSpan("workflow.account_login", payload.accountLogin)
+
 		yield* Effect.logDebug(
 			`Starting GitHubInstallationWorkflow for '${payload.action}' event on account ${payload.accountLogin}`,
 		)
@@ -65,6 +69,8 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 					)
 					return { connections: [], totalCount: 0 }
 				}
+
+				yield* Effect.annotateCurrentSpan("activity.connection_count", connections.length)
 
 				yield* Effect.logDebug(
 					`Found ${connections.length} connection(s) for installation ${payload.installationId}`,
@@ -152,6 +158,9 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 								),
 						}),
 					)
+
+				yield* Effect.annotateCurrentSpan("activity.new_status", newStatus)
+				yield* Effect.annotateCurrentSpan("activity.updated_count", updated.length)
 
 				yield* Effect.logDebug(
 					`Successfully updated ${updated.length} connection(s) for installation ${payload.installationId} to '${newStatus}'`,

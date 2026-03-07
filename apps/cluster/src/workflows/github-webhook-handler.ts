@@ -7,7 +7,11 @@ import { Effect, Option, Schema } from "effect"
 import { BotUserService } from "../services/bot-user-service.ts"
 
 export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.GitHubWebhookWorkflowPayload) {
+	Effect.fn("workflow.GitHubWebhook")(function* (payload: Cluster.GitHubWebhookWorkflowPayload) {
+		yield* Effect.annotateCurrentSpan("workflow.event_type", payload.eventType)
+		yield* Effect.annotateCurrentSpan("workflow.repository", payload.repositoryFullName)
+		yield* Effect.annotateCurrentSpan("workflow.repository_id", payload.repositoryId)
+
 		yield* Effect.logDebug(
 			`Starting GitHubWebhookWorkflow for ${payload.eventType} event on ${payload.repositoryFullName}`,
 		)
@@ -60,6 +64,8 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 						}),
 					)
 
+				yield* Effect.annotateCurrentSpan("activity.subscription_count", subscriptions.length)
+
 				yield* Effect.logDebug(
 					`Found ${subscriptions.length} subscriptions for repository ${payload.repositoryId}`,
 				)
@@ -107,6 +113,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 			return
 		}
 
+		yield* Effect.annotateCurrentSpan("workflow.eligible_count", eligibleSubscriptions.length)
 		yield* Effect.logDebug(`${eligibleSubscriptions.length} subscriptions are eligible for this event`)
 
 		// Build the embed for this event
@@ -175,6 +182,8 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 						)
 					}
 				}
+
+				yield* Effect.annotateCurrentSpan("activity.messages_created", messageIds.length)
 
 				return {
 					messageIds,

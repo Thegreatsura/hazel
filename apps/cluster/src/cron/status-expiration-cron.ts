@@ -37,6 +37,8 @@ export const StatusExpirationCronLayer = ClusterCron.make({
 				),
 		)
 
+		yield* Effect.annotateCurrentSpan("cron.expired_count", expiredStatuses.length)
+
 		if (expiredStatuses.length === 0) {
 			return
 		}
@@ -65,6 +67,6 @@ export const StatusExpirationCronLayer = ClusterCron.make({
 		yield* Effect.logInfo(`Cleared ${expiredStatuses.length} expired statuses`, {
 			userIds: userIds.slice(0, 10), // Log first 10 for debugging
 		})
-	}),
+	}).pipe(Effect.withSpan("cron.StatusExpiration")),
 	skipIfOlderThan: Duration.minutes(2),
 })

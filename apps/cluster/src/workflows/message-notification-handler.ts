@@ -55,7 +55,12 @@ export const buildNotificationInsertRows = (
 }
 
 export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.MessageNotificationWorkflowPayload) {
+	Effect.fn("workflow.MessageNotification")(function* (payload: Cluster.MessageNotificationWorkflowPayload) {
+		yield* Effect.annotateCurrentSpan("workflow.message_id", payload.messageId)
+		yield* Effect.annotateCurrentSpan("workflow.channel_id", payload.channelId)
+		yield* Effect.annotateCurrentSpan("workflow.channel_type", payload.channelType)
+		yield* Effect.annotateCurrentSpan("workflow.author_id", payload.authorId)
+
 		yield* Effect.logDebug(
 			`Starting MessageNotificationWorkflow for message ${payload.messageId} in channel ${payload.channelId} (type: ${payload.channelType})`,
 		)
@@ -66,6 +71,9 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 		// Determine if this is a DM/group chat or regular channel
 		const isDmOrGroup = payload.channelType === "direct" || payload.channelType === "single"
 		const shouldNotifyAll = isDmOrGroup || mentions.hasChannelMention || mentions.hasHereMention
+
+		yield* Effect.annotateCurrentSpan("workflow.mode", isDmOrGroup ? "dm_group" : "regular")
+		yield* Effect.annotateCurrentSpan("workflow.notify_all", shouldNotifyAll)
 
 		yield* Effect.logDebug(
 			`Notification mode: ${isDmOrGroup ? "DM/Group" : "Regular channel"}, notify all: ${shouldNotifyAll}`,
@@ -141,6 +149,8 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 									),
 							}),
 						)
+
+					yield* Effect.annotateCurrentSpan("activity.members_count", channelMembers.length)
 
 					yield* Effect.logDebug(
 						`Found ${channelMembers.length} members to notify (all members mode)`,
@@ -256,6 +266,8 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 						}),
 					)
 
+				yield* Effect.annotateCurrentSpan("activity.members_count", channelMembers.length)
+
 				yield* Effect.logDebug(`Found ${channelMembers.length} members to notify (smart mode)`)
 
 				return {
@@ -286,6 +298,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 				const startedAt = Date.now()
+				yield* Effect.annotateCurrentSpan("activity.candidate_count", membersResult.members.length)
 				yield* Effect.logDebug(`Creating notifications for ${membersResult.members.length} members`)
 
 				const userIds = membersResult.members.map((member) => member.userId)
@@ -390,6 +403,8 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 				}
 
 				const notificationIds = insertedNotifications.map((row) => row.id) as NotificationId[]
+				yield* Effect.annotateCurrentSpan("activity.eligible_count", values.length)
+				yield* Effect.annotateCurrentSpan("activity.inserted_count", insertedNotifications.length)
 				yield* Effect.logDebug("Notification batch completed", {
 					candidates: membersResult.members.length,
 					eligible: values.length,
@@ -411,6 +426,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 			),
 		)
 
+		yield* Effect.annotateCurrentSpan("workflow.notified_count", notificationsResult.notifiedCount)
 		yield* Effect.logDebug(
 			`MessageNotificationWorkflow completed: ${notificationsResult.notifiedCount} notifications created`,
 		)

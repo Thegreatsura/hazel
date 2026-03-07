@@ -7,7 +7,11 @@ import { Effect, Option, Schema } from "effect"
 import { BotUserService } from "../services/bot-user-service.ts"
 
 export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.RssFeedPollWorkflowPayload) {
+	Effect.fn("workflow.RssFeedPoll")(function* (payload: Cluster.RssFeedPollWorkflowPayload) {
+		yield* Effect.annotateCurrentSpan("workflow.subscription_id", payload.subscriptionId)
+		yield* Effect.annotateCurrentSpan("workflow.feed_url", payload.feedUrl)
+		yield* Effect.annotateCurrentSpan("workflow.channel_id", payload.channelId)
+
 		yield* Effect.logDebug(
 			`Starting RssFeedPollWorkflow for subscription ${payload.subscriptionId} (${payload.feedUrl})`,
 		)
@@ -31,6 +35,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 						}),
 				})
 
+				yield* Effect.annotateCurrentSpan("activity.item_count", parsedFeed.items.length)
 				yield* Effect.logDebug(`Fetched ${parsedFeed.items.length} items from ${payload.feedUrl}`)
 
 				return {
@@ -181,6 +186,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 				const messageIds: MessageId[] = []
 				const itemGuidsPosted: string[] = []
 
+				yield* Effect.annotateCurrentSpan("activity.new_item_count", newItems.length)
+
 				yield* Effect.logDebug(
 					`Posting ${itemsToPost.length} new items (of ${newItems.length} total new)`,
 				)
@@ -266,6 +273,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 							.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
 					)
 					.pipe(Effect.orDie)
+
+				yield* Effect.annotateCurrentSpan("activity.messages_created", messageIds.length)
 
 				return {
 					messageIds,

@@ -7,8 +7,10 @@ import { Effect } from "effect"
 const DEFAULT_MAX_AGE_MINUTES = 10
 
 export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.CleanupUploadsWorkflowPayload) {
+	Effect.fn("workflow.CleanupUploads")(function* (payload: Cluster.CleanupUploadsWorkflowPayload) {
 		const maxAgeMinutes = payload.maxAgeMinutes ?? DEFAULT_MAX_AGE_MINUTES
+
+		yield* Effect.annotateCurrentSpan("workflow.max_age_minutes", maxAgeMinutes)
 
 		yield* Effect.logDebug(`Starting CleanupUploadsWorkflow (maxAgeMinutes: ${maxAgeMinutes})`)
 
@@ -61,6 +63,7 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 					ageMinutes: Math.floor((Date.now() - upload.uploadedAt.getTime()) / (60 * 1000)),
 				}))
 
+				yield* Effect.annotateCurrentSpan("activity.stale_count", uploads.length)
 				yield* Effect.logDebug(`Found ${uploads.length} stale uploads`)
 
 				return {
@@ -123,6 +126,8 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 						`Marked attachment ${upload.id} (${upload.fileName}) as failed (age: ${upload.ageMinutes}min)`,
 					)
 				}
+
+				yield* Effect.annotateCurrentSpan("activity.marked_count", failedIds.length)
 
 				return {
 					markedCount: failedIds.length,

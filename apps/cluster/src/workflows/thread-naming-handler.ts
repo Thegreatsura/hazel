@@ -30,7 +30,10 @@ type ThreadNamingError =
 	| Cluster.ThreadNameUpdateError
 
 export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
-	Effect.fn(function* (payload: Cluster.ThreadNamingWorkflowPayload) {
+	Effect.fn("workflow.ThreadNaming")(function* (payload: Cluster.ThreadNamingWorkflowPayload) {
+		yield* Effect.annotateCurrentSpan("workflow.thread_channel_id", payload.threadChannelId)
+		yield* Effect.annotateCurrentSpan("workflow.original_message_id", payload.originalMessageId)
+
 		yield* Effect.logDebug(`Starting ThreadNamingWorkflow for thread ${payload.threadChannelId}`)
 
 		// Activity 1: Get thread context from database
@@ -156,6 +159,8 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 						),
 					)
 
+				yield* Effect.annotateCurrentSpan("activity.thread_message_count", threadMessages.length)
+
 				return {
 					threadChannelId: payload.threadChannelId,
 					currentName: thread.name,
@@ -265,6 +270,9 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					threadName = "Discussion"
 				}
 
+				yield* Effect.annotateCurrentSpan("activity.ai_provider", "openrouter")
+				yield* Effect.annotateCurrentSpan("activity.generated_name", threadName)
+
 				yield* Effect.logDebug(`Generated thread name: ${threadName}`)
 
 				return { threadName }
@@ -309,6 +317,9 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							),
 						),
 					)
+
+				yield* Effect.annotateCurrentSpan("activity.previous_name", contextResult.currentName ?? "")
+				yield* Effect.annotateCurrentSpan("activity.new_name", nameResult.threadName)
 
 				yield* Effect.logDebug(
 					`Updated thread ${payload.threadChannelId} name from "${contextResult.currentName}" to "${nameResult.threadName}"`,
