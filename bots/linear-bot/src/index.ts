@@ -1,5 +1,5 @@
 import { LanguageModel } from "@effect/ai"
-import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
+import { OpenRouterClient, OpenRouterLanguageModel } from "@hazel/ai-openrouter"
 import { FetchHttpClient } from "@effect/platform"
 import { Config, Effect, Layer, Schema } from "effect"
 import { runHazelBot } from "@hazel-chat/bot-sdk"
