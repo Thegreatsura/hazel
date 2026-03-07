@@ -1,6 +1,53 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { ACTOR_SERVICE_ERROR_UI_MESSAGE, ACTOR_SERVICE_ERROR_UI_TITLE } from "@hazel/domain"
+
+vi.mock("~/components/icons/icon-brain-sparkle", () => ({
+	IconBrainSparkle: () => null,
+}))
+
+vi.mock("~/components/icons/icon-sparkles", () => ({
+	IconSparkles: () => null,
+}))
+
+vi.mock("~/components/icons/icon-warning", () => ({
+	IconWarning: () => null,
+}))
+
+vi.mock("~/hooks/use-message-actor", () => ({
+	useMessageActor: () => ({
+		status: "idle",
+		data: {},
+		text: "",
+		isStreaming: false,
+		progress: null,
+		error: null,
+		startedAt: null,
+		completedAt: null,
+		steps: [],
+		currentStepIndex: null,
+		isConnected: false,
+	}),
+}))
+
+vi.mock("~/lib/utils", () => ({
+	cn: (...classes: Array<string | undefined | null | false>) => classes.filter(Boolean).join(" "),
+}))
+
+vi.mock("./agent-steps-view", () => ({
+	AgentSteps: {
+		Root: () => null,
+	},
+}))
+
+vi.mock("./slate-editor/slate-message-viewer", () => ({
+	SlateMessageViewer: () => null,
+}))
+
+vi.mock("./streaming-markdown", () => ({
+	StreamingMarkdown: ({ children }: { children: any }) => <>{children}</>,
+}))
+
 import { MessageLive } from "./message-live-state"
 import { MessageLiveContext } from "./message-live-context"
 
