@@ -1,11 +1,9 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
 import { ChannelMemberRepo } from "./channel-member-repo"
 import { ChannelRepo } from "./channel-repo"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("OrganizationRepo", {
 	accessors: true,

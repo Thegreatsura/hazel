@@ -21,18 +21,18 @@ export class JwksService extends Effect.Service<JwksService>()("JwksService", {
 				return cached.value
 			}
 
-			if (!config.workosClientId) {
-				return yield* Effect.fail(
-					new ConfigError({
-						message:
-							"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
-					}),
-				)
-			}
+			const clientId = yield* Option.match(config.workosClientId, {
+				onNone: () =>
+					Effect.fail(
+						new ConfigError({
+							message:
+								"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
+						}),
+					),
+				onSome: Effect.succeed,
+			})
 
-			const jwks = createRemoteJWKSet(
-				new URL(`https://api.workos.com/sso/jwks/${config.workosClientId}`),
-			)
+			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 			yield* Ref.set(jwksRef, Option.some(jwks))
 			return jwks
 		})

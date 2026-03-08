@@ -1,10 +1,8 @@
-import { and, count, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, count, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",

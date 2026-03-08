@@ -1,7 +1,15 @@
 import { Database, schema } from "@hazel/db"
-import type { OrganizationId, UserId } from "@hazel/schema"
+import {
+	OrganizationId,
+	WorkOSInvitationId,
+	WorkOSOrganizationId,
+	WorkOSRole,
+	WorkOSUserId,
+	type UserId,
+} from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
 import { Effect, Match, Option, pipe, Schema, Stream } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
@@ -35,6 +43,49 @@ export interface FullSyncResult {
 	endTime: number
 }
 
+export const WorkOSSyncUserPayload = Schema.Struct({
+	id: WorkOSUserId,
+	email: Schema.String,
+	firstName: Schema.NullOr(Schema.String),
+	lastName: Schema.NullOr(Schema.String),
+	profilePictureUrl: Schema.NullOr(Schema.String),
+})
+
+export const WorkOSSyncUserDeletedPayload = Schema.Struct({
+	id: WorkOSUserId,
+})
+
+export const WorkOSSyncOrganizationPayload = Schema.Struct({
+	id: WorkOSOrganizationId,
+	name: Schema.String,
+	externalId: Schema.optional(Schema.NullOr(Schema.String)),
+})
+
+export const WorkOSSyncMembershipPayload = Schema.Struct({
+	organizationId: WorkOSOrganizationId,
+	userId: WorkOSUserId,
+	role: Schema.optional(
+		Schema.Struct({
+			slug: Schema.optional(Schema.String),
+		}),
+	),
+})
+
+export const WorkOSSyncMembershipRemovedPayload = Schema.Struct({
+	organizationId: WorkOSOrganizationId,
+	userId: WorkOSUserId,
+})
+
+export const decodeInternalOrganizationId = (externalId: string) =>
+	Schema.decodeUnknown(OrganizationId)(externalId)
+
+export const normalizeWorkOSRole = (
+	role: unknown,
+): Effect.Effect<Schema.Schema.Type<typeof WorkOSRole>, never> =>
+	Schema.decodeUnknown(WorkOSRole)(role).pipe(
+		Effect.orElseSucceed((): Schema.Schema.Type<typeof WorkOSRole> => "member"),
+	)
+
 export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 	accessors: true,
 	effect: Effect.gen(function* () {
@@ -44,6 +95,30 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		const orgRepo = yield* OrganizationRepo
 		const orgMemberRepo = yield* OrganizationMemberRepo
 		const invitationRepo = yield* InvitationRepo
+		const decodeWebhookData = <S extends Schema.Schema.AnyNoContext>(schema: S) => (data: unknown) =>
+			Schema.decodeUnknown(schema)(data).pipe(
+				Effect.mapError(
+					(error) =>
+						new WorkOSSyncError({
+							message: "Invalid WorkOS webhook payload",
+							cause: TreeFormatter.formatErrorSync(error),
+						}),
+				),
+			)
+		const decodeWorkOSUserId = Schema.decodeUnknown(WorkOSUserId)
+		const decodeWorkOSOrganizationId = Schema.decodeUnknown(WorkOSOrganizationId)
+		const decodeWorkOSInvitationId = Schema.decodeUnknown(WorkOSInvitationId)
+
+		const resolveInternalOrganizationId = (externalId: string, workosOrgId: string) =>
+			decodeInternalOrganizationId(externalId).pipe(
+				Effect.mapError(
+					(error) =>
+						new WorkOSSyncError({
+							message: `Invalid WorkOS externalId for organization ${workosOrgId}`,
+							cause: TreeFormatter.formatErrorSync(error),
+						}),
+				),
+			)
 
 		const normalizeAvatarUrl = (url: string | null | undefined): string | null =>
 			url?.trim() ? url : null
@@ -106,7 +181,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			Effect.withSpan("WorkOSSync.fetchAllOrganizations"),
 		)
 
-		const fetchAllMemberships = (workosOrgId: string) =>
+		const fetchAllMemberships = (workosOrgId: WorkOSOrganizationId) =>
 			pipe(
 				Stream.paginateEffect(undefined as string | undefined, (after) =>
 					workos
@@ -134,7 +209,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}),
 			)
 
-		const fetchAllInvitations = (workosOrgId: string) =>
+		const fetchAllInvitations = (workosOrgId: WorkOSOrganizationId) =>
 			pipe(
 				Stream.paginateEffect(undefined as string | undefined, (after) =>
 					workos
@@ -191,47 +266,47 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const upsertStart = Date.now()
 			yield* Effect.all(
 				workosUsers.map((workosUser) => {
-					const existingUser = existingUserMap.get(workosUser.id)
-
-					// For existing users, preserve their custom profile data
-					// Only update from WorkOS if WorkOS has meaningful values
-					const firstName = existingUser
-						? workosUser.firstName || existingUser.firstName // Keep existing if WorkOS is empty
-						: workosUser.firstName || ""
-					const lastName = existingUser
-						? workosUser.lastName || existingUser.lastName // Keep existing if WorkOS is empty
-						: workosUser.lastName || ""
-					const workosAvatarUrl = normalizeAvatarUrl(workosUser.profilePictureUrl)
-					const existingAvatarUrl = normalizeAvatarUrl(existingUser?.avatarUrl)
-					const avatarUrl = existingUser
-						? workosAvatarUrl &&
-							(existingAvatarUrl === null || isVercelFallbackAvatarUrl(existingAvatarUrl))
-							? workosAvatarUrl
-							: isVercelFallbackAvatarUrl(existingAvatarUrl)
-								? null
-								: existingAvatarUrl
-						: workosAvatarUrl
-
 					return collectResult(
-						userRepo.upsertByExternalId({
-							externalId: workosUser.id,
-							email: workosUser.email,
-							firstName,
-							lastName,
-							avatarUrl,
-							userType: "user",
-							settings: null,
-							isOnboarded: false,
-							timezone: null,
-							deletedAt: null,
-						}),
-						() => {
+						Effect.gen(function* () {
+							const workosUserId = yield* decodeWorkOSUserId(workosUser.id)
+							const existingUser = existingUserMap.get(workosUserId)
+							const firstName = existingUser
+								? workosUser.firstName || existingUser.firstName
+								: workosUser.firstName || ""
+							const lastName = existingUser
+								? workosUser.lastName || existingUser.lastName
+								: workosUser.lastName || ""
+							const workosAvatarUrl = normalizeAvatarUrl(workosUser.profilePictureUrl)
+							const existingAvatarUrl = normalizeAvatarUrl(existingUser?.avatarUrl)
+							const avatarUrl = existingUser
+								? workosAvatarUrl &&
+									(existingAvatarUrl === null || isVercelFallbackAvatarUrl(existingAvatarUrl))
+									? workosAvatarUrl
+									: isVercelFallbackAvatarUrl(existingAvatarUrl)
+										? null
+										: existingAvatarUrl
+								: workosAvatarUrl
+
+							yield* userRepo.upsertWorkOSUser({
+								externalId: workosUserId,
+								email: workosUser.email,
+								firstName,
+								lastName,
+								avatarUrl,
+								userType: "user",
+								settings: null,
+								isOnboarded: false,
+								timezone: null,
+								deletedAt: null,
+							})
+
 							if (existingUser) {
 								result.updated++
 							} else {
 								result.created++
 							}
-						},
+						}),
+						() => undefined,
 						(error) => {
 							result.errors.push(`Error syncing user ${workosUser.id}: ${error}`)
 						},
@@ -299,7 +374,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								return
 							}
 
-							const orgId = workosOrg.externalId as OrganizationId
+							const orgId = yield* resolveInternalOrganizationId(
+								workosOrg.externalId,
+								workosOrg.id,
+							)
 							const existingOrg = existingOrgMap.get(orgId)
 
 							if (existingOrg) {
@@ -371,8 +449,22 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 			const workosOrg = workosOrgResult.right
 
-			// Fetch memberships from WorkOS using WorkOS organization ID (with pagination)
-			const workosMembershipsResult = yield* pipe(fetchAllMemberships(workosOrg.id), Effect.either)
+				// Fetch memberships from WorkOS using WorkOS organization ID (with pagination)
+				const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
+					Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
+					Effect.either,
+				)
+				if (workosOrganizationId._tag === "Left") {
+					result.errors.push(
+						`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.left}`,
+					)
+					return result
+				}
+
+				const workosMembershipsResult = yield* pipe(
+					fetchAllMemberships(workosOrganizationId.right),
+					Effect.either,
+				)
 
 			if (workosMembershipsResult._tag === "Left") {
 				result.errors.push(
@@ -396,45 +488,47 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Track which memberships we've seen from WorkOS
 			const seenUserIds = new Set<string>()
 
-			// Upsert memberships from WorkOS
-			yield* Effect.all(
-				workosMemberships.map((workosMembership) => {
-					const user = userMap.get(workosMembership.userId)
-					if (!user) {
-						result.errors.push(`User ${workosMembership.userId} not found for membership`)
-						return Effect.succeed(undefined)
-					}
-
-					seenUserIds.add(user.id)
-					const existing = existingMembershipMap.get(user.id)
-					const role = (workosMembership.role?.slug || "member") as "admin" | "member" | "owner"
-
-					return collectResult(
-						orgMemberRepo.upsertByOrgAndUser({
-							organizationId: organizationId,
-							userId: user.id,
-							role,
-							nickname: undefined,
-							joinedAt: new Date(),
-							invitedBy: null,
-							deletedAt: null,
-						}),
-						() => {
-							if (existing) {
-								result.updated++
-							} else {
-								result.created++
+				// Upsert memberships from WorkOS
+				yield* Effect.all(
+					workosMemberships.map((workosMembership) =>
+						Effect.gen(function* () {
+							const user = userMap.get(workosMembership.userId)
+							if (!user) {
+								result.errors.push(`User ${workosMembership.userId} not found for membership`)
+								return
 							}
-						},
-						(error) => {
-							result.errors.push(
-								`Error syncing membership for user ${workosMembership.userId}: ${error}`,
+
+							seenUserIds.add(user.id)
+							const existing = existingMembershipMap.get(user.id)
+							const role = yield* normalizeWorkOSRole(workosMembership.role?.slug)
+
+							yield* collectResult(
+								orgMemberRepo.upsertByOrgAndUser({
+									organizationId,
+									userId: user.id,
+									role,
+									nickname: undefined,
+									joinedAt: new Date(),
+									invitedBy: null,
+									deletedAt: null,
+								}),
+								() => {
+									if (existing) {
+										result.updated++
+									} else {
+										result.created++
+									}
+								},
+								(error) => {
+									result.errors.push(
+										`Error syncing membership for user ${workosMembership.userId}: ${error}`,
+									)
+								},
 							)
-						},
-					)
-				}),
-				{ concurrency: "unbounded" },
-			)
+						}),
+					),
+					{ concurrency: "unbounded" },
+				)
 
 			// DISABLED: Soft delete memberships that no longer exist in WorkOS
 			// Skip mock users and machine/bot users (they're not managed by WorkOS)
@@ -478,12 +572,26 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.left}`,
 				)
 				return result
-			}
+				}
 
-			const workosOrg = workosOrgResult.right
+				const workosOrg = workosOrgResult.right
 
-			// Fetch invitations from WorkOS using WorkOS organization ID (with pagination)
-			const workosInvitationsResult = yield* pipe(fetchAllInvitations(workosOrg.id), Effect.either)
+				// Fetch invitations from WorkOS using WorkOS organization ID (with pagination)
+				const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
+					Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
+					Effect.either,
+				)
+				if (workosOrganizationId._tag === "Left") {
+					result.errors.push(
+						`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.left}`,
+					)
+					return result
+				}
+
+				const workosInvitationsResult = yield* pipe(
+					fetchAllInvitations(workosOrganizationId.right),
+					Effect.either,
+				)
 
 			if (workosInvitationsResult._tag === "Left") {
 				result.errors.push(
@@ -502,63 +610,64 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const userMap = new Map(users.map((u) => [u.externalId, u]))
 
 			// Create a map of existing invitations by WorkOS ID
-			const existingInvitationMap = new Map(
-				existingInvitations.map((inv) => [inv.workosInvitationId, inv]),
-			)
+				const existingInvitationMap = new Map(
+					existingInvitations.map((inv) => [inv.workosInvitationId, inv]),
+				)
 
-			// Upsert invitations from WorkOS
-			yield* Effect.all(
-				workosInvitations.map((workosInvitation) => {
-					const existing = existingInvitationMap.get(workosInvitation.id)
+				// Upsert invitations from WorkOS
+				yield* Effect.all(
+					workosInvitations.map((workosInvitation) =>
+						Effect.gen(function* () {
+							const workosInvitationId = yield* decodeWorkOSInvitationId(workosInvitation.id)
+							const existing = existingInvitationMap.get(workosInvitationId)
 
-					// Determine status based on WorkOS data
-					let status: "pending" | "accepted" | "expired" | "revoked" = "pending"
-					if (workosInvitation.state === "accepted") {
-						status = "accepted"
-					} else if (workosInvitation.state === "expired") {
-						status = "expired"
-					} else if (workosInvitation.state === "revoked") {
-						status = "revoked"
-					}
-
-					// Find inviter user if available
-					let invitedBy: UserId | null = null
-					if (workosInvitation.inviterUserId) {
-						const inviter = userMap.get(workosInvitation.inviterUserId)
-						if (inviter) {
-							invitedBy = inviter.id as UserId
-						}
-					}
-
-					return collectResult(
-						invitationRepo.upsertByWorkosId({
-							workosInvitationId: workosInvitation.id,
-							invitationUrl: workosInvitation.acceptInvitationUrl,
-							organizationId: organizationId,
-							email: workosInvitation.email,
-							invitedBy: invitedBy,
-							invitedAt: new Date(workosInvitation.createdAt),
-							expiresAt: new Date(workosInvitation.expiresAt),
-							status,
-							acceptedAt: workosInvitation.acceptedAt
-								? new Date(workosInvitation.acceptedAt)
-								: null,
-							acceptedBy: null,
-						}),
-						() => {
-							if (existing) {
-								result.updated++
-							} else {
-								result.created++
+							let status: "pending" | "accepted" | "expired" | "revoked" = "pending"
+							if (workosInvitation.state === "accepted") {
+								status = "accepted"
+							} else if (workosInvitation.state === "expired") {
+								status = "expired"
+							} else if (workosInvitation.state === "revoked") {
+								status = "revoked"
 							}
-						},
-						(error) => {
-							result.errors.push(`Error syncing invitation ${workosInvitation.id}: ${error}`)
-						},
-					)
-				}),
-				{ concurrency: "unbounded" },
-			)
+
+							let invitedBy: UserId | null = null
+							if (workosInvitation.inviterUserId) {
+								const inviter = userMap.get(workosInvitation.inviterUserId)
+								if (inviter) {
+									invitedBy = inviter.id
+								}
+							}
+
+							yield* collectResult(
+								invitationRepo.upsertByWorkosId({
+									workosInvitationId,
+									invitationUrl: workosInvitation.acceptInvitationUrl,
+									organizationId,
+									email: workosInvitation.email,
+									invitedBy,
+									invitedAt: new Date(workosInvitation.createdAt),
+									expiresAt: new Date(workosInvitation.expiresAt),
+									status,
+									acceptedAt: workosInvitation.acceptedAt
+										? new Date(workosInvitation.acceptedAt)
+										: null,
+									acceptedBy: null,
+								}),
+								() => {
+									if (existing) {
+										result.updated++
+									} else {
+										result.created++
+									}
+								},
+								(error) => {
+									result.errors.push(`Error syncing invitation ${workosInvitation.id}: ${error}`)
+								},
+							)
+						}),
+					),
+					{ concurrency: "unbounded" },
+				)
 
 			// Mark expired invitations
 			const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.either)
@@ -612,7 +721,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						result.memberships.deleted += membershipResult.deleted
 						result.memberships.errors.push(...membershipResult.errors)
 
-						const invitationResult = yield* syncInvitations(org.id as OrganizationId)
+						const invitationResult = yield* syncInvitations(org.id)
 						result.invitations.created += invitationResult.created
 						result.invitations.updated += invitationResult.updated
 						result.invitations.deleted += invitationResult.deleted
@@ -659,16 +768,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		// --- Webhook Event Handlers ---
 
-		const handleUserUpsert = (data: {
-			id: string
-			email: string
-			firstName: string | null
-			lastName: string | null
-			profilePictureUrl: string | null
-		}) =>
+		const handleUserUpsert = (data: Schema.Schema.Type<typeof WorkOSSyncUserPayload>) =>
 			Effect.gen(function* () {
 				// Check if user already exists to preserve their custom profile data
-				const existingUser = yield* userRepo.findByExternalId(data.id)
+				const existingUser = yield* userRepo.findByWorkOSUserId(data.id)
 
 				const existing = Option.getOrNull(existingUser)
 
@@ -691,7 +794,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 							: existingAvatarUrl
 					: workosAvatarUrl
 
-				yield* userRepo.upsertByExternalId({
+				yield* userRepo.upsertWorkOSUser({
 					externalId: data.id,
 					email: data.email,
 					firstName,
@@ -705,17 +808,17 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				})
 			}).pipe(Effect.asVoid)
 
-		const handleUserDeleted = (data: { id: string }) =>
-			userRepo.softDeleteByExternalId(data.id).pipe(Effect.asVoid)
+		const handleUserDeleted = (data: Schema.Schema.Type<typeof WorkOSSyncUserDeletedPayload>) =>
+			userRepo.softDeleteByWorkOSUserId(data.id).pipe(Effect.asVoid)
 
-		const handleOrgUpsert = (data: { id: string; name: string; externalId: string | null }) =>
+		const handleOrgUpsert = (data: Schema.Schema.Type<typeof WorkOSSyncOrganizationPayload>) =>
 			Effect.gen(function* () {
 				if (!data.externalId) {
 					yield* Effect.logWarning(`Skipping organization ${data.id} - no externalId set`)
 					return
 				}
 
-				const orgId = data.externalId as OrganizationId
+				const orgId = yield* resolveInternalOrganizationId(data.externalId, data.id)
 				const existingOrg = yield* orgRepo.findById(orgId)
 				yield* Option.match(existingOrg, {
 					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }),
@@ -734,22 +837,18 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				})
 			})
 
-		const handleOrgDeleted = (data: { id: string; externalId: string | null }) =>
+		const handleOrgDeleted = (data: Schema.Schema.Type<typeof WorkOSSyncOrganizationPayload>) =>
 			Effect.gen(function* () {
 				if (!data.externalId) {
 					yield* Effect.logWarning(`Skipping organization deletion ${data.id} - no externalId set`)
 					return
 				}
 
-				const orgId = data.externalId as OrganizationId
+				const orgId = yield* resolveInternalOrganizationId(data.externalId, data.id)
 				yield* orgRepo.softDelete(orgId)
 			})
 
-		const handleMembershipUpsert = (data: {
-			organizationId: string
-			userId: string
-			role: { slug: string }
-		}) =>
+		const handleMembershipUpsert = (data: Schema.Schema.Type<typeof WorkOSSyncMembershipPayload>) =>
 			Effect.gen(function* () {
 				// Fetch WorkOS org to get externalId (our internal org ID)
 				const workosOrgResult = yield* pipe(
@@ -769,16 +868,22 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					return
 				}
 
-				const orgId = workosOrg.externalId as OrganizationId
+				const orgId = yield* resolveInternalOrganizationId(workosOrg.externalId, workosOrg.id).pipe(
+					Effect.catchTag("WorkOSSyncError", (error) =>
+						Effect.logWarning(error.message, { cause: error.cause }).pipe(Effect.as(undefined)),
+					),
+				)
+				if (!orgId) return
 				const org = yield* orgRepo.findById(orgId)
-				const user = yield* userRepo.findByExternalId(data.userId)
+				const user = yield* userRepo.findByWorkOSUserId(data.userId)
+				const role = yield* normalizeWorkOSRole(data.role?.slug)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
 					yield* orgMemberRepo.upsertByOrgAndUser({
 						organizationId: org.value.id,
 						nickname: null,
 						userId: user.value.id,
-						role: (data.role.slug || "member") as "admin" | "member" | "owner",
+						role,
 						joinedAt: new Date(),
 						invitedBy: null,
 						deletedAt: null,
@@ -786,7 +891,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 			})
 
-		const handleMembershipRemoved = (data: { organizationId: string; userId: string }) =>
+		const handleMembershipRemoved = (data: Schema.Schema.Type<typeof WorkOSSyncMembershipRemovedPayload>) =>
 			Effect.gen(function* () {
 				// Fetch WorkOS org to get externalId (our internal org ID)
 				const workosOrgResult = yield* pipe(
@@ -806,9 +911,14 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					return
 				}
 
-				const orgId = workosOrg.externalId as OrganizationId
+				const orgId = yield* resolveInternalOrganizationId(workosOrg.externalId, workosOrg.id).pipe(
+					Effect.catchTag("WorkOSSyncError", (error) =>
+						Effect.logWarning(error.message, { cause: error.cause }).pipe(Effect.as(undefined)),
+					),
+				)
+				if (!orgId) return
 				const org = yield* orgRepo.findById(orgId)
-				const user = yield* userRepo.findByExternalId(data.userId)
+				const user = yield* userRepo.findByWorkOSUserId(data.userId)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
 					yield* orgMemberRepo.softDeleteByOrgAndUser(org.value.id, user.value.id)
@@ -821,27 +931,35 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			pipe(
 				Effect.logDebug(`Processing WorkOS webhook: ${event.event}`),
 				Effect.flatMap(() =>
-					Match.value(event.event).pipe(
+						Match.value(event.event).pipe(
 						Match.whenOr("user.created", "user.updated", () =>
-							handleUserUpsert(event.data as Parameters<typeof handleUserUpsert>[0]),
+							decodeWebhookData(WorkOSSyncUserPayload)(event.data).pipe(
+								Effect.flatMap(handleUserUpsert),
+							),
 						),
 						Match.when("user.deleted", () =>
-							handleUserDeleted(event.data as Parameters<typeof handleUserDeleted>[0]),
+							decodeWebhookData(WorkOSSyncUserDeletedPayload)(event.data).pipe(
+								Effect.flatMap(handleUserDeleted),
+							),
 						),
 						Match.whenOr("organization.created", "organization.updated", () =>
-							handleOrgUpsert(event.data as Parameters<typeof handleOrgUpsert>[0]),
+							decodeWebhookData(WorkOSSyncOrganizationPayload)(event.data).pipe(
+								Effect.flatMap(handleOrgUpsert),
+							),
 						),
 						Match.when("organization.deleted", () =>
-							handleOrgDeleted(event.data as Parameters<typeof handleOrgDeleted>[0]),
+							decodeWebhookData(WorkOSSyncOrganizationPayload)(event.data).pipe(
+								Effect.flatMap(handleOrgDeleted),
+							),
 						),
 						Match.whenOr("organization_membership.added", "organization_membership.updated", () =>
-							handleMembershipUpsert(
-								event.data as Parameters<typeof handleMembershipUpsert>[0],
+							decodeWebhookData(WorkOSSyncMembershipPayload)(event.data).pipe(
+								Effect.flatMap(handleMembershipUpsert),
 							),
 						),
 						Match.when("organization_membership.removed", () =>
-							handleMembershipRemoved(
-								event.data as Parameters<typeof handleMembershipRemoved>[0],
+							decodeWebhookData(WorkOSSyncMembershipRemovedPayload)(event.data).pipe(
+								Effect.flatMap(handleMembershipRemoved),
 							),
 						),
 						Match.orElse((eventType) =>

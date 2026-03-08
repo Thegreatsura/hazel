@@ -1,5 +1,6 @@
 import { InvitationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
+import { WorkOSInvitationId } from "@hazel/schema"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
 	InvitationBatchResponse,
@@ -7,7 +8,7 @@ import {
 	InvitationNotFoundError,
 	InvitationRpcs,
 } from "@hazel/domain/rpc"
-import { Effect, Option } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
 import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
@@ -58,11 +59,13 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 										const expiresAt = new Date()
 										expiresAt.setDate(expiresAt.getDate() + 7)
 
-										// Store invitation in local database
-										yield* InvitationPolicy.canCreate(payload.organizationId)
-										const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
-											workosInvitationId: workosInvitation.id,
-											organizationId: payload.organizationId,
+											// Store invitation in local database
+											yield* InvitationPolicy.canCreate(payload.organizationId)
+											const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
+												workosInvitationId: Schema.decodeUnknownSync(WorkOSInvitationId)(
+													workosInvitation.id,
+												),
+												organizationId: payload.organizationId,
 											invitationUrl: workosInvitation.acceptInvitationUrl,
 											email: invite.email,
 											invitedBy: currentUser.id,

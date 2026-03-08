@@ -1,8 +1,13 @@
 import { WorkOSUserFetchError } from "@hazel/domain"
+import {
+	WorkOSClientId,
+	WorkOSOrganizationId,
+	WorkOSUserId,
+} from "@hazel/schema"
 import type { Organization, User as WorkOSUser } from "@workos-inc/node"
 import { OrganizationFetchError } from "../errors.ts"
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { AuthConfig } from "../config.ts"
 
 /**
@@ -18,7 +23,7 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 			clientId: config.workosClientId,
 		})
 
-		const getUser = (userId: string): Effect.Effect<WorkOSUser, WorkOSUserFetchError> =>
+		const getUser = (userId: WorkOSUserId): Effect.Effect<WorkOSUser, WorkOSUserFetchError> =>
 			Effect.tryPromise({
 				try: () => client.userManagement.getUser(userId),
 				catch: (error) =>
@@ -32,7 +37,9 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 				Effect.withSpan("WorkOSClient.getUser", { attributes: { "user.id": userId } }),
 			)
 
-		const getOrganization = (orgId: string): Effect.Effect<Organization, OrganizationFetchError> =>
+		const getOrganization = (
+			orgId: WorkOSOrganizationId,
+		): Effect.Effect<Organization, OrganizationFetchError> =>
 			Effect.tryPromise({
 				try: () => client.organizations.getOrganization(orgId),
 				catch: (error) =>
@@ -55,7 +62,7 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 }) {
 	/** Default mock user for tests */
 	static readonly mockUser: WorkOSUser = {
-		id: "user_01ABC123",
+		id: Schema.decodeUnknownSync(WorkOSUserId)("user_01ABC123"),
 		email: "test@example.com",
 		firstName: "Test",
 		lastName: "User",
@@ -72,7 +79,7 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 
 	/** Default mock organization for tests */
 	static readonly mockOrganization: Organization = {
-		id: "org_01ABC123",
+		id: Schema.decodeUnknownSync(WorkOSOrganizationId)("org_01ABC123"),
 		name: "Test Organization",
 		externalId: "org_internal_123",
 		allowProfilesOutsideOrganization: false,
@@ -86,19 +93,20 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 	/** Test layer with mock WorkOS responses */
 	static Test = Layer.mock(this, {
 		_tag: "@hazel/auth/WorkOSClient",
-		getUser: (userId: string) => Effect.succeed({ ...WorkOSClient.mockUser, id: userId }),
-		getOrganization: (orgId: string) => Effect.succeed({ ...WorkOSClient.mockOrganization, id: orgId }),
-		clientId: "client_test_123",
+		getUser: (userId: WorkOSUserId) => Effect.succeed({ ...WorkOSClient.mockUser, id: userId }),
+		getOrganization: (orgId: WorkOSOrganizationId) =>
+			Effect.succeed({ ...WorkOSClient.mockOrganization, id: orgId }),
+		clientId: Schema.decodeUnknownSync(WorkOSClientId)("client_test_123"),
 	})
 
 	/** Test layer factory for configurable WorkOS behavior */
 	static TestWith = (options: { user?: WorkOSUser; organization?: Organization }) =>
 		Layer.mock(WorkOSClient, {
 			_tag: "@hazel/auth/WorkOSClient",
-			getUser: (userId: string) =>
+			getUser: (userId: WorkOSUserId) =>
 				Effect.succeed({ ...(options.user ?? WorkOSClient.mockUser), id: userId }),
-			getOrganization: (orgId: string) =>
+			getOrganization: (orgId: WorkOSOrganizationId) =>
 				Effect.succeed({ ...(options.organization ?? WorkOSClient.mockOrganization), id: orgId }),
-			clientId: "client_test_123",
+			clientId: Schema.decodeUnknownSync(WorkOSClientId)("client_test_123"),
 		})
 }

@@ -1,10 +1,8 @@
-import { and, Database, eq, inArray, lt, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, inArray, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommandRepo", {
 	accessors: true,

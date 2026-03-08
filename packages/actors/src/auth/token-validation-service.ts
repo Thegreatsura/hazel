@@ -1,12 +1,18 @@
 import { HttpClient, HttpClientRequest } from "@effect/platform"
-import type { BotId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option } from "effect"
-import type { JWTPayload, JWTVerifyResult } from "jose"
+import { WorkOSJwtClaims, WorkOSRole } from "@hazel/schema"
+import { Either, Effect, Option, Redacted, Schema } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
+import type { JWTPayload } from "jose"
 import { jwtVerify } from "jose"
 import { TokenValidationConfigService } from "./config-service"
 import { BotTokenValidationError, ConfigError, InvalidTokenFormatError, JwtValidationError } from "./errors"
 import { JwksService } from "./jwks-service"
-import type { AuthenticatedClient, BotClient, BotTokenValidationResponse, UserClient } from "./types"
+import {
+	BotTokenValidationResponseSchema,
+	type AuthenticatedClient,
+	type BotClient,
+	type UserClient,
+} from "./types"
 
 interface JWTPayloadWithClaims extends JWTPayload {
 	org_id?: string
@@ -41,6 +47,8 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 		effect: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
 			const jwksService = yield* JwksService
+			const decodeClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+			const decodeBotValidationResponse = Schema.decodeUnknown(BotTokenValidationResponseSchema)
 
 			/**
 			 * Validate a WorkOS JWT token.
@@ -50,60 +58,65 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 				token: string,
 			): Effect.Effect<UserClient, JwtValidationError | ConfigError> =>
 				Effect.gen(function* () {
-					if (!config.workosClientId) {
-						return yield* Effect.fail(
-							new ConfigError({
-								message:
-									"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
-							}),
-						)
-					}
+					const clientId = yield* Option.match(config.workosClientId, {
+						onNone: () =>
+							Effect.fail(
+								new ConfigError({
+									message:
+										"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
+								}),
+							),
+						onSome: Effect.succeed,
+					})
 
 					const jwks = yield* jwksService.getJwks()
 
 					// WorkOS can issue tokens with either issuer format
 					const issuers = [
 						"https://api.workos.com",
-						`https://api.workos.com/user_management/${config.workosClientId}`,
+						`https://api.workos.com/user_management/${clientId}`,
 					]
 
-					let payload: JWTPayloadWithClaims | null = null
+					const verifiedPayload = yield* Effect.forEach(
+						issuers,
+						(issuer) =>
+							Effect.tryPromise(() => jwtVerify(token, jwks, { issuer })).pipe(
+								Effect.map((result) => result.payload as JWTPayloadWithClaims),
+								Effect.either,
+							),
+						{ concurrency: 1 },
+					).pipe(
+						Effect.flatMap((results) => {
+							const success = results.find(Either.isRight)
+							if (success) {
+								return Effect.succeed(success.right)
+							}
 
-					// Try each issuer until one works
-					for (const issuer of issuers) {
-						const maybeResult = yield* Effect.tryPromise(() =>
-							jwtVerify(token, jwks, { issuer }),
-						).pipe(
-							Effect.map(Option.some),
-							Effect.catchAll(() => Effect.succeed(Option.none<JWTVerifyResult>())),
-						)
-						if (Option.isSome(maybeResult)) {
-							payload = maybeResult.value.payload as JWTPayloadWithClaims
-							break
-						}
-					}
+							return Effect.fail(
+								new JwtValidationError({
+									message: "Invalid or expired token",
+									cause: results.map((result) => (Either.isLeft(result) ? result.left : null)),
+								}),
+							)
+						}),
+					)
 
-					if (!payload) {
-						return yield* Effect.fail(
-							new JwtValidationError({ message: "Invalid or expired token" }),
-						)
-					}
+					const claims = yield* decodeClaims(verifiedPayload).pipe(
+						Effect.mapError(
+							(error) =>
+								new JwtValidationError({
+									message: "Invalid JWT claims",
+									cause: TreeFormatter.formatErrorSync(error),
+								}),
+						),
+					)
 
-					const userId = payload.sub
-					if (!userId) {
-						return yield* Effect.fail(
-							new JwtValidationError({ message: "Token missing user ID" }),
-						)
-					}
-
-					// Extract org_id if present (WorkOS org ID, not internal UUID)
-					const organizationId = payload.org_id as OrganizationId | undefined
-					const role = (payload.role as "admin" | "member" | "owner") || "member"
+					const role = claims.role ?? Schema.decodeUnknownSync(WorkOSRole)("member")
 
 					return {
 						type: "user" as const,
-						userId: userId as UserId,
-						organizationId: organizationId ?? null,
+						workosUserId: claims.sub,
+						workosOrganizationId: claims.org_id ?? null,
 						role,
 					}
 				})
@@ -116,26 +129,32 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 				token: string,
 			): Effect.Effect<BotClient, BotTokenValidationError | ConfigError, HttpClient.HttpClient> =>
 				Effect.gen(function* () {
-					if (!config.backendUrl) {
-						return yield* Effect.fail(
-							new ConfigError({
-								message:
-									"BACKEND_URL or API_BASE_URL environment variable is required for bot token actor authentication",
-							}),
-						)
-					}
+					const backendUrl = yield* Option.match(config.backendUrl, {
+						onNone: () =>
+							Effect.fail(
+								new ConfigError({
+									message:
+										"BACKEND_URL or API_BASE_URL environment variable is required for bot token actor authentication",
+								}),
+							),
+						onSome: Effect.succeed,
+					})
 
 					const httpClient = yield* HttpClient.HttpClient
 
-					const request = HttpClientRequest.post(
-						`${config.backendUrl}/internal/actors/validate-bot-token`,
+					const requestBase = HttpClientRequest.post(
+						`${backendUrl}/internal/actors/validate-bot-token`,
 					).pipe(
 						HttpClientRequest.setHeader("Content-Type", "application/json"),
-						config.internalSecret
-							? HttpClientRequest.setHeader("X-Internal-Secret", config.internalSecret)
-							: (req) => req,
 						HttpClientRequest.bodyUnsafeJson({ token }),
 					)
+					const request = Option.match(config.internalSecret, {
+						onNone: () => requestBase,
+						onSome: (secret) =>
+							requestBase.pipe(
+								HttpClientRequest.setHeader("X-Internal-Secret", Redacted.value(secret)),
+							),
+					})
 
 					const response = yield* httpClient.execute(request).pipe(
 						Effect.catchTag("RequestError", (err) =>
@@ -167,7 +186,7 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 						)
 					}
 
-					const data = (yield* response.json.pipe(
+					const rawData = yield* response.json.pipe(
 						Effect.catchTag("ResponseError", (err) =>
 							Effect.fail(
 								new BotTokenValidationError({
@@ -175,13 +194,21 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 								}),
 							),
 						),
-					)) as BotTokenValidationResponse
+					)
+					const data = yield* decodeBotValidationResponse(rawData).pipe(
+						Effect.mapError(
+							(error) =>
+								new BotTokenValidationError({
+									message: `Failed to decode bot token response: ${TreeFormatter.formatErrorSync(error)}`,
+								}),
+						),
+					)
 
 					return {
 						type: "bot" as const,
-						userId: data.userId as UserId,
-						botId: data.botId as BotId,
-						organizationId: (data.organizationId as OrganizationId) ?? null,
+						userId: data.userId,
+						botId: data.botId,
+						organizationId: data.organizationId,
 						scopes: data.scopes,
 					}
 				})

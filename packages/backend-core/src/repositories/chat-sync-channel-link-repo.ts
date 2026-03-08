@@ -1,10 +1,8 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncChannelLink } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
-import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
+import { Effect, Option, Schema } from "effect"
 
 export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkRepo>()(
 	"ChatSyncChannelLinkRepo",
@@ -20,22 +18,13 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 				},
 			)
 			const db = yield* Database.Database
-
-			const normalizeExternalChannelId = <T extends { externalChannelId: string }>(row: T) => ({
-				...row,
-				externalChannelId: row.externalChannelId as ExternalChannelId,
-			})
-
-			const normalizeExternalChannelIdRows = <T extends { externalChannelId: string }>(
-				rows: readonly T[],
-			) => rows.map(normalizeExternalChannelId)
-
-			const normalizeExternalChannelIdOption = <T extends { externalChannelId: string }>(
-				value: Option.Option<T>,
-			) => Option.map(value, normalizeExternalChannelId)
+			const decodeChannelLink = Schema.decodeUnknownSync(ChatSyncChannelLink.Model)
+			const decodeChannelLinkRows = (rows: readonly unknown[]) =>
+				rows.map((row) => decodeChannelLink(row))
+			const decodeChannelLinkOption = <T>(value: Option.Option<T>) => Option.map(value, decodeChannelLink)
 
 			const insert = (...args: Parameters<typeof baseRepo.insert>) =>
-				baseRepo.insert(...args).pipe(Effect.map(normalizeExternalChannelIdRows)) as ReturnType<
+				baseRepo.insert(...args).pipe(Effect.map(decodeChannelLinkRows)) as ReturnType<
 					typeof baseRepo.insert
 				>
 
@@ -55,11 +44,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								.limit(1),
 						),
 					)({ id }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(Option.map(normalizeExternalChannelId)),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
 
 			const findBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
 				db
@@ -79,7 +64,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								),
 						),
 					)({ syncConnectionId }, tx)
-					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
+					.pipe(Effect.map(decodeChannelLinkRows))
 
 			const findActiveBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
 				db
@@ -100,7 +85,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								),
 						),
 					)({ syncConnectionId }, tx)
-					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
+					.pipe(Effect.map(decodeChannelLinkRows))
 
 			const findByHazelChannel = (
 				syncConnectionId: SyncConnectionId,
@@ -136,11 +121,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									.limit(1),
 							),
 					)({ syncConnectionId, hazelChannelId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(Option.map(normalizeExternalChannelId)),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
 
 			const findByExternalChannel = (
 				syncConnectionId: SyncConnectionId,
@@ -176,11 +157,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									.limit(1),
 							),
 					)({ syncConnectionId, externalChannelId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(Option.map(normalizeExternalChannelId)),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
 
 			const findActiveByExternalChannel = (externalChannelId: ExternalChannelId, tx?: TxFn) =>
 				db
@@ -201,7 +178,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								),
 						),
 					)({ externalChannelId }, tx)
-					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
+					.pipe(Effect.map(decodeChannelLinkRows))
 
 			const setActive = (id: SyncChannelLinkId, isActive: boolean, tx?: TxFn) =>
 				db.makeQuery((execute, data: { id: SyncChannelLinkId; isActive: boolean }) =>

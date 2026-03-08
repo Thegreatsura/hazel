@@ -1,9 +1,7 @@
 import { Database, and, asc, eq, inArray, or, schema, sql } from "@hazel/db"
-import type { DatabaseError, TransactionClient } from "@hazel/db"
+import type { DatabaseError, TxFn } from "@hazel/db"
 import { ChannelId, MessageId, MessageOutboxEventId, MessageReactionId, UserId } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, DatabaseError, never>
 
 export const MessageCreatedPayloadSchema = Schema.Struct({
 	messageId: MessageId,

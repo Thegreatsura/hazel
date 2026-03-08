@@ -1,10 +1,8 @@
-import { and, Database, eq, lte, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, lte, ModelRepository, schema, type TxFn } from "@hazel/db"
 
-import type { InvitationId, OrganizationId } from "@hazel/schema"
+import type { InvitationId, OrganizationId, WorkOSInvitationId } from "@hazel/schema"
 import { Invitation } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class InvitationRepo extends Effect.Service<InvitationRepo>()("InvitationRepo", {
 	accessors: true,
@@ -15,9 +13,9 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 		})
 		const db = yield* Database.Database
 
-		const findByWorkosId = (workosInvitationId: string, tx?: TxFn) =>
+		const findByWorkosId = (workosInvitationId: WorkOSInvitationId, tx?: TxFn) =>
 			db
-				.makeQuery((execute, id: string) =>
+				.makeQuery((execute, id: WorkOSInvitationId) =>
 					execute((client) =>
 						client
 							.select()

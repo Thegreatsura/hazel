@@ -1,27 +1,20 @@
-import { Config, Effect, Option } from "effect"
+import type { WorkOSClientId } from "@hazel/schema"
+import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { WorkOSClientId as WorkOSClientIdSchema } from "@hazel/schema"
 
 /**
  * Configuration required for token validation
  */
 export interface TokenValidationConfig {
 	/** WorkOS client ID for JWT validation */
-	readonly workosClientId: string | undefined
+	readonly workosClientId: Option.Option<WorkOSClientId>
 	/** Backend URL for bot token validation */
-	readonly backendUrl: string | undefined
+	readonly backendUrl: Option.Option<string>
 	/** Internal secret for server-to-server auth (optional) */
-	readonly internalSecret: string | undefined
+	readonly internalSecret: Option.Option<Redacted.Redacted>
 }
 
-const optionalValue = (effect: Effect.Effect<string, any, never>) =>
-	effect.pipe(
-		Effect.option,
-		Effect.map(
-			Option.match({
-				onNone: () => undefined,
-				onSome: (value) => value,
-			}),
-		),
-	)
+const optionalValue = <A>(effect: Effect.Effect<A, any, never>) => effect.pipe(Effect.option)
 
 /**
  * Service for loading and providing token validation configuration.
@@ -33,7 +26,11 @@ export class TokenValidationConfigService extends Effect.Service<TokenValidation
 	{
 		accessors: true,
 		effect: Effect.gen(function* () {
-			const workosClientId = yield* optionalValue(Config.string("WORKOS_CLIENT_ID"))
+			const workosClientId = yield* optionalValue(
+				Config.string("WORKOS_CLIENT_ID").pipe(
+					Effect.flatMap((value) => Schema.decodeUnknown(WorkOSClientIdSchema)(value)),
+				),
+			)
 
 			const backendUrl = yield* optionalValue(
 				Config.string("BACKEND_URL").pipe(
@@ -43,7 +40,7 @@ export class TokenValidationConfigService extends Effect.Service<TokenValidation
 				),
 			)
 
-			const internalSecret = yield* optionalValue(Config.string("INTERNAL_SECRET"))
+			const internalSecret = yield* optionalValue(Config.redacted("INTERNAL_SECRET"))
 
 			const config: TokenValidationConfig = {
 				workosClientId,

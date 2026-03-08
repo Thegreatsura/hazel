@@ -1,10 +1,8 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { ChannelWebhook } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
 	accessors: true,

@@ -1,6 +1,7 @@
 import { Database, eq, schema } from "@hazel/db"
-import type { OrganizationId, UserId } from "@hazel/schema"
+import { OrganizationId, WorkOSJwtClaims, type UserId, type WorkOSOrganizationId, type WorkOSUserId } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -35,21 +36,54 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
+		const decodeClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+
+		const resolveInternalOrganizationId = (
+			workosOrgId: WorkOSOrganizationId,
+		): Effect.Effect<OrganizationId | undefined, never> =>
+			workos.getOrganization(workosOrgId).pipe(
+				Effect.flatMap((org) =>
+					Option.fromNullable(org.externalId).pipe(
+						Option.match({
+							onNone: () =>
+								Effect.logWarning("WorkOS organization is missing externalId", {
+									workosOrgId,
+								}).pipe(Effect.as(undefined)),
+							onSome: (externalId) =>
+								Schema.decodeUnknown(OrganizationId)(externalId).pipe(
+									Effect.catchAll((error) =>
+										Effect.logWarning("Failed to decode WorkOS external organization ID", {
+											workosOrgId,
+											externalId,
+											error: TreeFormatter.formatErrorSync(error),
+										}).pipe(Effect.as(undefined)),
+									),
+								),
+						}),
+					),
+				),
+				Effect.catchTag("OrganizationFetchError", (error) =>
+					Effect.logWarning("Failed to resolve org ID from JWT", {
+						workosOrgId,
+						error: error.message,
+					}).pipe(Effect.as(undefined)),
+				),
+			)
 
 		/**
 		 * Lookup user by WorkOS ID, using cache first then database.
 		 * Caches successful lookups for 5 minutes.
 		 */
-		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (workosUserId: string) {
+		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (workosUserId: WorkOSUserId) {
 			// Check cache first
 			const cached = yield* userLookupCache.get(workosUserId).pipe(
 				Effect.catchAll((error) => {
-					// Log cache error but continue with database lookup
-					return Effect.logWarning("User lookup cache error", error).pipe(
-						Effect.map(() => Option.none<{ internalUserId: string }>()),
-					)
-				}),
-			)
+						// Log cache error but continue with database lookup
+						return Effect.logWarning("User lookup cache error", error).pipe(
+							Effect.map(() => Option.none<{ internalUserId: UserId }>()),
+						)
+					}),
+				)
 
 			if (Option.isSome(cached)) {
 				yield* Effect.annotateCurrentSpan("cache.result", "hit")
@@ -118,18 +152,20 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 				Effect.orElse(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
 			)
 
-			const workOsUserId = payload.sub
-			if (!workOsUserId) {
-				return yield* new ProxyAuthenticationError({
-					message: "Token missing user ID",
-					detail: "The JWT does not contain a subject claim",
-				})
-			}
+			const claims = yield* decodeClaims(payload).pipe(
+				Effect.mapError(
+					(error) =>
+						new ProxyAuthenticationError({
+							message: "Invalid JWT claims",
+							detail: TreeFormatter.formatErrorSync(error),
+						}),
+				),
+			)
 
 			// Lookup user (uses cache, falls back to database)
-			const userIdOption = yield* lookupUser(workOsUserId).pipe(
+			const userIdOption = yield* lookupUser(claims.sub).pipe(
 				Effect.withSpan("ProxyAuth.lookupUser", {
-					attributes: { "workos.user_id": workOsUserId },
+					attributes: { "workos.user_id": claims.sub },
 				}),
 			)
 
@@ -137,38 +173,23 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 				yield* Effect.annotateCurrentSpan("user.found", false)
 				return yield* new ProxyAuthenticationError({
 					message: "User not found in database",
-					detail: `User must be created via backend first. WorkOS ID: ${workOsUserId}`,
+					detail: `User must be created via backend first. WorkOS ID: ${claims.sub}`,
 				})
 			}
 
 			yield* Effect.annotateCurrentSpan("user.found", true)
 			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
 
-			// Resolve WorkOS org ID to internal UUID
-			// The JWT contains org_id (WorkOS org ID like "org_01ABC123...")
-			// We need to convert to internal UUID for frontend comparison
-			const workosOrgId = payload.org_id as string | undefined
-			let internalOrgId: OrganizationId | undefined = undefined
-
-			if (workosOrgId) {
-				internalOrgId = yield* workos.getOrganization(workosOrgId).pipe(
-					Effect.map((org) => org.externalId as OrganizationId | undefined),
-					Effect.catchTag("OrganizationFetchError", (error) =>
-						// Log warning but don't fail - org is optional context
-						Effect.logWarning("Failed to resolve org ID from JWT", {
-							workosOrgId,
-							error: error.message,
-						}).pipe(Effect.as(undefined)),
-					),
-				)
-			}
+			const internalOrgId = claims.org_id
+				? yield* resolveInternalOrganizationId(claims.org_id)
+				: undefined
 
 			return {
-				workosUserId: workOsUserId,
-				internalUserId: userIdOption.value as UserId,
-				email: (payload.email as string) ?? "",
+				workosUserId: claims.sub,
+				internalUserId: userIdOption.value,
+				email: claims.email ?? "",
 				organizationId: internalOrgId,
-				role: (payload.role as string) ?? undefined,
+				role: claims.role,
 			} satisfies AuthenticatedUserContext
 		})
 

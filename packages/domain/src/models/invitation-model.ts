@@ -1,4 +1,4 @@
-import { InvitationId, OrganizationId, UserId } from "@hazel/schema"
+import { InvitationId, OrganizationId, UserId, WorkOSInvitationId } from "@hazel/schema"
 import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
@@ -9,7 +9,7 @@ export type InvitationStatus = Schema.Schema.Type<typeof InvitationStatus>
 export class Model extends M.Class<Model>("Invitation")({
 	id: M.Generated(InvitationId),
 	invitationUrl: Schema.String,
-	workosInvitationId: Schema.String,
+	workosInvitationId: WorkOSInvitationId,
 	organizationId: OrganizationId,
 	email: Schema.String,
 	invitedBy: Schema.NullOr(UserId),

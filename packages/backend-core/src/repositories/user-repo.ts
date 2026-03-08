@@ -1,10 +1,8 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
-import type { UserId } from "@hazel/schema"
+import type { UserId, WorkOSUserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 	accessors: true,
@@ -27,6 +25,9 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 					),
 				)(externalId, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+		const findByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
+			findByExternalId(workosUserId, tx)
 
 		/**
 		 * Upsert user by external ID.
@@ -64,6 +65,12 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 				)({ ...data, syncAvatarUrl: options?.syncAvatarUrl }, tx)
 				.pipe(Effect.map((results) => results[0]))
 
+		const upsertWorkOSUser = (
+			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: WorkOSUserId },
+			options?: { syncAvatarUrl?: boolean },
+			tx?: TxFn,
+		) => upsertByExternalId(data, options, tx)
+
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>
 				execute((client) =>
@@ -91,7 +98,10 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 							and(eq(schema.usersTable.externalId, id), isNull(schema.usersTable.deletedAt)),
 						),
 				),
-			)(externalId, tx)
+				)(externalId, tx)
+
+		const softDeleteByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
+			softDeleteByExternalId(workosUserId, tx)
 
 		const bulkUpsertByExternalId = (users: Schema.Schema.Type<typeof User.Insert>[]) =>
 			Effect.forEach(users, (data) => upsertByExternalId(data), { concurrency: 10 })
@@ -99,10 +109,13 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 		return {
 			...baseRepo,
 			findByExternalId,
+			findByWorkOSUserId,
 			upsertByExternalId,
+			upsertWorkOSUser,
 			findAllActive,
 			softDelete,
 			softDeleteByExternalId,
+			softDeleteByWorkOSUserId,
 			bulkUpsertByExternalId,
 		}
 	}),

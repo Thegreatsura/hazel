@@ -1,4 +1,5 @@
 import { Persistence } from "@effect/experimental"
+import type { UserId, WorkOSUserId } from "@hazel/schema"
 import { Duration, Effect, Exit, Layer, Metric, Option } from "effect"
 import { UserLookupCacheError } from "../errors.ts"
 import { userLookupCacheHits, userLookupCacheMisses, userLookupCacheOperationLatency } from "../metrics.ts"
@@ -33,7 +34,7 @@ export class UserLookupCache extends Effect.Service<UserLookupCache>()("@hazel/a
 		})
 
 		const get = (
-			workosUserId: string,
+			workosUserId: WorkOSUserId,
 		): Effect.Effect<Option.Option<UserLookupResult>, UserLookupCacheError> =>
 			Effect.gen(function* () {
 				const startTime = Date.now()
@@ -79,8 +80,8 @@ export class UserLookupCache extends Effect.Service<UserLookupCache>()("@hazel/a
 			}).pipe(Effect.withSpan("UserLookupCache.get"))
 
 		const set = (
-			workosUserId: string,
-			internalUserId: string,
+			workosUserId: WorkOSUserId,
+			internalUserId: UserId,
 		): Effect.Effect<void, UserLookupCacheError> =>
 			Effect.gen(function* () {
 				const startTime = Date.now()
@@ -113,7 +114,7 @@ export class UserLookupCache extends Effect.Service<UserLookupCache>()("@hazel/a
 				yield* Effect.logDebug(`Cached user lookup: ${workosUserId} -> ${internalUserId}`)
 			}).pipe(Effect.withSpan("UserLookupCache.set"))
 
-		const invalidate = (workosUserId: string): Effect.Effect<void, UserLookupCacheError> =>
+		const invalidate = (workosUserId: WorkOSUserId): Effect.Effect<void, UserLookupCacheError> =>
 			Effect.gen(function* () {
 				// Add cache context attributes
 				yield* Effect.annotateCurrentSpan("cache.system", "redis")
@@ -145,18 +146,18 @@ export class UserLookupCache extends Effect.Service<UserLookupCache>()("@hazel/a
 	/** Test layer that always returns cache miss */
 	static Test = Layer.mock(this, {
 		_tag: "@hazel/auth/UserLookupCache",
-		get: (_workosUserId: string) => Effect.succeed(Option.none<UserLookupResult>()),
-		set: (_workosUserId: string, _internalUserId: string) => Effect.void,
-		invalidate: (_workosUserId: string) => Effect.void,
+		get: (_workosUserId: WorkOSUserId) => Effect.succeed(Option.none<UserLookupResult>()),
+		set: (_workosUserId: WorkOSUserId, _internalUserId: UserId) => Effect.void,
+		invalidate: (_workosUserId: WorkOSUserId) => Effect.void,
 	})
 
 	/** Test layer factory for configurable cache behavior */
 	static TestWith = (options: { cachedResult?: UserLookupResult }) =>
 		Layer.mock(UserLookupCache, {
 			_tag: "@hazel/auth/UserLookupCache",
-			get: (_workosUserId: string) =>
+			get: (_workosUserId: WorkOSUserId) =>
 				Effect.succeed(options.cachedResult ? Option.some(options.cachedResult) : Option.none()),
-			set: (_workosUserId: string, _internalUserId: string) => Effect.void,
-			invalidate: (_workosUserId: string) => Effect.void,
+			set: (_workosUserId: WorkOSUserId, _internalUserId: UserId) => Effect.void,
+			invalidate: (_workosUserId: WorkOSUserId) => Effect.void,
 		})
 }

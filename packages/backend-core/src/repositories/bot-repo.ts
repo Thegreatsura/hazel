@@ -9,14 +9,12 @@ import {
 	or,
 	schema,
 	sql,
-	type TransactionClient,
+	type TxFn,
 } from "@hazel/db"
 
 import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 	accessors: true,

@@ -5,10 +5,8 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
 import * as Schema from "effect/Schema"
-import { Database, type DatabaseError, type TransactionClient } from "./database"
+import { Database, type DatabaseError, type TxFn } from "./database"
 import { EntityNotFound, type EntitySchema, type Repository, type RepositoryOptions } from "./model"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, DatabaseError, never>
 
 export function makeRepository<
 	T extends Table<any>,

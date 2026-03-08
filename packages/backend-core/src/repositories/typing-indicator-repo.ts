@@ -1,10 +1,8 @@
-import { and, Database, eq, lt, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
 import { Effect } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
 	accessors: true,

@@ -1,13 +1,14 @@
-import type { BotId, OrganizationId, UserId } from "@hazel/schema"
+import { BotId, OrganizationId, UserId, WorkOSOrganizationId, WorkOSRole, WorkOSUserId } from "@hazel/schema"
+import { Schema } from "effect"
 
 /**
  * Represents an authenticated user (via WorkOS JWT)
  */
 export interface UserClient {
 	readonly type: "user"
-	readonly userId: UserId
-	readonly organizationId: OrganizationId | null
-	readonly role: "admin" | "member" | "owner"
+	readonly workosUserId: WorkOSUserId
+	readonly workosOrganizationId: WorkOSOrganizationId | null
+	readonly role: Schema.Schema.Type<typeof WorkOSRole>
 }
 
 /**
@@ -38,8 +39,15 @@ export interface ActorConnectParams {
  * Response from the backend bot token validation endpoint
  */
 export interface BotTokenValidationResponse {
-	readonly userId: string
-	readonly botId: string
-	readonly organizationId: string | null
+	readonly userId: Schema.Schema.Type<typeof UserId>
+	readonly botId: Schema.Schema.Type<typeof BotId>
+	readonly organizationId: Schema.Schema.Type<typeof OrganizationId> | null
 	readonly scopes: readonly string[] | null
 }
+
+export const BotTokenValidationResponseSchema = Schema.Struct({
+	userId: UserId,
+	botId: BotId,
+	organizationId: Schema.NullOr(OrganizationId),
+	scopes: Schema.NullOr(Schema.Array(Schema.String)),
+})

@@ -44,6 +44,10 @@ afterEach(() => {
 	vi.restoreAllMocks()
 })
 
+const BOT_USER_ID = "00000000-0000-0000-0000-000000000011"
+const BOT_ID = "00000000-0000-0000-0000-000000000022"
+const BOT_ORG_ID = "00000000-0000-0000-0000-000000000033"
+
 describe("messageActor.createConnState", () => {
 	it("returns invalid_token user error for invalid token format", async () => {
 		const createConnState = await loadCreateConnState()
@@ -74,9 +78,9 @@ describe("messageActor.createConnState", () => {
 				res.writeHead(200, { "content-type": "application/json" })
 				res.end(
 					JSON.stringify({
-						userId: "user-bot-1",
-						botId: "bot-1",
-						organizationId: "org-1",
+						userId: BOT_USER_ID,
+						botId: BOT_ID,
+						organizationId: BOT_ORG_ID,
 						scopes: ["messages:write"],
 					}),
 				)
@@ -103,9 +107,9 @@ describe("messageActor.createConnState", () => {
 			await expect(createConnState(createContext(), { token: "hzl_bot_valid" })).resolves.toMatchObject(
 				{
 					type: "bot",
-					userId: "user-bot-1",
-					botId: "bot-1",
-					organizationId: "org-1",
+					userId: BOT_USER_ID,
+					botId: BOT_ID,
+					organizationId: BOT_ORG_ID,
 					scopes: ["messages:write"],
 				},
 			)
@@ -170,8 +174,8 @@ describe("messageActor.createConnState", () => {
 
 		await expect(createConnState(createContext(), { token })).resolves.toMatchObject({
 			type: "user",
-			userId: "user-42",
-			organizationId: "org-42",
+			workosUserId: "user-42",
+			workosOrganizationId: "org-42",
 			role: "admin",
 		})
 	})

@@ -1,3 +1,4 @@
+import { UserId, WorkOSUserId } from "@hazel/schema"
 import { PrimaryKey, Schema } from "effect"
 import { UserLookupCacheError } from "../errors.ts"
 
@@ -6,7 +7,7 @@ import { UserLookupCacheError } from "../errors.ts"
  * Maps workosUserId to internalUserId.
  */
 export const UserLookupResult = Schema.Struct({
-	internalUserId: Schema.String,
+	internalUserId: UserId,
 })
 
 export type UserLookupResult = typeof UserLookupResult.Type
@@ -22,7 +23,7 @@ export class UserLookupCacheRequest extends Schema.TaggedRequest<UserLookupCache
 		success: UserLookupResult,
 		payload: {
 			/** WorkOS user ID (external ID) */
-			workosUserId: Schema.String,
+			workosUserId: WorkOSUserId,
 		},
 	},
 ) {

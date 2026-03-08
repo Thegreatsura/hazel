@@ -1,10 +1,8 @@
-import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, inArray, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
 import { Effect } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class NotificationRepo extends Effect.Service<NotificationRepo>()("NotificationRepo", {
 	accessors: true,

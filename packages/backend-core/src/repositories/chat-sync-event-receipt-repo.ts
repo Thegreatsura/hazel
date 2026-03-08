@@ -1,10 +1,8 @@
-import { and, Database, eq, gte, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, gte, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
 import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceiptRepo>()(
 	"ChatSyncEventReceiptRepo",

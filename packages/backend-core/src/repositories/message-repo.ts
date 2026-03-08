@@ -10,14 +10,12 @@ import {
 	lt,
 	ModelRepository,
 	schema,
-	type TransactionClient,
+	type TxFn,
 } from "@hazel/db"
 
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
 export interface ListByChannelParams {
 	channelId: ChannelId

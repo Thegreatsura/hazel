@@ -1,4 +1,16 @@
-import type { OrganizationId, UserId } from "@hazel/schema"
+import type {
+	OrganizationId,
+	UserId,
+	WorkOSOrganizationId,
+	WorkOSSessionId,
+	WorkOSUserId,
+} from "@hazel/schema"
+import {
+	OrganizationId as OrganizationIdSchema,
+	WorkOSOrganizationId as WorkOSOrganizationIdSchema,
+	WorkOSSessionId as WorkOSSessionIdSchema,
+	WorkOSUserId as WorkOSUserIdSchema,
+} from "@hazel/schema"
 import type { User as WorkOSUser } from "@workos-inc/node"
 import { Schema } from "effect"
 
@@ -11,15 +23,15 @@ export type { WorkOSUser }
  */
 export class ValidatedSession extends Schema.Class<ValidatedSession>("ValidatedSession")({
 	/** WorkOS user ID (e.g., user_01KAA...) */
-	workosUserId: Schema.String,
+	workosUserId: WorkOSUserIdSchema,
 	/** User email address */
 	email: Schema.String,
 	/** WorkOS session ID from JWT sid claim */
-	sessionId: Schema.String,
+	sessionId: WorkOSSessionIdSchema,
 	/** WorkOS organization ID if user is in an org (e.g., org_01...) */
-	organizationId: Schema.NullOr(Schema.String),
+	organizationId: Schema.NullOr(WorkOSOrganizationIdSchema),
 	/** Internal organization UUID (looked up from WorkOS externalId) */
-	internalOrganizationId: Schema.NullOr(Schema.String),
+	internalOrganizationId: Schema.NullOr(OrganizationIdSchema),
 	/** User role within the organization */
 	role: Schema.NullOr(Schema.String),
 	/** The JWT access token (for extracting additional claims) */
@@ -40,12 +52,12 @@ export class ValidatedSession extends Schema.Class<ValidatedSession>("ValidatedS
  */
 export interface AuthenticatedUserContext {
 	/** WorkOS user ID (e.g., user_01KAA...) */
-	workosUserId: string
+	workosUserId: WorkOSUserId
 	/** Internal database user UUID */
 	internalUserId: UserId
 	/** User email address */
 	email: string
-	/** WorkOS organization ID if user is in an org */
+	/** Internal organization UUID if the WorkOS org could be resolved */
 	organizationId?: OrganizationId
 	/** User role within the organization */
 	role?: string

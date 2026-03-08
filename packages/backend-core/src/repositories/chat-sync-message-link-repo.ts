@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncMessageLink } from "@hazel/domain/models"
 import type {
@@ -8,9 +8,7 @@ import type {
 	SyncChannelLinkId,
 	SyncMessageLinkId,
 } from "@hazel/schema"
-import { Effect, Option } from "effect"
-
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
+import { Effect, Option, Schema } from "effect"
 
 export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkRepo>()(
 	"ChatSyncMessageLinkRepo",
@@ -26,48 +24,13 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 				},
 			)
 			const db = yield* Database.Database
-
-			const normalizeMessageLink = <
-				T extends {
-					externalMessageId: string
-					rootExternalMessageId: string | null
-					externalThreadId: string | null
-				},
-			>(
-				row: T,
-			) => ({
-				...row,
-				externalMessageId: row.externalMessageId as ExternalMessageId,
-				rootExternalMessageId:
-					row.rootExternalMessageId === null
-						? null
-						: (row.rootExternalMessageId as ExternalMessageId),
-				externalThreadId:
-					row.externalThreadId === null ? null : (row.externalThreadId as ExternalThreadId),
-			})
-
-			const normalizeMessageLinkRows = <
-				T extends {
-					externalMessageId: string
-					rootExternalMessageId: string | null
-					externalThreadId: string | null
-				},
-			>(
-				rows: readonly T[],
-			) => rows.map(normalizeMessageLink)
-
-			const normalizeMessageLinkOption = <
-				T extends {
-					externalMessageId: string
-					rootExternalMessageId: string | null
-					externalThreadId: string | null
-				},
-			>(
-				value: Option.Option<T>,
-			) => Option.map(value, normalizeMessageLink)
+			const decodeMessageLink = Schema.decodeUnknownSync(ChatSyncMessageLink.Model)
+			const decodeMessageLinkRows = (rows: readonly unknown[]) =>
+				rows.map((row) => decodeMessageLink(row))
+			const decodeMessageLinkOption = <T>(value: Option.Option<T>) => Option.map(value, decodeMessageLink)
 
 			const insert = (...args: Parameters<typeof baseRepo.insert>) =>
-				baseRepo.insert(...args).pipe(Effect.map(normalizeMessageLinkRows)) as ReturnType<
+				baseRepo.insert(...args).pipe(Effect.map(decodeMessageLinkRows)) as ReturnType<
 					typeof baseRepo.insert
 				>
 
@@ -89,7 +52,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 								),
 						),
 					)({ channelLinkId }, tx)
-					.pipe(Effect.map((results) => normalizeMessageLinkRows(results)))
+					.pipe(Effect.map(decodeMessageLinkRows))
 
 			const findByHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -125,11 +88,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									.limit(1),
 							),
 					)({ channelLinkId, hazelMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
 
 			const findByExternalMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -165,11 +124,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									.limit(1),
 							),
 					)({ channelLinkId, externalMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
 
 			const findByRootHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -204,11 +159,7 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									),
 							),
 					)({ channelLinkId, rootHazelMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(normalizeMessageLinkOption),
-						),
-					)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
 
 			const updateLastSyncedAt = (id: SyncMessageLinkId, tx?: TxFn) =>
 				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>

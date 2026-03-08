@@ -1,7 +1,14 @@
 import { CurrentUser, InvalidBearerTokenError, InvalidJwtPayloadError, SessionLoadError } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
-import type { OrganizationId, UserId } from "@hazel/schema"
-import { Config, Effect, Layer, Option } from "effect"
+import {
+	OrganizationId,
+	WorkOSJwtClaims,
+	type UserId,
+	type WorkOSOrganizationId,
+	type WorkOSUserId,
+} from "@hazel/schema"
+import { Config, Effect, Layer, Option, Schema } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { WorkOSClient } from "../session/workos-client.ts"
 
@@ -11,7 +18,7 @@ import { WorkOSClient } from "../session/workos-client.ts"
  * The methods accept any context requirement.
  */
 export interface UserRepoLike {
-	findByExternalId: (externalId: string) => Effect.Effect<
+	findByWorkOSUserId: (workosUserId: WorkOSUserId) => Effect.Effect<
 		Option.Option<{
 			id: UserId
 			email: string
@@ -25,8 +32,8 @@ export interface UserRepoLike {
 		{ _tag: "DatabaseError" },
 		any
 	>
-	upsertByExternalId: (user: {
-		externalId: string
+	upsertWorkOSUser: (user: {
+		externalId: WorkOSUserId
 		email: string
 		firstName: string
 		lastName: string
@@ -71,6 +78,11 @@ export interface UserRepoLike {
 	>
 }
 
+export const decodeWorkOSJwtClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+
+export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
+	Schema.decodeUnknown(OrganizationId)(externalId)
+
 /**
  * Backend authentication service.
  * Provides full authentication with user sync support.
@@ -83,6 +95,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 	effect: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+		const decodeClaims = decodeWorkOSJwtClaims
 
 		/**
 		 * Normalize avatar URLs (treat empty/whitespace as missing).
@@ -97,19 +110,51 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		const isVercelFallbackAvatar = (avatarUrl: string | null | undefined): boolean =>
 			typeof avatarUrl === "string" && avatarUrl.startsWith("https://avatar.vercel.sh/")
 
+		const resolveInternalOrganizationId = (
+			workosOrgId: WorkOSOrganizationId,
+		): Effect.Effect<OrganizationId | undefined, never> =>
+			workos.getOrganization(workosOrgId).pipe(
+				Effect.flatMap((org) =>
+					Option.fromNullable(org.externalId).pipe(
+						Option.match({
+							onNone: () =>
+								Effect.logWarning("WorkOS organization is missing externalId", {
+									workosOrgId,
+								}).pipe(Effect.as(undefined)),
+							onSome: (externalId) =>
+								decodeInternalOrganizationIdFromWorkOS(externalId).pipe(
+									Effect.catchAll((error) =>
+										Effect.logWarning("Failed to decode WorkOS external organization ID", {
+											workosOrgId,
+											externalId,
+											error: TreeFormatter.formatErrorSync(error),
+										}).pipe(Effect.as(undefined)),
+									),
+								),
+						}),
+					),
+				),
+				Effect.catchTag("OrganizationFetchError", (error) =>
+					Effect.logWarning("Failed to resolve org ID from JWT", {
+						workosOrgId,
+						error: error.message,
+					}).pipe(Effect.as(undefined)),
+				),
+			)
+
 		/**
 		 * Sync a WorkOS user to the database (find or create).
 		 */
 		const syncUserFromWorkOS = (
 			userRepo: UserRepoLike,
-			workOsUserId: string,
+			workOsUserId: WorkOSUserId,
 			email: string,
 			firstName: string | null,
 			lastName: string | null,
 			avatarUrl: string | null,
 		) =>
 			Effect.gen(function* () {
-				const userOption = yield* userRepo.findByExternalId(workOsUserId).pipe(
+				const userOption = yield* userRepo.findByWorkOSUserId(workOsUserId).pipe(
 					Effect.catchTags({
 						DatabaseError: (err) =>
 							Effect.fail(
@@ -121,11 +166,11 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					}),
 				)
 
-				const user = yield* Option.match(userOption, {
-					onNone: () =>
-						userRepo
-							.upsertByExternalId({
-								externalId: workOsUserId,
+					const user = yield* Option.match(userOption, {
+						onNone: () =>
+							userRepo
+								.upsertWorkOSUser({
+									externalId: workOsUserId,
 								email: email,
 								firstName: firstName || "",
 								lastName: lastName || "",
@@ -213,8 +258,8 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
-		const authenticateWithBearer = (bearerToken: string, userRepo: UserRepoLike) =>
-			Effect.gen(function* () {
+			const authenticateWithBearer = (bearerToken: string, userRepo: UserRepoLike) =>
+				Effect.gen(function* () {
 				const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
 				// WorkOS can issue tokens with either issuer format:
@@ -230,26 +275,26 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 							}),
 					})
 
-				const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-					Effect.orElse(() =>
-						verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
-					),
-				)
-
-				const workOsUserId = payload.sub
-				if (!workOsUserId) {
-					return yield* Effect.fail(
-						new InvalidJwtPayloadError({
-							message: "Token missing user ID",
-							detail: "The provided token is missing the user ID",
-						}),
+					const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
+						Effect.orElse(() =>
+							verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
+						),
 					)
-				}
 
-				// Try to find user in DB, if not found fetch from WorkOS and create
-				const userOption = yield* userRepo.findByExternalId(workOsUserId).pipe(
-					Effect.catchTags({
-						DatabaseError: (err) =>
+					const claims = yield* decodeClaims(payload).pipe(
+						Effect.mapError(
+							(error) =>
+								new InvalidJwtPayloadError({
+									message: "Invalid JWT claims",
+									detail: TreeFormatter.formatErrorSync(error),
+								}),
+						),
+					)
+
+					// Try to find user in DB, if not found fetch from WorkOS and create
+					const userOption = yield* userRepo.findByWorkOSUserId(claims.sub).pipe(
+						Effect.catchTags({
+							DatabaseError: (err) =>
 							Effect.fail(
 								new InvalidBearerTokenError({
 									message: "Failed to query user",
@@ -259,49 +304,34 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					}),
 				)
 
-				const user = yield* Option.match(userOption, {
-					onNone: () =>
-						Effect.gen(function* () {
-							// Fetch user details from WorkOS
-							const workosUser = yield* workos.getUser(workOsUserId)
+					const user = yield* Option.match(userOption, {
+						onNone: () =>
+							Effect.gen(function* () {
+								// Fetch user details from WorkOS
+								const workosUser = yield* workos.getUser(claims.sub)
 
-							// Create user in DB
-							return yield* syncUserFromWorkOS(
-								userRepo,
-								workosUser.id,
-								workosUser.email,
-								workosUser.firstName,
-								workosUser.lastName,
-								workosUser.profilePictureUrl,
-							)
-						}),
-					onSome: (user) => Effect.succeed(user),
-				})
+								// Create user in DB
+								return yield* syncUserFromWorkOS(
+									userRepo,
+									claims.sub,
+									workosUser.email,
+									workosUser.firstName,
+									workosUser.lastName,
+									workosUser.profilePictureUrl,
+								)
+							}),
+						onSome: (user) => Effect.succeed(user),
+					})
 
-				// Resolve WorkOS org ID to internal UUID
-				// The JWT contains org_id (WorkOS org ID like "org_01ABC123...")
-				// We need to convert to internal UUID for frontend comparison
-				const workosOrgId = payload.org_id as string | undefined
-				let internalOrgId: OrganizationId | undefined = undefined
+					const internalOrgId = claims.org_id
+						? yield* resolveInternalOrganizationId(claims.org_id)
+						: undefined
 
-				if (workosOrgId) {
-					internalOrgId = yield* workos.getOrganization(workosOrgId).pipe(
-						Effect.map((org) => org.externalId as OrganizationId | undefined),
-						Effect.catchTag("OrganizationFetchError", (error) =>
-							// Log warning but don't fail - org is optional context
-							Effect.logWarning("Failed to resolve org ID from JWT", {
-								workosOrgId,
-								error: error.message,
-							}).pipe(Effect.as(undefined)),
-						),
-					)
-				}
-
-				// Build CurrentUser from JWT payload and DB user
-				const currentUser = new CurrentUser.Schema({
-					id: user.id,
-					role: (payload.role as "admin" | "member" | "owner") || "member",
-					organizationId: internalOrgId,
+					// Build CurrentUser from JWT payload and DB user
+					const currentUser = new CurrentUser.Schema({
+						id: user.id,
+						role: claims.role ?? "member",
+						organizationId: internalOrgId,
 					avatarUrl: user.avatarUrl ?? undefined,
 					firstName: user.firstName,
 					lastName: user.lastName,
