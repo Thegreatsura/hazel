@@ -14,7 +14,8 @@ import { EnvVars } from "../lib/env-vars"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
 const OUTBOX_BATCH_SIZE = 100
-const OUTBOX_POLL_INTERVAL = "250 millis"
+const OUTBOX_POLL_MIN_MS = 250
+const OUTBOX_POLL_MAX_MS = 2_000
 const OUTBOX_LOCK_RETRY_INTERVAL = "5 seconds"
 const OUTBOX_LOCK_TIMEOUT_MS = 2 * 60 * 1000
 const OUTBOX_FAILURE_LIMIT = 25
@@ -99,7 +100,7 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 				}
 			})
 
-			const processBatch = Effect.fn("MessageOutboxDispatcher.processBatch")(function* () {
+			const processBatch = Effect.fnUntraced(function* () {
 				const batch = yield* outboxRepo.claimNextBatch({
 					limit: OUTBOX_BATCH_SIZE,
 					workerId,
@@ -107,48 +108,68 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 				})
 
 				if (batch.length === 0) {
-					yield* Effect.sleep(OUTBOX_POLL_INTERVAL)
-					return
+					return { isEmpty: true } as const
 				}
 
-				for (const event of batch) {
-					const result = yield* processEvent(event).pipe(Effect.either)
-					if (result._tag === "Right") {
-						yield* outboxRepo.markProcessed(event.id)
-						continue
-					}
+				yield* Effect.gen(function* () {
+					for (const event of batch) {
+						const result = yield* processEvent(event).pipe(Effect.either)
+						if (result._tag === "Right") {
+							yield* outboxRepo.markProcessed(event.id)
+							continue
+						}
 
-					const nextAttempt = event.attemptCount + 1
-					const errorMessage = String(result.left)
+						const nextAttempt = event.attemptCount + 1
+						const errorMessage = String(result.left)
 
-					if (nextAttempt >= OUTBOX_FAILURE_LIMIT) {
-						yield* outboxRepo.markFailed(event.id, {
+						if (nextAttempt >= OUTBOX_FAILURE_LIMIT) {
+							yield* outboxRepo.markFailed(event.id, {
+								lastError: errorMessage,
+							})
+							continue
+						}
+
+						yield* outboxRepo.markRetry(event.id, {
+							availableAt: new Date(Date.now() + computeRetryDelayMs(nextAttempt)),
 							lastError: errorMessage,
 						})
-						continue
 					}
+				}).pipe(
+					Effect.withSpan("MessageOutboxDispatcher.processBatch", {
+						attributes: { "batch.size": batch.length },
+					}),
+				)
 
-					yield* outboxRepo.markRetry(event.id, {
-						availableAt: new Date(Date.now() + computeRetryDelayMs(nextAttempt)),
-						lastError: errorMessage,
-					})
-				}
+				return { isEmpty: false } as const
 			})
 
-			const runLeaderLoop = Effect.forever(
-				processBatch().pipe(
-					Effect.provideService(Database.Database, database),
-					Effect.catchAll((error) =>
-						Effect.gen(function* () {
-							yield* Effect.logError("Message outbox batch failed", {
-								workerId,
-								error: String(error),
-							})
-							yield* Effect.sleep("1 second")
-						}),
+			const runLeaderLoop = Effect.gen(function* () {
+				let pollDelayMs = OUTBOX_POLL_MIN_MS
+
+				yield* Effect.forever(
+					Effect.gen(function* () {
+						const result = yield* processBatch()
+						if (result.isEmpty) {
+							yield* Effect.sleep(`${pollDelayMs} millis`)
+							pollDelayMs = Math.min(pollDelayMs * 2, OUTBOX_POLL_MAX_MS)
+						} else {
+							pollDelayMs = OUTBOX_POLL_MIN_MS
+						}
+					}).pipe(
+						Effect.provideService(Database.Database, database),
+						Effect.catchAll((error) =>
+							Effect.gen(function* () {
+								yield* Effect.logError("Message outbox batch failed", {
+									workerId,
+									error: String(error),
+								})
+								yield* Effect.sleep("1 second")
+								pollDelayMs = OUTBOX_POLL_MIN_MS
+							}),
+						),
 					),
-				),
-			)
+				)
+			})
 
 			const campaignForLeadership = (): Effect.Effect<void, never, never> =>
 				Effect.gen(function* () {
