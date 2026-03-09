@@ -59,13 +59,13 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 										const expiresAt = new Date()
 										expiresAt.setDate(expiresAt.getDate() + 7)
 
-											// Store invitation in local database
-											yield* InvitationPolicy.canCreate(payload.organizationId)
-											const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
-												workosInvitationId: Schema.decodeUnknownSync(WorkOSInvitationId)(
-													workosInvitation.id,
-												),
-												organizationId: payload.organizationId,
+										// Store invitation in local database
+										yield* InvitationPolicy.canCreate(payload.organizationId)
+										const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
+											workosInvitationId: Schema.decodeUnknownSync(WorkOSInvitationId)(
+												workosInvitation.id,
+											),
+											organizationId: payload.organizationId,
 											invitationUrl: workosInvitation.acceptInvitationUrl,
 											email: invite.email,
 											invitedBy: currentUser.id,

@@ -98,7 +98,7 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 							and(eq(schema.usersTable.externalId, id), isNull(schema.usersTable.deletedAt)),
 						),
 				),
-				)(externalId, tx)
+			)(externalId, tx)
 
 		const softDeleteByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
 			softDeleteByExternalId(workosUserId, tx)

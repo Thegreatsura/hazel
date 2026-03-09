@@ -61,9 +61,7 @@ const createMockUserRepo = (options?: {
 			firstName: data.firstName ?? options?.existingUser?.firstName ?? "Test",
 			lastName: data.lastName ?? options?.existingUser?.lastName ?? "User",
 			avatarUrl:
-				data.avatarUrl !== undefined
-					? data.avatarUrl
-					: options?.existingUser?.avatarUrl ?? null,
+				data.avatarUrl !== undefined ? data.avatarUrl : (options?.existingUser?.avatarUrl ?? null),
 			isOnboarded: options?.existingUser?.isOnboarded ?? true,
 			timezone: options?.existingUser?.timezone ?? "UTC",
 			settings: options?.existingUser?.settings ?? null,

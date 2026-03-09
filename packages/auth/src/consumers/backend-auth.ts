@@ -124,11 +124,14 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 							onSome: (externalId) =>
 								decodeInternalOrganizationIdFromWorkOS(externalId).pipe(
 									Effect.catchAll((error) =>
-										Effect.logWarning("Failed to decode WorkOS external organization ID", {
-											workosOrgId,
-											externalId,
-											error: TreeFormatter.formatErrorSync(error),
-										}).pipe(Effect.as(undefined)),
+										Effect.logWarning(
+											"Failed to decode WorkOS external organization ID",
+											{
+												workosOrgId,
+												externalId,
+												error: TreeFormatter.formatErrorSync(error),
+											},
+										).pipe(Effect.as(undefined)),
 									),
 								),
 						}),
@@ -166,11 +169,11 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					}),
 				)
 
-					const user = yield* Option.match(userOption, {
-						onNone: () =>
-							userRepo
-								.upsertWorkOSUser({
-									externalId: workOsUserId,
+				const user = yield* Option.match(userOption, {
+					onNone: () =>
+						userRepo
+							.upsertWorkOSUser({
+								externalId: workOsUserId,
 								email: email,
 								firstName: firstName || "",
 								lastName: lastName || "",
@@ -258,8 +261,8 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
-			const authenticateWithBearer = (bearerToken: string, userRepo: UserRepoLike) =>
-				Effect.gen(function* () {
+		const authenticateWithBearer = (bearerToken: string, userRepo: UserRepoLike) =>
+			Effect.gen(function* () {
 				const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
 				// WorkOS can issue tokens with either issuer format:
@@ -275,26 +278,26 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 							}),
 					})
 
-					const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-						Effect.orElse(() =>
-							verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
-						),
-					)
+				const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
+					Effect.orElse(() =>
+						verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
+					),
+				)
 
-					const claims = yield* decodeClaims(payload).pipe(
-						Effect.mapError(
-							(error) =>
-								new InvalidJwtPayloadError({
-									message: "Invalid JWT claims",
-									detail: TreeFormatter.formatErrorSync(error),
-								}),
-						),
-					)
+				const claims = yield* decodeClaims(payload).pipe(
+					Effect.mapError(
+						(error) =>
+							new InvalidJwtPayloadError({
+								message: "Invalid JWT claims",
+								detail: TreeFormatter.formatErrorSync(error),
+							}),
+					),
+				)
 
-					// Try to find user in DB, if not found fetch from WorkOS and create
-					const userOption = yield* userRepo.findByWorkOSUserId(claims.sub).pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
+				// Try to find user in DB, if not found fetch from WorkOS and create
+				const userOption = yield* userRepo.findByWorkOSUserId(claims.sub).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
 							Effect.fail(
 								new InvalidBearerTokenError({
 									message: "Failed to query user",
@@ -304,34 +307,34 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					}),
 				)
 
-					const user = yield* Option.match(userOption, {
-						onNone: () =>
-							Effect.gen(function* () {
-								// Fetch user details from WorkOS
-								const workosUser = yield* workos.getUser(claims.sub)
+				const user = yield* Option.match(userOption, {
+					onNone: () =>
+						Effect.gen(function* () {
+							// Fetch user details from WorkOS
+							const workosUser = yield* workos.getUser(claims.sub)
 
-								// Create user in DB
-								return yield* syncUserFromWorkOS(
-									userRepo,
-									claims.sub,
-									workosUser.email,
-									workosUser.firstName,
-									workosUser.lastName,
-									workosUser.profilePictureUrl,
-								)
-							}),
-						onSome: (user) => Effect.succeed(user),
-					})
+							// Create user in DB
+							return yield* syncUserFromWorkOS(
+								userRepo,
+								claims.sub,
+								workosUser.email,
+								workosUser.firstName,
+								workosUser.lastName,
+								workosUser.profilePictureUrl,
+							)
+						}),
+					onSome: (user) => Effect.succeed(user),
+				})
 
-					const internalOrgId = claims.org_id
-						? yield* resolveInternalOrganizationId(claims.org_id)
-						: undefined
+				const internalOrgId = claims.org_id
+					? yield* resolveInternalOrganizationId(claims.org_id)
+					: undefined
 
-					// Build CurrentUser from JWT payload and DB user
-					const currentUser = new CurrentUser.Schema({
-						id: user.id,
-						role: claims.role ?? "member",
-						organizationId: internalOrgId,
+				// Build CurrentUser from JWT payload and DB user
+				const currentUser = new CurrentUser.Schema({
+					id: user.id,
+					role: claims.role ?? "member",
+					organizationId: internalOrgId,
 					avatarUrl: user.avatarUrl ?? undefined,
 					firstName: user.firstName,
 					lastName: user.lastName,

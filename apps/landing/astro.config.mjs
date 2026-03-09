@@ -5,7 +5,12 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default defineConfig({
 	site: "https://hazel.sh",
-	integrations: [react(), sitemap()],
+	integrations: [
+		react(),
+		sitemap({
+			filter: (page) => !page.includes("/api-reference"),
+		}),
+	],
 	redirects: {
 		"/download": "/desktop",
 	},

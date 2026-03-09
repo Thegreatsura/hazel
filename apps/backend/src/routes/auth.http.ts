@@ -230,13 +230,13 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						),
 					)
 
-					const { user: workosUser, accessToken, refreshToken } = authResponse
-					const workosUserId = Schema.decodeUnknownSync(WorkOSUserId)(workosUser.id)
+				const { user: workosUser, accessToken, refreshToken } = authResponse
+				const workosUserId = Schema.decodeUnknownSync(WorkOSUserId)(workosUser.id)
 
-					// Ensure user exists in our DB
-					const userOption = yield* userRepo.findByWorkOSUserId(workosUserId).pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
+				// Ensure user exists in our DB
+				const userOption = yield* userRepo.findByWorkOSUserId(workosUserId).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to query user",
@@ -246,13 +246,13 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					}),
 				)
 
-					yield* Option.match(userOption, {
-						onNone: () =>
-							userRepo
-								.upsertWorkOSUser({
-									externalId: workosUserId,
-									email: workosUser.email,
-									firstName: workosUser.firstName || "",
+				yield* Option.match(userOption, {
+					onNone: () =>
+						userRepo
+							.upsertWorkOSUser({
+								externalId: workosUserId,
+								email: workosUser.email,
+								firstName: workosUser.firstName || "",
 								lastName: workosUser.lastName || "",
 								avatarUrl: workosUser.profilePictureUrl?.trim()
 									? workosUser.profilePictureUrl

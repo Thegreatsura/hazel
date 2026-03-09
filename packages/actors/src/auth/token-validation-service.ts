@@ -95,7 +95,9 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 							return Effect.fail(
 								new JwtValidationError({
 									message: "Invalid or expired token",
-									cause: results.map((result) => (Either.isLeft(result) ? result.left : null)),
+									cause: results.map((result) =>
+										Either.isLeft(result) ? result.left : null,
+									),
 								}),
 							)
 						}),

@@ -27,7 +27,8 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 			const decodeMessageLink = Schema.decodeUnknownSync(ChatSyncMessageLink.Model)
 			const decodeMessageLinkRows = (rows: readonly unknown[]) =>
 				rows.map((row) => decodeMessageLink(row))
-			const decodeMessageLinkOption = <T>(value: Option.Option<T>) => Option.map(value, decodeMessageLink)
+			const decodeMessageLinkOption = <T>(value: Option.Option<T>) =>
+				Option.map(value, decodeMessageLink)
 
 			const insert = (...args: Parameters<typeof baseRepo.insert>) =>
 				baseRepo.insert(...args).pipe(Effect.map(decodeMessageLinkRows)) as ReturnType<
@@ -88,7 +89,11 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									.limit(1),
 							),
 					)({ channelLinkId, hazelMessageId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+						),
+					)
 
 			const findByExternalMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -124,7 +129,11 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									.limit(1),
 							),
 					)({ channelLinkId, externalMessageId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+						),
+					)
 
 			const findByRootHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
@@ -159,7 +168,11 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									),
 							),
 					)({ channelLinkId, rootHazelMessageId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeMessageLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+						),
+					)
 
 			const updateLastSyncedAt = (id: SyncMessageLinkId, tx?: TxFn) =>
 				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>

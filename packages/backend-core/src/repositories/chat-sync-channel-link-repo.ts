@@ -21,7 +21,8 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 			const decodeChannelLink = Schema.decodeUnknownSync(ChatSyncChannelLink.Model)
 			const decodeChannelLinkRows = (rows: readonly unknown[]) =>
 				rows.map((row) => decodeChannelLink(row))
-			const decodeChannelLinkOption = <T>(value: Option.Option<T>) => Option.map(value, decodeChannelLink)
+			const decodeChannelLinkOption = <T>(value: Option.Option<T>) =>
+				Option.map(value, decodeChannelLink)
 
 			const insert = (...args: Parameters<typeof baseRepo.insert>) =>
 				baseRepo.insert(...args).pipe(Effect.map(decodeChannelLinkRows)) as ReturnType<
@@ -44,7 +45,11 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								.limit(1),
 						),
 					)({ id }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+						),
+					)
 
 			const findBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
 				db
@@ -121,7 +126,11 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									.limit(1),
 							),
 					)({ syncConnectionId, hazelChannelId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+						),
+					)
 
 			const findByExternalChannel = (
 				syncConnectionId: SyncConnectionId,
@@ -157,7 +166,11 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									.limit(1),
 							),
 					)({ syncConnectionId, externalChannelId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0]).pipe(decodeChannelLinkOption)))
+					.pipe(
+						Effect.map((results) =>
+							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+						),
+					)
 
 			const findActiveByExternalChannel = (externalChannelId: ExternalChannelId, tx?: TxFn) =>
 				db

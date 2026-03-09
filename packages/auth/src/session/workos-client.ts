@@ -1,9 +1,5 @@
 import { WorkOSUserFetchError } from "@hazel/domain"
-import {
-	WorkOSClientId,
-	WorkOSOrganizationId,
-	WorkOSUserId,
-} from "@hazel/schema"
+import { WorkOSClientId, WorkOSOrganizationId, WorkOSUserId } from "@hazel/schema"
 import type { Organization, User as WorkOSUser } from "@workos-inc/node"
 import { OrganizationFetchError } from "../errors.ts"
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"

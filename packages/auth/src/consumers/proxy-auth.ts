@@ -1,5 +1,11 @@
 import { Database, eq, schema } from "@hazel/db"
-import { OrganizationId, WorkOSJwtClaims, type UserId, type WorkOSOrganizationId, type WorkOSUserId } from "@hazel/schema"
+import {
+	OrganizationId,
+	WorkOSJwtClaims,
+	type UserId,
+	type WorkOSOrganizationId,
+	type WorkOSUserId,
+} from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
@@ -52,11 +58,14 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 							onSome: (externalId) =>
 								Schema.decodeUnknown(OrganizationId)(externalId).pipe(
 									Effect.catchAll((error) =>
-										Effect.logWarning("Failed to decode WorkOS external organization ID", {
-											workosOrgId,
-											externalId,
-											error: TreeFormatter.formatErrorSync(error),
-										}).pipe(Effect.as(undefined)),
+										Effect.logWarning(
+											"Failed to decode WorkOS external organization ID",
+											{
+												workosOrgId,
+												externalId,
+												error: TreeFormatter.formatErrorSync(error),
+											},
+										).pipe(Effect.as(undefined)),
 									),
 								),
 						}),
@@ -78,12 +87,12 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			// Check cache first
 			const cached = yield* userLookupCache.get(workosUserId).pipe(
 				Effect.catchAll((error) => {
-						// Log cache error but continue with database lookup
-						return Effect.logWarning("User lookup cache error", error).pipe(
-							Effect.map(() => Option.none<{ internalUserId: UserId }>()),
-						)
-					}),
-				)
+					// Log cache error but continue with database lookup
+					return Effect.logWarning("User lookup cache error", error).pipe(
+						Effect.map(() => Option.none<{ internalUserId: UserId }>()),
+					)
+				}),
+			)
 
 			if (Option.isSome(cached)) {
 				yield* Effect.annotateCurrentSpan("cache.result", "hit")

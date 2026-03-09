@@ -13,7 +13,9 @@ describe("WorkOSSync helpers", () => {
 			decodeInternalOrganizationId("00000000-0000-0000-0000-000000000055"),
 		)
 
-		expect(orgId).toBe("00000000-0000-0000-0000-000000000055" as Schema.Schema.Type<typeof OrganizationId>)
+		expect(orgId).toBe(
+			"00000000-0000-0000-0000-000000000055" as Schema.Schema.Type<typeof OrganizationId>,
+		)
 	})
 
 	it("fails invalid internal organization IDs", async () => {
