@@ -801,10 +801,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const translateHazelMentionsForDiscord = Effect.fn(
 			"DiscordSyncWorker.translateHazelMentionsForDiscord",
-		)(function* (params: {
-			organizationId: OrganizationId
-			content: string
-		}) {
+		)(function* (params: { organizationId: OrganizationId; content: string }) {
 			const userIds = [...params.content.matchAll(DISCORD_USER_MENTION_PATTERN)].map(
 				(match) => match[1] as UserId,
 			)
@@ -836,8 +833,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				replacements.set(userId, fallbackDisplayName)
 			}
 
-			return params.content.replace(DISCORD_USER_MENTION_PATTERN, (fullMatch, userId: string) =>
-				replacements.get(userId) ?? fullMatch,
+			return params.content.replace(
+				DISCORD_USER_MENTION_PATTERN,
+				(fullMatch, userId: string) => replacements.get(userId) ?? fullMatch,
 			)
 		})
 

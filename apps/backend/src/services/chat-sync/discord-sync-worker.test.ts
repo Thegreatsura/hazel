@@ -162,9 +162,7 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 				transaction: (effect: any) =>
 					Effect.provideService(effect, Database.TransactionContext, {
 						execute: ((query: unknown) =>
-							deps.databaseExecute
-								? deps.databaseExecute(query)
-								: Effect.succeed([])) as TxFn,
+							deps.databaseExecute ? deps.databaseExecute(query) : Effect.succeed([])) as TxFn,
 					}),
 				makeQuery: () => Effect.die("not used in this test"),
 				makeQueryWithSchema: () => Effect.die("not used in this test"),
@@ -184,10 +182,9 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 		Layer.provide(
 			Layer.succeed(
 				MessageOutboxRepo,
-				(deps.messageOutboxRepo ??
-					{
-						insert: () => Effect.succeed([{ id: "outbox-id" } as any]),
-					}) as MessageOutboxRepo,
+				(deps.messageOutboxRepo ?? {
+					insert: () => Effect.succeed([{ id: "outbox-id" } as any]),
+				}) as MessageOutboxRepo,
 			),
 		),
 		Layer.provide(Layer.succeed(MessageReactionRepo, deps.messageReactionRepo as MessageReactionRepo)),

@@ -28,7 +28,6 @@ export const BotEnvConfig = Config.all({
 		Config.withDescription("Gateway API URL for inbound bot websocket delivery"),
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
-		Config.orElse(() => Config.string("RIVET_PUBLIC_ENDPOINT")),
 		Config.orElse(() => Config.string("RIVET_URL")),
 		Config.withDefault(DEFAULT_ACTORS_URL),
 		Config.withDescription("Actors/Rivet endpoint for live state streaming"),
