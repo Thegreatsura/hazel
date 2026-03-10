@@ -27,6 +27,7 @@ import {
 	BotGatewayInvalidSessionFrame,
 	BotGatewayReadyFrame,
 	BotGatewayReconnectFrame,
+	BotGatewayResumeFrame,
 	BotGatewayServerFrame,
 	isTemporaryActorServiceError,
 } from "@hazel/domain"
@@ -99,6 +100,7 @@ import {
 
 const DEFAULT_ACTORS_ENDPOINT = "https://rivet.hazel.sh"
 const GENERIC_COMMAND_ERROR_MESSAGE = "An unexpected error occurred. Please try again."
+const GATEWAY_SESSION_ID_STATE_KEY = "gateway_session_id"
 
 /**
  * Internal configuration context for HazelBotClient
@@ -316,6 +318,8 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 			)
 
+		const deleteBotState = (key: string) => botStateStore.delete(authContext.botId as BotId, key)
+
 		const mapCommandHandlerError = (commandName: string, cause: unknown): CommandHandlerError =>
 			new CommandHandlerError({
 				message: `Command handler failed for /${commandName}`,
@@ -499,7 +503,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							partitionEvents,
 							(envelope) =>
 								dispatchGatewayEvent(envelope).pipe(
-									Effect.catchAllCause((cause) =>
+									Effect.tapErrorCause((cause) =>
 										Effect.logError("Gateway event handler failed", {
 											eventType: envelope.eventType,
 											partitionKey: envelope.partitionKey,
@@ -529,6 +533,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				Effect.map((storedOffset) => storedOffset ?? runtimeConfig.resumeOffset),
 			)
 
+		const loadGatewaySessionId = () =>
+			getBotState(GATEWAY_SESSION_ID_STATE_KEY, Schema.String).pipe(
+				Effect.catchTags({
+					GatewayDecodeError: (error) =>
+						Effect.logWarning("Failed to decode saved gateway session id, reconnecting fresh", {
+							error,
+							botId: authContext.botId,
+						}).pipe(Effect.as(null)),
+					GatewaySessionStoreError: (error) =>
+						Effect.logWarning("Failed to load saved gateway session id, reconnecting fresh", {
+							error,
+							botId: authContext.botId,
+						}).pipe(Effect.as(null)),
+				}),
+			)
+
 		const normalizeSocketPayload = (payload: unknown): string => {
 			if (typeof payload === "string") {
 				return payload
@@ -550,20 +570,24 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			Effect.gen(function* () {
 				const runtime = yield* Effect.runtime<any>()
 				let nextResumeOffset = yield* loadResumeOffset(runtimeConfig)
+				let nextSessionId = yield* loadGatewaySessionId()
 				let hasConnected = false
 
 				const connectOnce = Effect.tryPromise({
 					try: () =>
-						new Promise<string>((resolve, reject) => {
+						new Promise<{ resumeOffset: string; sessionId: string | null }>((resolve, reject) => {
 							const socket = new WebSocket(
 								createGatewayWebSocketUrl(runtimeConfig.gatewayUrl).toString(),
 							)
 							let finished = false
-							let sessionId: string | null = null
+							let sessionId: string | null = nextSessionId
 							let currentResumeOffset = nextResumeOffset
 							let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 
-							const finish = (resumeOffset: string, error?: unknown) => {
+							const finish = (
+								state: { resumeOffset: string; sessionId: string | null },
+								error?: unknown,
+							) => {
 								if (finished) {
 									return
 								}
@@ -575,7 +599,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									reject(error)
 									return
 								}
-								resolve(resumeOffset)
+								resolve(state)
 							}
 
 							const sendFrame = (frame: BotGatewayClientFrame) => {
@@ -609,33 +633,69 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									)
 								} catch (error) {
 									socket.close(1011, "invalid_gateway_frame")
-									finish(currentResumeOffset, error)
+									finish(
+										{
+											resumeOffset: currentResumeOffset,
+											sessionId,
+										},
+										error,
+									)
 									return
 								}
 
 								switch (frame.op) {
 									case "HELLO": {
 										startHeartbeat(frame)
-										sendFrame({
-											op: "IDENTIFY",
-											botToken: runtimeConfig.botToken,
-											resumeOffset: currentResumeOffset,
-										})
+										sendFrame(
+											sessionId
+												? ({
+														op: "RESUME",
+														botToken: runtimeConfig.botToken,
+														sessionId,
+														resumeOffset: currentResumeOffset,
+													} satisfies Schema.Schema.Type<
+														typeof BotGatewayResumeFrame
+													>)
+												: {
+														op: "IDENTIFY",
+														botToken: runtimeConfig.botToken,
+														resumeOffset: currentResumeOffset,
+													},
+										)
 										return
 									}
 									case "READY": {
 										sessionId = frame.sessionId
 										Runtime.runPromise(runtime)(
-											Effect.logInfo(
-												hasConnected || frame.resumed
-													? "Bot gateway websocket reconnected"
-													: "Bot gateway websocket connected",
-												{
-													botId: authContext.botId,
-													sessionId: frame.sessionId,
-													resumed: frame.resumed,
-													offset: currentResumeOffset,
-												},
+											setBotState(
+												GATEWAY_SESSION_ID_STATE_KEY,
+												Schema.String,
+												frame.sessionId,
+											).pipe(
+												Effect.catchTags({
+													GatewaySessionStoreError: (error) =>
+														Effect.logWarning(
+															"Failed to persist gateway session id",
+															{
+																error,
+																botId: authContext.botId,
+																sessionId: frame.sessionId,
+															},
+														),
+												}),
+												Effect.zipRight(
+													Effect.logInfo(
+														hasConnected || frame.resumed
+															? "Bot gateway websocket reconnected"
+															: "Bot gateway websocket connected",
+														{
+															botId: authContext.botId,
+															sessionId: frame.sessionId,
+															resumed: frame.resumed,
+															offset: currentResumeOffset,
+														},
+													),
+												),
 											),
 										).catch(() => undefined)
 										hasConnected = true
@@ -661,7 +721,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 											})
 											.catch((error) => {
 												socket.close(1011, "dispatch_failed")
-												finish(currentResumeOffset, error)
+												finish(
+													{
+														resumeOffset: currentResumeOffset,
+														sessionId,
+													},
+													error,
+												)
 											})
 										return
 									}
@@ -670,21 +736,43 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									}
 									case "RECONNECT": {
 										socket.close(1012, frame.reason)
-										finish(currentResumeOffset)
+										finish({
+											resumeOffset: currentResumeOffset,
+											sessionId,
+										})
 										return
 									}
 									case "INVALID_SESSION": {
 										Runtime.runPromise(runtime)(
-											gatewaySessionStore.save(
-												authContext.botId as BotId,
-												runtimeConfig.resumeOffset,
+											Effect.gen(function* () {
+												yield* gatewaySessionStore.save(
+													authContext.botId as BotId,
+													runtimeConfig.resumeOffset,
+												)
+												yield* deleteBotState(GATEWAY_SESSION_ID_STATE_KEY)
+											}).pipe(
+												Effect.catchTags({
+													GatewaySessionStoreError: (error) =>
+														Effect.logWarning(
+															"Failed to clear saved gateway session after invalidation",
+															{
+																error,
+																botId: authContext.botId,
+																sessionId,
+															},
+														),
+												}),
 											),
 										)
 											.catch(() => undefined)
 											.finally(() => {
 												currentResumeOffset = runtimeConfig.resumeOffset
+												sessionId = null
 												socket.close(1008, frame.reason)
-												finish(currentResumeOffset)
+												finish({
+													resumeOffset: currentResumeOffset,
+													sessionId,
+												})
 											})
 										return
 									}
@@ -692,11 +780,20 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							})
 
 							socket.addEventListener("error", () => {
-								finish(currentResumeOffset, new Error("Gateway websocket connection failed"))
+								finish(
+									{
+										resumeOffset: currentResumeOffset,
+										sessionId,
+									},
+									new Error("Gateway websocket connection failed"),
+								)
 							})
 
 							socket.addEventListener("close", () => {
-								finish(currentResumeOffset)
+								finish({
+									resumeOffset: currentResumeOffset,
+									sessionId,
+								})
 							})
 						}),
 					catch: (cause) =>
@@ -709,18 +806,24 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				yield* Effect.forkScoped(
 					Effect.forever(
 						Effect.gen(function* () {
-							nextResumeOffset = yield* connectOnce.pipe(
+							const nextState = yield* connectOnce.pipe(
 								Effect.catchAll((error) =>
 									Effect.logWarning("Bot gateway websocket failed, retrying", {
 										error,
 										botId: authContext.botId,
 										offset: nextResumeOffset,
+										sessionId: nextSessionId,
 									}).pipe(
 										Effect.zipRight(Effect.sleep(Duration.seconds(1))),
-										Effect.as(nextResumeOffset),
+										Effect.as({
+											resumeOffset: nextResumeOffset,
+											sessionId: nextSessionId,
+										}),
 									),
 								),
 							)
+							nextResumeOffset = nextState.resumeOffset
+							nextSessionId = nextState.sessionId
 						}).pipe(Effect.zipRight(Effect.sleep(Duration.millis(250)))),
 					),
 				)

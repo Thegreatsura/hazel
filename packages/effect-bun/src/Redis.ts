@@ -271,14 +271,14 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 				try: () => client.connect(),
 				catch: mapRedisError,
 			}).pipe(
-					Effect.timeoutFail({
-						duration: Duration.seconds(10),
-						onTimeout: () =>
-							new RedisError({
-								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
-							}),
-					}),
-				)
+				Effect.timeoutFail({
+					duration: Duration.seconds(10),
+					onTimeout: () =>
+						new RedisError({
+							message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
+						}),
+				}),
+			)
 
 			yield* Effect.log(`Redis connected: ${sanitizeRedisUrl(url)}`)
 

@@ -7,6 +7,7 @@ import {
 	BotGatewayClientFrame,
 	BotGatewayDispatchFrame,
 	BotGatewayHelloFrame,
+	BotGatewayInvalidSessionFrame,
 	BotGatewayReadyFrame,
 } from "@hazel/domain"
 import { BotAuth } from "./auth.ts"
@@ -93,7 +94,8 @@ class FakeWebSocket {
 		frame:
 			| Schema.Schema.Type<typeof BotGatewayHelloFrame>
 			| Schema.Schema.Type<typeof BotGatewayReadyFrame>
-			| Schema.Schema.Type<typeof BotGatewayDispatchFrame>,
+			| Schema.Schema.Type<typeof BotGatewayDispatchFrame>
+			| Schema.Schema.Type<typeof BotGatewayInvalidSessionFrame>,
 	) {
 		this.emit("message", { data: JSON.stringify(frame) })
 	}
@@ -111,7 +113,15 @@ class FakeWebSocket {
 	}
 }
 
-const makeHazelBotLayer = (options: { sessionStore: any; commands?: CommandGroup<any> }) => {
+const makeHazelBotLayer = (options: {
+	sessionStore: any
+	commands?: CommandGroup<any>
+	stateStore?: {
+		get: (botId: string, key: string) => Effect.Effect<string | null, any>
+		set: (botId: string, key: string, value: string) => Effect.Effect<void, any>
+		delete: (botId: string, key: string) => Effect.Effect<void, any>
+	}
+}) => {
 	return HazelBotClient.Default.pipe(
 		Layer.provide(
 			BotAuth.Default({
@@ -147,6 +157,7 @@ const makeHazelBotLayer = (options: { sessionStore: any; commands?: CommandGroup
 				get: () => Effect.succeed(null),
 				set: () => Effect.void,
 				delete: () => Effect.void,
+				...options.stateStore,
 			}),
 		),
 	)
@@ -314,6 +325,206 @@ describe("HazelBotClient durable gateway", () => {
 					expect(yield* Ref.get(attemptsRef)).toBe(1)
 					expect(yield* Ref.get(savedOffsetsRef)).toEqual([])
 					expect(yield* Ref.get(sentFramesRef)).not.toContain("ACK")
+				}).pipe(
+					Effect.scoped,
+					Effect.provide(TestLayer),
+					Effect.ensuring(
+						Effect.sync(() => {
+							globalThis.WebSocket = originalWebSocket
+						}),
+					),
+				)
+			}),
+		))
+
+	it("uses RESUME when a saved gateway session id exists", () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const sentFramesRef = yield* Ref.make<
+					Array<Schema.Schema.Type<typeof BotGatewayClientFrame>>
+				>([])
+				const originalWebSocket = globalThis.WebSocket
+
+				server.use(
+					http.post(`${BACKEND_URL}/bot-commands/sync`, async () =>
+						HttpResponse.json({ syncedCount: 0 }),
+					),
+					http.patch(`${BACKEND_URL}/bot-commands/settings`, async () =>
+						HttpResponse.json({ success: true }),
+					),
+				)
+
+				globalThis.WebSocket = FakeWebSocket as any
+				FakeWebSocket.onCreate = (socket) => {
+					socket.emitServerFrame({
+						op: "HELLO",
+						heartbeatIntervalMs: 60_000,
+					})
+				}
+				FakeWebSocket.onSend = (socket, frame) => {
+					Ref.update(sentFramesRef, (frames) => [...frames, frame]).pipe(Effect.runSync)
+					if (frame.op === "RESUME") {
+						socket.close()
+					}
+				}
+
+				const TestLayer = makeHazelBotLayer({
+					sessionStore: {
+						load: () => Effect.succeed("42"),
+						save: () => Effect.void,
+					},
+					stateStore: {
+						get: (_botId, key) =>
+							Effect.succeed(key === "gateway_session_id" ? JSON.stringify("session-1") : null),
+						set: () => Effect.void,
+						delete: () => Effect.void,
+					},
+				})
+
+				yield* Effect.gen(function* () {
+					const bot = yield* HazelBotClient
+					yield* bot.start
+					yield* Effect.sleep(Duration.millis(50))
+
+					expect(yield* Ref.get(sentFramesRef)).toContainEqual({
+						op: "RESUME",
+						botToken: BOT_TOKEN,
+						sessionId: "session-1",
+						resumeOffset: "42",
+					})
+				}).pipe(
+					Effect.scoped,
+					Effect.provide(TestLayer),
+					Effect.ensuring(
+						Effect.sync(() => {
+							globalThis.WebSocket = originalWebSocket
+						}),
+					),
+				)
+			}),
+		))
+
+	it("persists the gateway session id from READY", () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const savedStateRef = yield* Ref.make<Array<{ key: string; value: string }>>([])
+				const originalWebSocket = globalThis.WebSocket
+
+				server.use(
+					http.post(`${BACKEND_URL}/bot-commands/sync`, async () =>
+						HttpResponse.json({ syncedCount: 0 }),
+					),
+					http.patch(`${BACKEND_URL}/bot-commands/settings`, async () =>
+						HttpResponse.json({ success: true }),
+					),
+				)
+
+				globalThis.WebSocket = FakeWebSocket as any
+				FakeWebSocket.onCreate = (socket) => {
+					socket.emitServerFrame({
+						op: "HELLO",
+						heartbeatIntervalMs: 60_000,
+					})
+				}
+				FakeWebSocket.onSend = (socket, frame) => {
+					if (frame.op === "IDENTIFY") {
+						socket.emitServerFrame({
+							op: "READY",
+							sessionId: "session-1",
+							resumed: false,
+							resumeOffset: "now",
+						})
+						setTimeout(() => socket.close(), 20)
+					}
+				}
+
+				const TestLayer = makeHazelBotLayer({
+					sessionStore: {
+						load: () => Effect.succeed(null),
+						save: () => Effect.void,
+					},
+					stateStore: {
+						get: () => Effect.succeed(null),
+						set: (_botId, key, value) =>
+							Ref.update(savedStateRef, (entries) => [...entries, { key, value }]).pipe(
+								Effect.asVoid,
+							),
+						delete: () => Effect.void,
+					},
+				})
+
+				yield* Effect.gen(function* () {
+					const bot = yield* HazelBotClient
+					yield* bot.start
+					yield* Effect.sleep(Duration.millis(100))
+
+					expect(yield* Ref.get(savedStateRef)).toContainEqual({
+						key: "gateway_session_id",
+						value: JSON.stringify("session-1"),
+					})
+				}).pipe(
+					Effect.scoped,
+					Effect.provide(TestLayer),
+					Effect.ensuring(
+						Effect.sync(() => {
+							globalThis.WebSocket = originalWebSocket
+						}),
+					),
+				)
+			}),
+		))
+
+	it("clears the saved gateway session id after INVALID_SESSION", () =>
+		Effect.runPromise(
+			Effect.gen(function* () {
+				const deletedKeysRef = yield* Ref.make<Array<string>>([])
+				const originalWebSocket = globalThis.WebSocket
+
+				server.use(
+					http.post(`${BACKEND_URL}/bot-commands/sync`, async () =>
+						HttpResponse.json({ syncedCount: 0 }),
+					),
+					http.patch(`${BACKEND_URL}/bot-commands/settings`, async () =>
+						HttpResponse.json({ success: true }),
+					),
+				)
+
+				globalThis.WebSocket = FakeWebSocket as any
+				FakeWebSocket.onCreate = (socket) => {
+					socket.emitServerFrame({
+						op: "HELLO",
+						heartbeatIntervalMs: 60_000,
+					})
+				}
+				FakeWebSocket.onSend = (socket, frame) => {
+					if (frame.op === "RESUME") {
+						socket.emitServerFrame({
+							op: "INVALID_SESSION",
+							reason: "expired",
+						})
+					}
+				}
+
+				const TestLayer = makeHazelBotLayer({
+					sessionStore: {
+						load: () => Effect.succeed("42"),
+						save: () => Effect.void,
+					},
+					stateStore: {
+						get: (_botId, key) =>
+							Effect.succeed(key === "gateway_session_id" ? JSON.stringify("session-1") : null),
+						set: () => Effect.void,
+						delete: (_botId, key) =>
+							Ref.update(deletedKeysRef, (keys) => [...keys, key]).pipe(Effect.asVoid),
+					},
+				})
+
+				yield* Effect.gen(function* () {
+					const bot = yield* HazelBotClient
+					yield* bot.start
+					yield* Effect.sleep(Duration.millis(100))
+
+					expect(yield* Ref.get(deletedKeysRef)).toContain("gateway_session_id")
 				}).pipe(
 					Effect.scoped,
 					Effect.provide(TestLayer),

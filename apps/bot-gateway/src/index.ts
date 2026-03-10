@@ -12,7 +12,19 @@ import {
 import { Redis } from "@hazel/effect-bun"
 import type { BotId } from "@hazel/schema"
 import type { ServerWebSocket } from "bun"
-import { Cause, Config, ConfigProvider, Context, Deferred, Effect, Layer, Option, Ref, Runtime, Schema } from "effect"
+import {
+	Cause,
+	Config,
+	ConfigProvider,
+	Context,
+	Deferred,
+	Effect,
+	Layer,
+	Option,
+	Ref,
+	Runtime,
+	Schema,
+} from "effect"
 import { TracerLive } from "./observability/tracer"
 
 const DEFAULT_PORT = 3034
@@ -772,20 +784,25 @@ const makeStartupError = (dependency: StartupDependency, message: string, cause?
 		cause,
 	})
 
-export const instrumentStartupLayer = <ROut, E, RIn>(layer: Layer.Layer<ROut, E, RIn>, options: {
-	readonly dependency: StartupDependency
-	readonly startMessage: string
-	readonly successMessage: string
-	readonly successLogs?: (context: Context.Context<ROut>) => Record<string, unknown>
-	readonly failureMessage: string
-}) =>
+export const instrumentStartupLayer = <ROut, E, RIn>(
+	layer: Layer.Layer<ROut, E, RIn>,
+	options: {
+		readonly dependency: StartupDependency
+		readonly startMessage: string
+		readonly successMessage: string
+		readonly successLogs?: (context: Context.Context<ROut>) => Record<string, unknown>
+		readonly failureMessage: string
+	},
+) =>
 	Layer.unwrapEffect(
 		Effect.logInfo(options.startMessage).pipe(
 			Effect.as(
 				layer.pipe(
 					Layer.tap((context) => {
 						const logs = options.successLogs?.(context)
-						return logs ? Effect.logInfo(options.successMessage, logs) : Effect.logInfo(options.successMessage)
+						return logs
+							? Effect.logInfo(options.successMessage, logs)
+							: Effect.logInfo(options.successMessage)
 					}),
 					Layer.tapErrorCause((cause) =>
 						Effect.logError(options.failureMessage, {
@@ -871,8 +888,12 @@ export const createGatewayServer = (options: {
 	readonly serve?: GatewayServe
 }) =>
 	Effect.gen(function* () {
-		const { config, hub, runtime, serve = (serveOptions) => Bun.serve<{ sessionId: string | null }>(serveOptions) } =
-			options
+		const {
+			config,
+			hub,
+			runtime,
+			serve = (serveOptions) => Bun.serve<{ sessionId: string | null }>(serveOptions),
+		} = options
 
 		const handleStreamProxyRequest = (request: Request, url: URL) =>
 			Effect.gen(function* () {
@@ -980,7 +1001,10 @@ export const createGatewayServer = (options: {
 									),
 								)
 							},
-							message(socket: ServerWebSocket<{ sessionId: string | null }>, message: string | BufferSource) {
+							message(
+								socket: ServerWebSocket<{ sessionId: string | null }>,
+								message: string | BufferSource,
+							) {
 								const op = extractGatewayOp(message)
 								Runtime.runFork(runtime)(
 									Effect.gen(function* () {
