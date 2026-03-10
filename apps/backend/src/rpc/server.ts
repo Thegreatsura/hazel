@@ -46,8 +46,6 @@ import { TypingIndicatorRpcLive } from "./handlers/typing-indicators"
 import { UserPresenceStatusRpcLive } from "./handlers/user-presence-status"
 import { UserRpcLive } from "./handlers/users"
 import { AuthMiddlewareLive } from "./middleware/auth"
-import { RpcLoggingMiddlewareLive } from "./middleware/logging"
-import { RpcLoggingMiddleware } from "./middleware/logging-class"
 import { ScopeInjectionMiddlewareLive } from "./middleware/scope-injection"
 import { ScopeInjectionMiddleware } from "@hazel/domain/rpc"
 
@@ -87,9 +85,7 @@ const BaseRpcs = MessageRpcs.merge(
 	CustomEmojiRpcs,
 )
 
-export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs)
-	.middleware(RpcLoggingMiddleware)
-	.middleware(ScopeInjectionMiddleware)
+export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(ScopeInjectionMiddleware)
 
 // Startup validation: ensure all RPCs have RequiredScopes annotations
 const rpcGroups = [
@@ -151,8 +147,4 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(BotRpcLive),
 		Layer.provideMerge(CustomEmojiRpcLive),
 	)
-	.pipe(
-		Layer.provideMerge(AuthMiddlewareLive),
-		Layer.provideMerge(RpcLoggingMiddlewareLive),
-		Layer.provideMerge(ScopeInjectionMiddlewareLive),
-	)
+	.pipe(Layer.provideMerge(AuthMiddlewareLive), Layer.provideMerge(ScopeInjectionMiddlewareLive))
