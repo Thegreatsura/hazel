@@ -461,6 +461,40 @@ export const setupCommand = Command.make(
 				}
 			}
 
+			// Optional: Klipy GIF API
+			yield* Console.log(pc.cyan("\n——— Optional: Klipy GIF Search ———"))
+
+			let klipyApiKey: string | undefined
+
+			// Check if Klipy is already configured
+			if (existingConfig.klipyApiKey) {
+				yield* Console.log(pc.green("✓") + " Found existing Klipy API key")
+				const keepKlipy = yield* Prompt.confirm({
+					message: "Keep existing Klipy API key?",
+					initial: true,
+				})
+				if (keepKlipy) {
+					klipyApiKey = existingConfig.klipyApiKey.value
+				}
+			}
+
+			if (!klipyApiKey) {
+				const setupKlipy = yield* Prompt.confirm({
+					message: "Set up Klipy API key? (for GIF search, uses default if skipped)",
+					initial: false,
+				})
+
+				if (setupKlipy) {
+					yield* Console.log(`Get your API key at ${pc.cyan("https://klipy.com")}\n`)
+					klipyApiKey = yield* promptWithExisting({
+						key: "KLIPY_API_KEY",
+						message: "Klipy API Key",
+						envResult,
+						isSecret: true,
+					})
+				}
+			}
+
 			// Step 5: Write .env files
 			if (dryRun) {
 				yield* Console.log(
@@ -482,6 +516,7 @@ export const setupCommand = Command.make(
 				githubApp: githubAppConfig,
 				githubWebhookSecret,
 				openrouterApiKey,
+				klipyApiKey,
 			}
 
 			yield* envWriter.writeEnvFile("apps/web/.env", ENV_TEMPLATES.web(config), dryRun)

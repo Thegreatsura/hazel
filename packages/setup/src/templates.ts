@@ -30,6 +30,7 @@ export interface ExistingConfig {
 	}
 	githubWebhookSecret?: EnvValue
 	openrouterApiKey?: EnvValue
+	klipyApiKey?: EnvValue
 }
 
 /** Get a single value from env result (picks first if multiple) */
@@ -85,6 +86,10 @@ export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => 
 	const openrouterApiKey = getEnvValue(result, "OPENROUTER_API_KEY")
 	if (openrouterApiKey) config.openrouterApiKey = openrouterApiKey
 
+	// Klipy
+	const klipyApiKey = getEnvValue(result, "KLIPY_API_KEY")
+	if (klipyApiKey) config.klipyApiKey = klipyApiKey
+
 	return config
 }
 
@@ -131,6 +136,7 @@ export interface Config {
 	}
 	githubWebhookSecret?: string
 	openrouterApiKey?: string
+	klipyApiKey?: string
 }
 
 export const ENV_TEMPLATES = {
@@ -193,6 +199,10 @@ export const ENV_TEMPLATES = {
 		base.GITHUB_APP_SLUG = config.githubApp?.appSlug ?? ""
 		base.GITHUB_APP_PRIVATE_KEY = config.githubApp?.privateKey ?? ""
 		base.GITHUB_WEBHOOK_SECRET = config.githubWebhookSecret ?? ""
+
+		// Klipy GIF search
+		base.KLIPY_API_KEY =
+			config.klipyApiKey ?? "bZNjfZASldu4OkLPwM3Wg7mcInb0oESRww2b4wz9E7P8bfdxPrCdue1N58Ciw6Ut"
 
 		return base
 	},
