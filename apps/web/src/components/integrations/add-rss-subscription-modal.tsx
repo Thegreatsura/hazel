@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
@@ -19,7 +19,7 @@ import {
 import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 const POLLING_INTERVAL_OPTIONS = [
 	{ value: 5, label: "Every 5 minutes" },

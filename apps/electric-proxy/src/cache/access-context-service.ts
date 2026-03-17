@@ -1,7 +1,7 @@
-import { PersistedCache, type Persistence } from "@effect/experimental"
+import { PersistedCache, Persistence } from "effect/unstable/persistence"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import type { BotId, ChannelId, UserId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 import {
 	AccessContextLookupError,
 	type BotAccessContext,
@@ -20,7 +20,10 @@ export interface AccessContextCache {
 	readonly getBotContext: (
 		botId: BotId,
 		userId: UserId,
-	) => Effect.Effect<BotAccessContext, AccessContextLookupError | Persistence.PersistenceError>
+	) => Effect.Effect<
+		BotAccessContext,
+		AccessContextLookupError | Persistence.PersistenceError | Schema.SchemaError
+	>
 
 	readonly invalidateBot: (botId: BotId) => Effect.Effect<void, Persistence.PersistenceError>
 }
@@ -32,11 +35,10 @@ export interface AccessContextCache {
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class AccessContextCacheService extends Effect.Service<AccessContextCacheService>()(
+export class AccessContextCacheService extends ServiceMap.Service<AccessContextCacheService>()(
 	"AccessContextCacheService",
 	{
-		accessors: true,
-		scoped: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const db = yield* Database.Database
 
 			// Create bot access context cache
@@ -70,27 +72,27 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 									.where(eq(schema.botInstallationsTable.botId, botId)),
 							)
 							.pipe(
-								Effect.catchTag(
-									"DatabaseError",
-									(error) =>
+								Effect.catchTag("DatabaseError", (error) =>
+									Effect.fail(
 										new AccessContextLookupError({
 											message: "Failed to query bot's channels",
 											detail: error.message,
 											entityId: request.botId,
 											entityType: "bot",
 										}),
+									),
 								),
 							)
 
-						const channelIds = channels.map((c) => c.channelId)
+						const channelIds = channels.map((c: { channelId: ChannelId }) => c.channelId)
 						yield* Effect.annotateCurrentSpan("cache.result_size", channelIds.length)
 
 						return { channelIds }
 					}),
 
-				timeToLive: () => CACHE_TTL,
+				timeToLive: (_exit, _request) => CACHE_TTL,
 				inMemoryCapacity: IN_MEMORY_CAPACITY,
-				inMemoryTTL: IN_MEMORY_TTL,
+				inMemoryTTL: (_exit, _request) => IN_MEMORY_TTL,
 			})
 
 			return {
@@ -117,4 +119,6 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 			} satisfies AccessContextCache
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -1,4 +1,4 @@
-import { Config, Effect, Option, Redacted } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted } from "effect"
 
 /**
  * Proxy configuration interface
@@ -21,17 +21,16 @@ export interface ProxyConfig {
  * Proxy configuration service.
  * Reads configuration from environment variables.
  */
-export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("ProxyConfigService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()("ProxyConfigService", {
+	make: Effect.gen(function* () {
 		const electricUrl = yield* Config.string("ELECTRIC_URL")
 		const electricSourceId = yield* Config.string("ELECTRIC_SOURCE_ID").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const electricSourceSecret = yield* Config.string("ELECTRIC_SOURCE_SECRET").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
@@ -43,7 +42,7 @@ export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("Pr
 		const port = yield* Config.number("PORT").pipe(Config.withDefault(8184))
 		const otlpEndpoint = yield* Config.string("OTLP_ENDPOINT").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const redisUrl = yield* Config.redacted("REDIS_URL").pipe(
 			Config.withDefault(Redacted.make("redis://localhost:6380")),
@@ -63,4 +62,6 @@ export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("Pr
 			redisUrl,
 		} satisfies ProxyConfig
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

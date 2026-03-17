@@ -1,9 +1,10 @@
-import { PinnedMessageRepo } from "@hazel/backend-core"
+import { MessageRepo, PinnedMessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { PinnedMessageRpcs } from "@hazel/domain/rpc"
+import { PinnedMessageResponse, PinnedMessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { MessagePolicy } from "../../policies/message-policy"
 import { PinnedMessagePolicy } from "../../policies/pinned-message-policy"
 
 /**
@@ -22,6 +23,10 @@ import { PinnedMessagePolicy } from "../../policies/pinned-message-policy"
 export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const messagePolicy = yield* MessagePolicy
+		const messageRepo = yield* MessageRepo
+		const pinnedMessagePolicy = yield* PinnedMessagePolicy
+		const pinnedMessageRepo = yield* PinnedMessageRepo
 
 		return {
 			"pinnedMessage.create": (payload) =>
@@ -30,20 +35,22 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* PinnedMessagePolicy.canCreate(payload.channelId)
-							const createdPinnedMessage = yield* PinnedMessageRepo.insert({
-								channelId: payload.channelId,
-								messageId: payload.messageId,
-								pinnedBy: user.id,
-								pinnedAt: new Date(),
-							}).pipe(Effect.map((res) => res[0]!))
+							yield* pinnedMessagePolicy.canCreate(payload.channelId)
+							const createdPinnedMessage = yield* pinnedMessageRepo
+								.insert({
+									channelId: payload.channelId,
+									messageId: payload.messageId,
+									pinnedBy: user.id,
+									pinnedAt: new Date(),
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new PinnedMessageResponse({
 								data: createdPinnedMessage,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("PinnedMessage", "create")),
@@ -52,18 +59,18 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* PinnedMessagePolicy.canUpdate(id)
-							const updatedPinnedMessage = yield* PinnedMessageRepo.update({
+							yield* pinnedMessagePolicy.canUpdate(id)
+							const updatedPinnedMessage = yield* pinnedMessageRepo.update({
 								id,
 								...payload,
 							})
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new PinnedMessageResponse({
 								data: updatedPinnedMessage,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("PinnedMessage", "update")),
@@ -72,8 +79,8 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* PinnedMessagePolicy.canDelete(id)
-							yield* PinnedMessageRepo.deleteById(id)
+							yield* pinnedMessagePolicy.canDelete(id)
+							yield* pinnedMessageRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 

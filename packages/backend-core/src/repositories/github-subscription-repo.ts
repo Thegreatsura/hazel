@@ -1,17 +1,16 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRepo>()(
+export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.githubSubscriptionsTable,
-				GitHubSubscription.Model,
+				{ insert: GitHubSubscription.Insert, update: GitHubSubscription.Update },
 				{
 					idColumn: "id",
 					name: "GitHubSubscription",
@@ -69,7 +68,7 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 								.limit(1),
 						),
 					)({ channelId, repositoryId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Update subscription settings
 			const updateSettings = (
@@ -134,4 +133,6 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -1,4 +1,4 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { IntegrationConnectionRepo } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ExternalChannelId, OrganizationId } from "@hazel/schema"
@@ -47,10 +47,10 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 	"integration-resources",
 	(handlers) =>
 		handlers
-			.handle("fetchLinearIssue", ({ path, urlParams }) =>
+			.handle("fetchLinearIssue", ({ params, query }) =>
 				Effect.gen(function* () {
-					const { orgId } = path
-					const { url } = urlParams
+					const { orgId } = params
+					const { url } = query
 
 					// Parse the Linear issue URL
 					const parsed = parseLinearIssueUrl(url)
@@ -115,7 +115,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						LinearApiError: (error: LinearApiError) =>
 							Effect.fail(
 								new IntegrationResourceError({
-									url: urlParams.url,
+									url: query.url,
 									message: error.message,
 									provider: "linear",
 								}),
@@ -123,7 +123,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						LinearRateLimitError: (error: LinearRateLimitError) =>
 							Effect.fail(
 								new IntegrationResourceError({
-									url: urlParams.url,
+									url: query.url,
 									message: error.retryAfter
 										? `Rate limit exceeded. Try again in ${error.retryAfter} seconds.`
 										: error.message,
@@ -133,7 +133,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						LinearIssueNotFoundError: (error: LinearIssueNotFoundError) =>
 							Effect.fail(
 								new ResourceNotFoundError({
-									url: urlParams.url,
+									url: query.url,
 									message: `Issue not found: ${error.issueId}`,
 								}),
 							),
@@ -156,10 +156,10 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					}),
 				),
 			)
-			.handle("fetchGitHubPR", ({ path, urlParams }) =>
+			.handle("fetchGitHubPR", ({ params, query }) =>
 				Effect.gen(function* () {
-					const { orgId } = path
-					const { url } = urlParams
+					const { orgId } = params
+					const { url } = query
 
 					// Parse the GitHub PR URL
 					const parsed = GitHub.parseGitHubPRUrl(url)
@@ -205,7 +205,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						Effect.catchTag("GitHubPRNotFoundError", (error) =>
 							Effect.fail(
 								new ResourceNotFoundError({
-									url: urlParams.url,
+									url: query.url,
 									message: `PR not found: ${error.owner}/${error.repo}#${error.number}`,
 								}),
 							),
@@ -214,7 +214,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						Effect.catchTag("GitHubApiError", (error) =>
 							Effect.fail(
 								new IntegrationResourceError({
-									url: urlParams.url,
+									url: query.url,
 									message: error.message,
 									provider: "github",
 								}),
@@ -223,7 +223,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						Effect.catchTag("GitHubRateLimitError", (error) =>
 							Effect.fail(
 								new IntegrationResourceError({
-									url: urlParams.url,
+									url: query.url,
 									message: error.retryAfter
 										? `Rate limit exceeded. Try again in ${error.retryAfter} seconds.`
 										: error.message,
@@ -259,7 +259,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.catchTag("GitHubRateLimitError", (error) =>
 								Effect.fail(
 									new IntegrationResourceError({
-										url: urlParams.url,
+										url: query.url,
 										message: error.message,
 										provider: "github",
 									}),
@@ -268,7 +268,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.catchTag("GitHubApiError", (error) =>
 								Effect.fail(
 									new IntegrationResourceError({
-										url: urlParams.url,
+										url: query.url,
 										message: error.message,
 										provider: "github",
 									}),
@@ -285,8 +285,8 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					),
 				),
 			)
-			.handle("getGitHubRepositories", ({ path, urlParams }) =>
-				handleGetGitHubRepositories(path, urlParams).pipe(
+			.handle("getGitHubRepositories", ({ params, query }) =>
+				handleGetGitHubRepositories(params, query).pipe(
 					Effect.catchTags({
 						DatabaseError: (error) =>
 							Effect.fail(
@@ -308,8 +308,8 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					}),
 				),
 			)
-			.handle("getDiscordGuilds", ({ path }) =>
-				handleGetDiscordGuilds(path).pipe(
+			.handle("getDiscordGuilds", ({ params }) =>
+				handleGetDiscordGuilds(params).pipe(
 					Effect.catchTags({
 						DatabaseError: (error) =>
 							Effect.fail(
@@ -331,13 +331,20 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					}),
 				),
 			)
-			.handle("getDiscordGuildChannels", ({ path }) =>
-				handleGetDiscordGuildChannels(path).pipe(
+			.handle("getDiscordGuildChannels", ({ params }) =>
+				handleGetDiscordGuildChannels(params).pipe(
 					Effect.catchTags({
 						DatabaseError: (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to fetch Discord channels",
+									detail: String(error),
+								}),
+							),
+						ConfigError: (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Discord bot token not configured",
 									detail: String(error),
 								}),
 							),
@@ -351,10 +358,11 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
  */
 const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRepositories")(function* (
 	path: { orgId: OrganizationId },
-	urlParams: { page: number; perPage: number },
+	query: { page?: number; perPage?: number },
 ) {
 	const { orgId } = path
-	const { page, perPage } = urlParams
+	const page = query.page ?? 1
+	const perPage = query.perPage ?? 30
 
 	const connectionRepo = yield* IntegrationConnectionRepo
 	const tokenService = yield* IntegrationTokenService
@@ -435,8 +443,8 @@ const handleGetDiscordGuilds = Effect.fn("integration-resources.getDiscordGuilds
 	const connection = yield* getActiveDiscordConnection(orgId)
 	const accessToken = yield* tokenService.getValidAccessToken(connection.id)
 
-	const guilds = yield* Discord.DiscordApiClient.listGuilds(accessToken).pipe(
-		Effect.provide(Discord.DiscordApiClient.Default),
+	const discordApiClient = yield* Discord.DiscordApiClient
+	const guilds = yield* discordApiClient.listGuilds(accessToken).pipe(
 		Effect.mapError(
 			(error) =>
 				new IntegrationResourceError({
@@ -455,21 +463,9 @@ const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscor
 		const { orgId, guildId } = path
 		yield* getActiveDiscordConnection(orgId)
 
-		const botToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(
-			Effect.mapError(
-				(error) =>
-					new InternalServerError({
-						message: "Discord bot token is not configured",
-						detail: String(error),
-					}),
-			),
-		)
-
-		const channels = yield* Discord.DiscordApiClient.listGuildChannels(
-			guildId,
-			Redacted.value(botToken),
-		).pipe(
-			Effect.provide(Discord.DiscordApiClient.Default),
+		const botToken = yield* Config.redacted("DISCORD_BOT_TOKEN")
+		const discordApiClient = yield* Discord.DiscordApiClient
+		const channels = yield* discordApiClient.listGuildChannels(guildId, Redacted.value(botToken)).pipe(
 			Effect.mapError(
 				(error) =>
 					new IntegrationResourceError({
@@ -481,7 +477,10 @@ const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscor
 		)
 
 		return new DiscordGuildChannelsResponse({
-			channels: channels.map((c) => ({ ...c, id: c.id as ExternalChannelId })),
+			channels: channels.map((c) => ({
+				...c,
+				id: c.id as ExternalChannelId,
+			})),
 		})
 	},
 )

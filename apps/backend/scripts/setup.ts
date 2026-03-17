@@ -9,7 +9,7 @@ import {
 	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
-import { Effect, Layer, Logger, LogLevel } from "effect"
+import { Effect, Layer, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
 // ANSI color codes
@@ -110,20 +110,20 @@ const setupScript = Effect.gen(function* () {
 // Run the script
 // Build layers with proper dependency wiring
 const RepoLive = Layer.mergeAll(
-	UserRepo.Default,
-	OrganizationRepo.Default,
-	OrganizationMemberRepo.Default,
-	InvitationRepo.Default,
+	UserRepo.layer,
+	OrganizationRepo.layer,
+	OrganizationMemberRepo.layer,
+	InvitationRepo.layer,
 ).pipe(Layer.provideMerge(DatabaseLive))
 
-const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOSClient.Default).pipe(
+const MainLive = Layer.mergeAll(WorkOSSync.layer, WorkOSClient.layer).pipe(
 	Layer.provideMerge(RepoLive),
 	Layer.provideMerge(DatabaseLive),
 )
 
 const runnable = setupScript.pipe(
 	Effect.provide(MainLive),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 
 Effect.runPromise(runnable).catch((error) => {

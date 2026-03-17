@@ -1,17 +1,16 @@
-import { and, count, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, count, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
-export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRepo>()(
+export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.organizationMembersTable,
-				OrganizationMember.Model,
+				{ insert: OrganizationMember.Insert, update: OrganizationMember.Update },
 				{
 					idColumn: "id",
 					name: "OrganizationMember",
@@ -40,7 +39,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 								.limit(1),
 						),
 					)({ organizationId, userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const upsertByOrgAndUser = (
 				data: Schema.Schema.Type<typeof OrganizationMember.Insert>,
@@ -51,7 +50,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 						// Atomic upsert using onConflictDoUpdate to avoid race conditions
 						const result = await client
 							.insert(schema.organizationMembersTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: [
 									schema.organizationMembersTable.organizationId,
@@ -156,7 +155,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 								.returning(),
 						),
 					)({ id, metadata }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const bulkUpsertByOrgAndUser = (
 				members: Schema.Schema.Type<typeof OrganizationMember.Insert>[],
@@ -176,4 +175,6 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

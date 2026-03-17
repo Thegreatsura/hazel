@@ -1,8 +1,9 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toDate } from "~/lib/utils"
 import {
 	deleteRssSubscriptionMutation,
 	listOrganizationRssSubscriptionsMutation,
@@ -22,7 +23,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { AddRssSubscriptionModal } from "./add-rss-subscription-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface RssSubscriptionsSectionProps {
 	organizationId: OrganizationId
@@ -367,7 +368,7 @@ function SubscriptionRow({ subscription, channelName, onToggle, onDelete }: Subs
 							<>
 								<span className="text-muted-fg/50">·</span>
 								<span>
-									Last fetched {new Date(subscription.lastFetchedAt).toLocaleDateString()}
+									Last fetched {toDate(subscription.lastFetchedAt).toLocaleDateString()}
 								</span>
 							</>
 						)}

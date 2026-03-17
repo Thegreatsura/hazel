@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
@@ -156,8 +157,8 @@ function IntegrationConfigPage() {
 		// Make authenticated API call to get OAuth URL, then redirect
 		// This ensures the bearer token auth is properly sent
 		const exit = await getOAuthUrlMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
-			urlParams: { level: "organization" },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			query: { level: "organization" },
 		})
 
 		if (Exit.isSuccess(exit)) {
@@ -175,8 +176,8 @@ function IntegrationConfigPage() {
 		if (!organizationId) return
 		setIsDisconnecting(true)
 		const exit = await disconnectMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
-			urlParams: { level: "organization" },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			query: { level: "organization" },
 		})
 
 		exitToast(exit)
@@ -185,9 +186,9 @@ function IntegrationConfigPage() {
 				description: "This integration is already disconnected.",
 				isRetryable: false,
 			}))
-			.onErrorTag("UnsupportedProviderError", (error) => ({
+			.onErrorTag("UnsupportedProviderError", () => ({
 				title: "Unsupported provider",
-				description: `The provider "${error.provider}" is not supported.`,
+				description: "This integration provider is not supported.",
 				isRetryable: false,
 			}))
 			.run()
@@ -200,7 +201,7 @@ function IntegrationConfigPage() {
 		setIsConnecting(true)
 
 		const exit = await connectApiKeyMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 			payload: { token, baseUrl },
 		})
 
@@ -215,9 +216,9 @@ function IntegrationConfigPage() {
 					description: error.message,
 					isRetryable: true,
 				}))
-				.onErrorTag("UnsupportedProviderError", (error) => ({
+				.onErrorTag("UnsupportedProviderError", () => ({
 					title: "Unsupported provider",
-					description: `The provider "${error.provider}" does not support API key connections.`,
+					description: "This integration does not support API key connections.",
 					isRetryable: false,
 				}))
 				.onError(() => ({
@@ -553,7 +554,7 @@ function ConnectedState({
 	isConfiguring,
 }: {
 	integration: Integration
-	connection: typeof IntegrationConnection.Model.Type | null
+	connection: IntegrationConnection.Type | null
 	externalAccountName: string | null
 	isDisconnecting: boolean
 	onDisconnect: () => void
@@ -762,13 +763,13 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 
 	const repositoriesResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
-			path: { orgId: organizationId },
-			urlParams: { page, perPage },
+			params: { orgId: organizationId },
+			query: { page, perPage },
 		}),
 	)
 
 	// Loading state
-	if (Result.isInitial(repositoriesResult)) {
+	if (AsyncResult.isInitial(repositoriesResult)) {
 		return (
 			<div className="overflow-hidden rounded-xl border border-border bg-bg">
 				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
@@ -799,7 +800,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 	}
 
 	// Error state
-	if (Result.isFailure(repositoriesResult)) {
+	if (AsyncResult.isFailure(repositoriesResult)) {
 		return (
 			<div className="overflow-hidden rounded-xl border border-border bg-bg">
 				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
@@ -812,7 +813,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 		)
 	}
 
-	const data = Result.value(repositoriesResult)
+	const data = AsyncResult.value(repositoriesResult)
 	if (Option.isNone(data)) {
 		return null
 	}

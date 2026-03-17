@@ -5,12 +5,13 @@ import { useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
 import { useChannelAttachments } from "~/db/hooks"
+import { toEpochMs } from "~/lib/utils"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { getFileCategory, getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
 
-type AttachmentWithUser = typeof Attachment.Model.Type & {
-	user: typeof User.Model.Type | null
+type AttachmentWithUser = Attachment.Type & {
+	user: User.Type | null
 }
 
 interface MediaGalleryViewProps {
@@ -181,7 +182,7 @@ export function MediaGalleryView({ channelId }: MediaGalleryViewProps) {
 					images={viewerImages}
 					initialIndex={selectedImageIndex}
 					author={selectedImage?.user ?? undefined}
-					createdAt={selectedImage?.uploadedAt.getTime() ?? 0}
+					createdAt={selectedImage ? toEpochMs(selectedImage.uploadedAt) : 0}
 				/>
 			)}
 		</>

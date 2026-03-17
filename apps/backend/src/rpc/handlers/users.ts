@@ -1,7 +1,7 @@
 import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
-import { UserNotFoundError, UserRpcs } from "@hazel/domain/rpc"
+import { UserNotFoundError, UserResponse, UserRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPolicy } from "../../policies/user-policy"
@@ -11,16 +11,18 @@ export const UserRpcLive = UserRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const workos = yield* WorkOS
+		const userPolicy = yield* UserPolicy
+		const userRepo = yield* UserRepo
 
 		return {
-			"user.me": () => CurrentUser.Context,
+			"user.me": () => CurrentUser.Context.asEffect(),
 
 			"user.update": ({ id, ...payload }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* UserPolicy.canUpdate(id)
-							const updatedUser = yield* UserRepo.update({
+							yield* userPolicy.canUpdate(id)
+							const updatedUser = yield* userRepo.update({
 								id,
 								...payload,
 							})
@@ -46,10 +48,10 @@ export const UserRpcLive = UserRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),
@@ -58,16 +60,16 @@ export const UserRpcLive = UserRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* UserPolicy.canRead(id)
-							const userOption = yield* UserRepo.findById(id)
+							yield* userPolicy.canRead(id)
+							const userOption = yield* userRepo.findById(id)
 
 							const user = yield* Option.match(userOption, {
 								onNone: () => Effect.fail(new UserNotFoundError({ userId: id })),
 								onSome: (user) => Effect.succeed(user),
 							})
 
-							yield* UserPolicy.canDelete(id)
-							yield* UserRepo.deleteById(id)
+							yield* userPolicy.canDelete(id)
+							yield* userRepo.deleteById(id)
 
 							yield* workos
 								.call((client) => client.userManagement.deleteUser(user.externalId))
@@ -96,18 +98,18 @@ export const UserRpcLive = UserRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Update the current user's isOnboarded flag
-							yield* UserPolicy.canUpdate(currentUser.id)
-							const updatedUser = yield* UserRepo.update({
+							yield* userPolicy.canUpdate(currentUser.id)
+							const updatedUser = yield* userRepo.update({
 								id: currentUser.id,
 								isOnboarded: true,
 							})
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),
@@ -119,8 +121,8 @@ export const UserRpcLive = UserRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Fetch user from database to get externalId
-							yield* UserPolicy.canRead(currentUser.id)
-							const userOption = yield* UserRepo.findById(currentUser.id)
+							yield* userPolicy.canRead(currentUser.id)
+							const userOption = yield* userRepo.findById(currentUser.id)
 
 							const user = yield* Option.match(userOption, {
 								onNone: () =>
@@ -153,18 +155,18 @@ export const UserRpcLive = UserRpcs.toLayer(
 								: null
 
 							// Update user's avatar in our database
-							yield* UserPolicy.canUpdate(currentUser.id)
-							const updatedUser = yield* UserRepo.update({
+							yield* userPolicy.canUpdate(currentUser.id)
+							const updatedUser = yield* userRepo.update({
 								id: currentUser.id,
 								avatarUrl,
 							})
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),

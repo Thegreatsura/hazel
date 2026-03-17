@@ -1,6 +1,6 @@
-import { useAtomSet } from "@effect-atom/atom-react"
-import type { Channel, ChannelMember } from "@hazel/db/schema"
-import type { ChannelSectionId } from "@hazel/schema"
+import { useAtomSet } from "@effect/atom-react"
+import type { ChannelId, ChannelMemberId, ChannelSectionId, OrganizationId, UserId } from "@hazel/schema"
+import type { DateTime } from "effect"
 import { useNavigate } from "@tanstack/react-router"
 import { memo } from "react"
 import { useModal } from "~/atoms/modal-atoms"
@@ -25,13 +25,38 @@ import { usePermission } from "~/hooks/use-permission"
 import { useScrollIntoViewOnActive } from "~/hooks/use-scroll-into-view-on-active"
 import { exitToastAsync } from "~/lib/toast-exit"
 
+type DateLike = Date | DateTime.Utc
+
+export interface SidebarChannelData {
+	readonly id: ChannelId
+	readonly name: string
+	readonly type: "private" | "public" | "thread" | "direct" | "single"
+	readonly icon: string | null
+	readonly organizationId: OrganizationId
+	readonly parentChannelId: ChannelId | null
+	readonly sectionId: ChannelSectionId | null
+	readonly updatedAt?: DateLike | null
+	readonly [key: string]: unknown
+}
+
+export interface SidebarChannelMemberData {
+	readonly id: ChannelMemberId
+	readonly channelId: ChannelId
+	readonly userId: UserId
+	readonly isMuted: boolean
+	readonly isFavorite: boolean
+	readonly isHidden: boolean
+	readonly notificationCount: number
+	readonly [key: string]: unknown
+}
+
 interface ChannelItemProps {
-	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-	member: ChannelMember
+	channel: SidebarChannelData
+	member: SidebarChannelMemberData
 	notificationCount?: number
 	threads?: Array<{
-		channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-		member: ChannelMember
+		channel: SidebarChannelData
+		member: SidebarChannelMemberData
 	}>
 	/** Available sections for "move to section" menu */
 	sections?: Array<{ id: ChannelSectionId; name: string }>

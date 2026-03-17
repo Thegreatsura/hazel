@@ -7,16 +7,16 @@
  * Enabled by default on port 9090. Set `healthPort: false` in config to disable.
  */
 
-import { Context, Effect, Layer, Runtime } from "effect"
+import { Effect, Layer, ServiceMap } from "effect"
 
 export interface BotHealthServerConfig {
 	readonly port: number
 }
 
-export class BotHealthServerConfigTag extends Context.Tag("@hazel/bot-sdk/BotHealthServerConfig")<
+export class BotHealthServerConfigTag extends ServiceMap.Service<
 	BotHealthServerConfigTag,
 	BotHealthServerConfig
->() {}
+>()("@hazel/bot-sdk/BotHealthServerConfig") {}
 
 interface HealthResponse {
 	readonly status: "healthy"
@@ -24,12 +24,11 @@ interface HealthResponse {
 	readonly uptime_ms: number
 }
 
-export class BotHealthServer extends Effect.Service<BotHealthServer>()("BotHealthServer", {
-	accessors: true,
-	scoped: Effect.gen(function* () {
+export class BotHealthServer extends ServiceMap.Service<BotHealthServer>()("BotHealthServer", {
+	make: Effect.gen(function* () {
 		const config = yield* BotHealthServerConfigTag
 		const startTime = Date.now()
-		const runtime = yield* Effect.runtime<never>()
+		const services = yield* Effect.services<never>()
 
 		const collectHealth = Effect.sync(
 			(): HealthResponse => ({
@@ -46,8 +45,8 @@ export class BotHealthServer extends Effect.Service<BotHealthServer>()("BotHealt
 					fetch(req) {
 						const url = new URL(req.url)
 						if (req.method === "GET" && url.pathname === "/health") {
-							return Runtime.runPromise(runtime)(collectHealth).then(
-								(health) =>
+							return Effect.runPromiseWith(services)(collectHealth).then(
+								(health: HealthResponse) =>
 									new Response(JSON.stringify(health), {
 										status: 200,
 										headers: { "Content-Type": "application/json" },
@@ -74,7 +73,9 @@ export class BotHealthServer extends Effect.Service<BotHealthServer>()("BotHealt
 
 		return { port: server.port }
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 export const BotHealthServerLive = (port: number) =>
-	Layer.provide(BotHealthServer.Default, Layer.succeed(BotHealthServerConfigTag, { port }))
+	Layer.provide(BotHealthServer.layer, Layer.succeed(BotHealthServerConfigTag, { port }))

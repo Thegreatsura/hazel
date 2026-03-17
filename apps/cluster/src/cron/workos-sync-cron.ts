@@ -1,17 +1,18 @@
-import * as ClusterCron from "@effect/cluster/ClusterCron"
+import * as ClusterCron from "effect/unstable/cluster/ClusterCron"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
-const workOsCron = Cron.unsafeParse("0 */12 * * *")
+const workOsCron = Cron.parseUnsafe("0 */12 * * *")
 
 export const WorkOSSyncCronLayer = ClusterCron.make({
 	name: "WorkOSSync",
 	cron: workOsCron,
 	execute: Effect.gen(function* () {
 		yield* Effect.logDebug("Starting scheduled WorkOS sync...")
-		const result = yield* WorkOSSync.syncAll
+		const workOSSync = yield* WorkOSSync
+		const result = yield* workOSSync.syncAll
 		yield* Effect.annotateCurrentSpan("cron.duration_ms", result.endTime - result.startTime)
 		yield* Effect.annotateCurrentSpan("cron.total_errors", result.totalErrors)
 		yield* Effect.logDebug("WorkOS sync completed", {

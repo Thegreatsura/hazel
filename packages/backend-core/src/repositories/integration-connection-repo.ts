@@ -1,17 +1,16 @@
-import { and, Database, eq, isNull, ModelRepository, schema, sql, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
 
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnectionRepo>()(
+export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationConnectionRepo>()(
 	"IntegrationConnectionRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.integrationConnectionsTable,
-				IntegrationConnection.Model,
+				{ insert: IntegrationConnection.Insert, update: IntegrationConnection.Update },
 				{
 					idColumn: "id",
 					name: "IntegrationConnection",
@@ -53,7 +52,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									.limit(1),
 							),
 					)({ organizationId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find user-level connection for a specific provider
 			const findUserConnection = (
@@ -91,7 +90,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									.limit(1),
 							),
 					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find user-level connection for a specific provider, including soft-deleted rows.
 			// Used by upsert to reactivate previously disconnected links.
@@ -129,7 +128,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									.limit(1),
 							),
 					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find active user-level connection by external account ID.
 			const findActiveUserByExternalAccountId = (
@@ -171,7 +170,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									.limit(1),
 							),
 					)({ organizationId, provider, externalAccountId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Get all connections for an organization (both org-level and user-level)
 			const findAllForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
@@ -277,7 +276,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 								.limit(1),
 						),
 					)({ installationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
 			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
@@ -324,7 +323,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 										.set({
 											...updateParams.data,
 											updatedAt: new Date(),
-										})
+										} as any)
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
@@ -371,7 +370,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 										.set({
 											...updateParams.data,
 											updatedAt: new Date(),
-										})
+										} as any)
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
@@ -400,4 +399,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

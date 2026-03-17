@@ -51,7 +51,7 @@ export type MessageCreateFn = (
 			  }[]
 			| null
 	},
-) => Effect.Effect<{ id: string }, unknown>
+) => Effect.Effect<{ id: string }, unknown, unknown>
 
 /**
  * Message update function type - matches the message update API
@@ -73,7 +73,7 @@ export type MessageUpdateFn = (
 			}
 		}> | null
 	},
-) => Effect.Effect<{ id: string }, unknown>
+) => Effect.Effect<{ id: string }, unknown, unknown>
 
 /**
  * Wrap an actor method call with Effect, error handling, and tracing.
@@ -161,7 +161,7 @@ const createSessionFromActor = (
 						embeds: [{ liveState: { enabled: true, cached } }],
 					})
 					.pipe(
-						Effect.catchAll((error) =>
+						Effect.catch((error) =>
 							Effect.logWarning("Failed to persist streaming message to database", {
 								messageId,
 								error: String(error),
@@ -199,7 +199,7 @@ const createSessionFromActor = (
 						embeds: [{ liveState: { enabled: true, cached } }],
 					})
 					.pipe(
-						Effect.catchAll((persistError) =>
+						Effect.catch((persistError) =>
 							Effect.logWarning("Failed to persist failed streaming state to database", {
 								messageId,
 								error: String(persistError),

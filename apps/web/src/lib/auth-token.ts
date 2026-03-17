@@ -5,7 +5,7 @@
  * React/async consumers use the exported Promise wrappers.
  */
 
-import { Deferred, Duration, Effect, Option, Ref } from "effect"
+import { Deferred, Duration, Effect, Option, Ref, type ServiceMap } from "effect"
 import { appRegistry } from "~/lib/registry"
 import { webTokensAtom, webAuthErrorAtom } from "~/atoms/web-auth"
 import { desktopTokensAtom, desktopAuthErrorAtom } from "~/atoms/desktop-auth"
@@ -26,26 +26,36 @@ const BASE_BACKOFF_MS = 1000 // 1s, 2s, 4s
 // Shared Refs (prevents concurrent refreshes across all callers)
 // ============================================================================
 
-const isRefreshingRef = Ref.unsafeMake(false)
-const refreshDeferredRef = Ref.unsafeMake<Deferred.Deferred<boolean> | null>(null)
+const isRefreshingRef = Effect.runSync(Ref.make(false))
+const refreshDeferredRef = Effect.runSync(Ref.make<Deferred.Deferred<boolean> | null>(null))
 
 // ============================================================================
 // Platform-specific layers
 // ============================================================================
 
-const webStorageLive = WebTokenStorage.Default
-const desktopStorageLive = TokenStorage.Default
-const tokenExchangeLive = TokenExchange.Default
+const webStorageLive = WebTokenStorage.layer
+const desktopStorageLive = TokenStorage.layer
+const tokenExchangeLive = TokenExchange.layer
+
+type TokenExchangeService = ServiceMap.Service.Shape<typeof TokenExchange>
+type WebTokenStorageService = ServiceMap.Service.Shape<typeof WebTokenStorage>
+type DesktopTokenStorageService = ServiceMap.Service.Shape<typeof TokenStorage>
 
 // ============================================================================
 // Error Classification
 // ============================================================================
 
+interface ErrorLike {
+	_tag?: string
+	message?: string
+	detail?: string
+}
+
 /**
  * Check if an error is a fatal error (refresh token revoked/invalid)
  * Fatal errors should not be retried
  */
-export const isFatalRefreshError = (error: { _tag?: string; message?: string; detail?: string }): boolean => {
+export const isFatalRefreshError = (error: ErrorLike): boolean => {
 	if (error.detail?.includes("HTTP 401")) return true
 	if (error.detail?.includes("HTTP 403")) return true
 	return false
@@ -54,14 +64,14 @@ export const isFatalRefreshError = (error: { _tag?: string; message?: string; de
 /**
  * Check if an error is transient (timeout, network) and can be retried
  */
-export const isTransientError = (error: { _tag?: string; message?: string }): boolean => {
+export const isTransientError = (error: ErrorLike): boolean => {
 	const message = error.message?.toLowerCase() ?? ""
 	return (
 		message.includes("timed out") ||
 		message.includes("timeout") ||
 		message.includes("network error") ||
-		error._tag === "TimeoutException" ||
-		error._tag === "RequestError"
+		error._tag === "TimeoutError" ||
+		error._tag === "HttpClientError"
 	)
 }
 
@@ -74,39 +84,49 @@ const errorAtom = () => (isTauri() ? desktopAuthErrorAtom : webAuthErrorAtom)
 const platformTag = () => (isTauri() ? "desktop" : "web")
 
 /** Read access token from the correct platform storage */
-const readAccessToken = Effect.fn("readAccessToken")(function* () {
-	if (isTauri()) {
-		return Option.getOrNull(yield* TokenStorage.getAccessToken.pipe(Effect.provide(desktopStorageLive)))
-	}
-	return Option.getOrNull(yield* WebTokenStorage.getAccessToken.pipe(Effect.provide(webStorageLive)))
-})
+const readAccessTokenDesktop = Effect.gen(function* () {
+	const storage: DesktopTokenStorageService = yield* TokenStorage
+	return Option.getOrNull(yield* storage.getAccessToken)
+}).pipe(Effect.provide(desktopStorageLive))
+
+const readAccessTokenWeb = Effect.gen(function* () {
+	const storage: WebTokenStorageService = yield* WebTokenStorage
+	return Option.getOrNull(yield* storage.getAccessToken)
+}).pipe(Effect.provide(webStorageLive))
+
+const readAccessToken = Effect.suspend(() => (isTauri() ? readAccessTokenDesktop : readAccessTokenWeb)).pipe(
+	Effect.catch(() => Effect.succeed(null)),
+)
 
 /** Read refresh token from the correct platform storage */
-const readRefreshToken = Effect.fn("readRefreshToken")(function* () {
-	if (isTauri()) {
-		return yield* TokenStorage.getRefreshToken.pipe(Effect.provide(desktopStorageLive))
-	}
-	return yield* WebTokenStorage.getRefreshToken.pipe(Effect.provide(webStorageLive))
-})
+const readRefreshTokenDesktop = Effect.gen(function* () {
+	const storage: DesktopTokenStorageService = yield* TokenStorage
+	return yield* storage.getRefreshToken
+}).pipe(Effect.provide(desktopStorageLive))
+
+const readRefreshTokenWeb = Effect.gen(function* () {
+	const storage: WebTokenStorageService = yield* WebTokenStorage
+	return yield* storage.getRefreshToken
+}).pipe(Effect.provide(webStorageLive))
+
+const readRefreshToken = Effect.suspend(() =>
+	isTauri() ? readRefreshTokenDesktop : readRefreshTokenWeb,
+).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())))
 
 /** Store tokens in the correct platform storage */
-const storeTokens = Effect.fn("storeTokens")(function* (
-	accessToken: string,
-	refreshToken: string,
-	expiresIn: number,
-) {
-	if (isTauri()) {
-		yield* TokenStorage.storeTokens(accessToken, refreshToken, expiresIn).pipe(
-			Effect.provide(desktopStorageLive),
-			Effect.orDie,
-		)
-	} else {
-		yield* WebTokenStorage.storeTokens(accessToken, refreshToken, expiresIn).pipe(
-			Effect.provide(webStorageLive),
-			Effect.orDie,
-		)
-	}
-})
+const storeTokens = (accessToken: string, refreshToken: string, expiresIn: number) =>
+	Effect.suspend(() => {
+		if (isTauri()) {
+			return Effect.gen(function* () {
+				const storage: DesktopTokenStorageService = yield* TokenStorage
+				yield* storage.storeTokens(accessToken, refreshToken, expiresIn)
+			}).pipe(Effect.provide(desktopStorageLive))
+		}
+		return Effect.gen(function* () {
+			const storage: WebTokenStorageService = yield* WebTokenStorage
+			yield* storage.storeTokens(accessToken, refreshToken, expiresIn)
+		}).pipe(Effect.provide(webStorageLive))
+	}).pipe(Effect.orDie)
 
 // ============================================================================
 // Core Effects
@@ -116,10 +136,7 @@ const storeTokens = Effect.fn("storeTokens")(function* (
  * Get the current access token from the appropriate platform storage.
  * Returns null if not authenticated.
  */
-const getAccessTokenEffect: Effect.Effect<string | null> = readAccessToken().pipe(
-	Effect.catchAll(() => Effect.succeed(null)),
-	Effect.withSpan("getAccessToken"),
-)
+const getAccessTokenEffect = readAccessToken.pipe(Effect.withSpan("getAccessToken"))
 
 /**
  * Wait for any in-progress token refresh to complete.
@@ -133,7 +150,7 @@ const waitForRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	}
 	return true
 }).pipe(
-	Effect.catchAll(() => Effect.succeed(true)),
+	Effect.catch(() => Effect.succeed(true)),
 	Effect.withSpan("waitForRefresh"),
 )
 
@@ -156,8 +173,8 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	}
 
 	// Get refresh token to check if we can refresh
-	const refreshTokenOpt = yield* readRefreshToken().pipe(
-		Effect.catchAll(() => Effect.succeed(Option.none<string>())),
+	const refreshTokenOpt = yield* readRefreshToken.pipe(
+		Effect.catch(() => Effect.succeed(Option.none<string>())),
 	)
 
 	if (Option.isNone(refreshTokenOpt)) {
@@ -173,14 +190,22 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 
 	const resultRef = yield* Ref.make<boolean>(false)
 
+	type RefreshTokens = { accessToken: string; refreshToken: string; expiresIn: number }
+	type RefreshResult = { success: true; tokens: RefreshTokens } | { success: false; error: ErrorLike }
+
 	const attemptRefresh = (attempt: number): Effect.Effect<boolean, never, TokenExchange> =>
 		Effect.gen(function* () {
-			const tokenExchange = yield* TokenExchange
+			const tokenExchange: TokenExchangeService = yield* TokenExchange
 
-			const refreshResult = yield* tokenExchange.refreshToken(refreshTokenOpt.value).pipe(
-				Effect.map((tokens) => ({ success: true as const, tokens })),
-				Effect.catchAll((error) => Effect.succeed({ success: false as const, error })),
-			)
+			const refreshResult: RefreshResult = yield* tokenExchange
+				.refreshToken(refreshTokenOpt.value)
+				.pipe(
+					Effect.map((tokens): RefreshResult => ({ success: true, tokens })),
+					Effect.catch(
+						(error): Effect.Effect<RefreshResult> =>
+							Effect.succeed({ success: false, error: error as ErrorLike }),
+					),
+				)
 
 			if (refreshResult.success) {
 				const { tokens } = refreshResult
@@ -247,7 +272,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	yield* attemptRefresh(1).pipe(
 		Effect.provide(tokenExchangeLive),
 		Effect.tap((result) => Ref.set(resultRef, result)),
-		Effect.catchAll((error) => {
+		Effect.catch((error) => {
 			console.error(`[auth-token:${tag}] Unexpected error during refresh:`, error)
 			return Effect.void
 		}),
@@ -263,7 +288,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 
 	return yield* Ref.get(resultRef)
 }).pipe(
-	Effect.catchAll(() => Effect.succeed(false)),
+	Effect.catch(() => Effect.succeed(false)),
 	Effect.withSpan("forceRefresh"),
 )
 

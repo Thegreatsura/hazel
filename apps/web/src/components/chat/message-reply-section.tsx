@@ -1,4 +1,5 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { Message, User } from "@hazel/domain/models"
 import type { MessageId } from "@hazel/schema"
 import { messageWithAuthorAtomFamily } from "~/atoms/message-atoms"
@@ -10,8 +11,8 @@ interface MessageReplySectionProps {
 	onClick?: () => void
 }
 
-type MessageWithAuthor = typeof Message.Model.Type & {
-	author: typeof User.Model.Type
+type MessageWithAuthor = Message.Type & {
+	author: User.Type
 }
 
 export function MessageReplySection({ replyToMessageId, onClick }: MessageReplySectionProps) {
@@ -44,7 +45,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 				className="flex w-fit items-center gap-1 pl-12 text-left hover:bg-transparent"
 				onClick={onClick}
 			>
-				{Result.builder(messageResult)
+				{AsyncResult.builder(messageResult)
 					.onInitial(() => (
 						<>
 							<div className="size-4 animate-pulse rounded-full bg-muted" />

@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { AvatarUrl, ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the webhook data and a transaction ID for optimistic updates.
  */
 export class ChannelWebhookResponse extends Schema.Class<ChannelWebhookResponse>("ChannelWebhookResponse")({
-	data: ChannelWebhook.Model.json,
+	data: ChannelWebhook.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -23,7 +23,7 @@ export class ChannelWebhookResponse extends Schema.Class<ChannelWebhookResponse>
 export class ChannelWebhookCreatedResponse extends Schema.Class<ChannelWebhookCreatedResponse>(
 	"ChannelWebhookCreatedResponse",
 )({
-	data: ChannelWebhook.Model.json,
+	data: ChannelWebhook.Schema,
 	token: Schema.String, // Plain token, only returned once on creation
 	webhookUrl: Schema.String, // Full URL for the webhook
 	transactionId: TransactionId,
@@ -35,13 +35,13 @@ export class ChannelWebhookCreatedResponse extends Schema.Class<ChannelWebhookCr
 export class ChannelWebhookListResponse extends Schema.Class<ChannelWebhookListResponse>(
 	"ChannelWebhookListResponse",
 )({
-	data: Schema.Array(ChannelWebhook.Model.json),
+	data: Schema.Array(ChannelWebhook.Schema),
 }) {}
 
 /**
  * Error thrown when a webhook is not found.
  */
-export class ChannelWebhookNotFoundError extends Schema.TaggedError<ChannelWebhookNotFoundError>()(
+export class ChannelWebhookNotFoundError extends Schema.TaggedErrorClass<ChannelWebhookNotFoundError>()(
 	"ChannelWebhookNotFoundError",
 	{
 		webhookId: ChannelWebhookId,
@@ -77,14 +77,14 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
-			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
+			name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
+			description: Schema.optional(Schema.String.check(Schema.isMaxLength(500))),
 			avatarUrl: Schema.optional(AvatarUrl),
 			/** When set, uses a global integration bot user instead of creating a unique webhook bot */
-			integrationProvider: Schema.optional(Schema.Literal("openstatus", "railway")),
+			integrationProvider: Schema.optional(Schema.Literals(["openstatus", "railway"])),
 		}),
 		success: ChannelWebhookCreatedResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -102,7 +102,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: ChannelWebhookListResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:read"])
 		.middleware(AuthMiddleware),
@@ -120,13 +120,13 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.update", {
 		payload: Schema.Struct({
 			id: ChannelWebhookId,
-			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
-			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
+			name: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100))),
+			description: Schema.optional(Schema.NullOr(Schema.String.check(Schema.isMaxLength(500)))),
 			avatarUrl: Schema.optional(Schema.NullOr(AvatarUrl)),
 			isEnabled: Schema.optional(Schema.Boolean),
 		}),
 		success: ChannelWebhookResponse,
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -145,7 +145,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.regenerateToken", {
 		payload: Schema.Struct({ id: ChannelWebhookId }),
 		success: ChannelWebhookCreatedResponse,
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -163,7 +163,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.delete", {
 		payload: Schema.Struct({ id: ChannelWebhookId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -180,7 +180,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: ChannelWebhookListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:read"])
 		.middleware(AuthMiddleware),

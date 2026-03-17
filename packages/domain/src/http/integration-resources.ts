@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -68,7 +68,7 @@ export class GitHubPRResourceResponse extends Schema.Class<GitHubPRResourceRespo
 	number: Schema.Number,
 	title: Schema.String,
 	body: Schema.NullOr(Schema.String),
-	state: Schema.Literal("open", "closed"),
+	state: Schema.Literals(["open", "closed"]),
 	draft: Schema.Boolean,
 	merged: Schema.Boolean,
 	author: Schema.NullOr(GitHubPRAuthorResponse),
@@ -131,7 +131,7 @@ export class DiscordGuildChannelsResponse extends Schema.Class<DiscordGuildChann
 }) {}
 
 // Error when organization doesn't have the integration connected
-export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<IntegrationNotConnectedForPreviewError>()(
+export class IntegrationNotConnectedForPreviewError extends Schema.TaggedErrorClass<IntegrationNotConnectedForPreviewError>()(
 	"IntegrationNotConnectedForPreviewError",
 	{
 		provider: IntegrationProvider,
@@ -139,7 +139,7 @@ export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<I
 ) {}
 
 // Error when resource cannot be found
-export class ResourceNotFoundError extends Schema.TaggedError<ResourceNotFoundError>()(
+export class ResourceNotFoundError extends Schema.TaggedErrorClass<ResourceNotFoundError>()(
 	"ResourceNotFoundError",
 	{
 		url: Schema.String,
@@ -148,7 +148,7 @@ export class ResourceNotFoundError extends Schema.TaggedError<ResourceNotFoundEr
 ) {}
 
 // Error when integration API returns an error (authorization, rate limit, etc.)
-export class IntegrationResourceError extends Schema.TaggedError<IntegrationResourceError>()(
+export class IntegrationResourceError extends Schema.TaggedErrorClass<IntegrationResourceError>()(
 	"IntegrationResourceError",
 	{
 		url: Schema.String,
@@ -160,24 +160,19 @@ export class IntegrationResourceError extends Schema.TaggedError<IntegrationReso
 // API Group for integration resources
 export class IntegrationResourceGroup extends HttpApiGroup.make("integration-resources")
 	.add(
-		HttpApiEndpoint.get("fetchLinearIssue", `/:orgId/linear/issue`)
-			.addSuccess(LinearIssueResourceResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(ResourceNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					url: Schema.String,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("fetchLinearIssue", `/:orgId/linear/issue`, {
+			params: { orgId: OrganizationId },
+			query: { url: Schema.String },
+			success: LinearIssueResourceResponse,
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				ResourceNotFoundError,
+				UnauthorizedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Fetch Linear Issue",
 					description: "Fetch Linear issue details for embedding in chat messages",
@@ -187,24 +182,19 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`)
-			.addSuccess(GitHubPRResourceResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(ResourceNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					url: Schema.String,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`, {
+			params: { orgId: OrganizationId },
+			query: { url: Schema.String },
+			success: GitHubPRResourceResponse,
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				ResourceNotFoundError,
+				UnauthorizedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Fetch GitHub PR",
 					description: "Fetch GitHub pull request details for embedding in chat messages",
@@ -214,23 +204,18 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
-			.addSuccess(GitHubRepositoriesResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
-					perPage: Schema.optionalWith(Schema.NumberFromString, { default: () => 30 }),
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`, {
+			params: { orgId: OrganizationId },
+			query: {
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				perPage: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(() => "30"),
+				),
+			},
+			success: GitHubRepositoriesResponse,
+			error: [IntegrationNotConnectedForPreviewError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get GitHub Repositories",
 					description: "List repositories accessible to the GitHub App installation",
@@ -240,18 +225,17 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`)
-			.addSuccess(DiscordGuildsResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`, {
+			params: { orgId: OrganizationId },
+			success: DiscordGuildsResponse,
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				UnauthorizedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get Discord Guilds",
 					description: "List Discord guilds visible to the connected Discord account",
@@ -261,19 +245,20 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`)
-			.addSuccess(DiscordGuildChannelsResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-					guildId: Schema.String,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`, {
+			params: {
+				orgId: OrganizationId,
+				guildId: Schema.String,
+			},
+			success: DiscordGuildChannelsResponse,
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				UnauthorizedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get Discord Guild Channels",
 					description: "List message-capable channels in a Discord guild using the bot token",

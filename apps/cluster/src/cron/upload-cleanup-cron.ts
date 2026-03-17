@@ -1,11 +1,11 @@
-import * as ClusterCron from "@effect/cluster/ClusterCron"
+import * as ClusterCron from "effect/unstable/cluster/ClusterCron"
 import { and, Database, eq, isNull, lt, schema } from "@hazel/db"
 import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
 // Run daily at 3 AM
-const dailyAt3AM = Cron.unsafeParse("0 3 * * *")
+const dailyAt3AM = Cron.parseUnsafe("0 3 * * *")
 
 // Max age for uploads to be considered stale (1 hour)
 const MAX_AGE_MINUTES = 60

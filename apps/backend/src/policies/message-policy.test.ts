@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver.ts"
 import { MessagePolicy } from "./message-policy.ts"
 import {
@@ -10,15 +10,16 @@ import {
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000801" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000802" as MessageId
-const MISSING_MESSAGE_ID = "00000000-0000-0000-0000-000000000899" as MessageId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000801" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000802" as MessageId
+const MISSING_MESSAGE_ID = "00000000-0000-4000-8000-000000000899" as MessageId
 
 /**
  * Creates a ChannelRepo mock with both `findById` (for OrgResolver) and `with` (for MessagePolicy).
@@ -26,51 +27,60 @@ const MISSING_MESSAGE_ID = "00000000-0000-0000-0000-000000000899" as MessageId
 const makeChannelRepoLayer = (
 	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
-	Layer.succeed(ChannelRepo, {
-		findById: (id: ChannelId) => {
-			const channel = channels[id]
-			return Effect.succeed(channel ? Option.some(channel) : Option.none())
-		},
-		with: <A, E, R>(
-			id: ChannelId,
-			f: (channel: {
-				organizationId: OrganizationId
-				type: string
-				id: ChannelId
-			}) => Effect.Effect<A, E, R>,
-		) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	} as unknown as ChannelRepo)
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) => {
+				const channel = channels[id]
+				return Effect.succeed(channel ? Option.some(channel) : Option.none())
+			},
+			with: <A, E, R>(
+				id: ChannelId,
+				f: (channel: {
+					organizationId: OrganizationId
+					type: string
+					id: ChannelId
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 /**
  * Creates a MessageRepo mock with a `with` method.
  */
 const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, {
-		findById: (id: MessageId) => {
-			const message = messages[id]
-			return Effect.succeed(message ? Option.some(message) : Option.none())
-		},
-		with: <A, E, R>(
-			id: MessageId,
-			f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
-		) => {
-			const message = messages[id]
-			if (!message) {
-				return Effect.fail(makeEntityNotFound("Message"))
-			}
-			return f(message)
-		},
-	} as unknown as MessageRepo)
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			findById: (id: MessageId) => {
+				const message = messages[id]
+				return Effect.succeed(message ? Option.some(message) : Option.none())
+			},
+			with: <A, E, R>(
+				id: MessageId,
+				f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
+			) => {
+				const message = messages[id]
+				if (!message) {
+					return Effect.fail(makeEntityNotFound("Message"))
+				}
+				return f(message)
+			},
+		}),
+	)
 
-const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, {
-	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
-} as unknown as ChannelMemberRepo)
+const emptyChannelMemberRepoLayer = Layer.succeed(
+	ChannelMemberRepo,
+	serviceShape<typeof ChannelMemberRepo>({
+		findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
+	}),
+)
 
 /**
  * Builds the full layer stack for MessagePolicy tests.
@@ -85,14 +95,14 @@ const makePolicyLayer = (
 	const messageRepoLayer = makeMessageRepoLayer(messages)
 	const orgMemberRepoLayer = makeOrganizationMemberRepoLayer(members)
 
-	const orgResolverLayer = OrgResolver.DefaultWithoutDependencies.pipe(
+	const orgResolverLayer = Layer.effect(OrgResolver, OrgResolver.make).pipe(
 		Layer.provide(orgMemberRepoLayer),
 		Layer.provide(channelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),
 		Layer.provide(messageRepoLayer),
 	)
 
-	return MessagePolicy.DefaultWithoutDependencies.pipe(
+	return Layer.effect(MessagePolicy, MessagePolicy.make).pipe(
 		Layer.provide(orgResolverLayer),
 		Layer.provide(messageRepoLayer),
 		Layer.provide(channelRepoLayer),
@@ -113,13 +123,17 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies non-org-member", async () => {
 		const actor = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{},
@@ -129,8 +143,12 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canRead allows org member with channel access", async () => {
@@ -145,8 +163,12 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows message author", async () => {
@@ -163,13 +185,17 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canUpdate(MESSAGE_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-author", async () => {
 		const otherUser = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -183,8 +209,12 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, otherUser)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canUpdate(MESSAGE_ID)),
+			layer,
+			otherUser,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows message author", async () => {
@@ -201,13 +231,17 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin who is not author", async () => {
 		const admin = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -221,13 +255,17 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			admin,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete denies org member who is not author and not admin", async () => {
 		const member = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -241,8 +279,12 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, member)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			member,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete maps missing message to UnauthorizedError", async () => {
@@ -257,10 +299,14 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MISSING_MESSAGE_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+		const result = await runWithActorEither(
+			MessagePolicy.use((policy) => policy.canDelete(MISSING_MESSAGE_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 })

@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { IntegrationRequestId, OrganizationId } from "@hazel/schema"
@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class IntegrationRequestResponse extends Schema.Class<IntegrationRequestResponse>(
 	"IntegrationRequestResponse",
 )({
-	data: IntegrationRequest.Model.json,
+	data: IntegrationRequest.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -24,7 +24,7 @@ export class CreateIntegrationRequestPayload extends Schema.Class<CreateIntegrat
 	"CreateIntegrationRequestPayload",
 )({
 	organizationId: OrganizationId,
-	integrationName: Schema.NonEmptyTrimmedString,
+	integrationName: Schema.NonEmptyString,
 	integrationUrl: Schema.optional(Schema.String),
 	description: Schema.optional(Schema.String),
 }) {}
@@ -38,7 +38,7 @@ export class IntegrationRequestRpcs extends RpcGroup.make(
 	Rpc.make("integrationRequest.create", {
 		payload: CreateIntegrationRequestPayload,
 		success: IntegrationRequestResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["integration-connections:write"])
 		.middleware(AuthMiddleware),

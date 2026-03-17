@@ -1,15 +1,14 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, ConnectConversationId, MessageId, UserId } from "@hazel/schema"
 import { MessageReaction } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("MessageReactionRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class MessageReactionRepo extends ServiceMap.Service<MessageReactionRepo>()("MessageReactionRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.messageReactionsTable,
-			MessageReaction.Model,
+			{ insert: MessageReaction.Insert, update: MessageReaction.Update },
 			{
 				idColumn: "id",
 				name: "MessageReaction",
@@ -35,7 +34,7 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 							.limit(1),
 					),
 				)({ messageId, userId, emoji })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const backfillConversationIdForChannel = (
 			channelId: ChannelId,
@@ -62,4 +61,6 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 			backfillConversationIdForChannel,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

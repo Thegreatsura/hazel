@@ -1,16 +1,15 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, OrganizationId } from "@hazel/schema"
 import { ConnectConversationChannel } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ConnectConversationChannelRepo extends Effect.Service<ConnectConversationChannelRepo>()(
+export class ConnectConversationChannelRepo extends ServiceMap.Service<ConnectConversationChannelRepo>()(
 	"ConnectConversationChannelRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.connectConversationChannelsTable,
-				ConnectConversationChannel.Model,
+				{ insert: ConnectConversationChannel.Insert, update: ConnectConversationChannel.Update },
 				{
 					idColumn: "id",
 					name: "ConnectConversationChannel",
@@ -34,7 +33,7 @@ export class ConnectConversationChannelRepo extends Effect.Service<ConnectConver
 								.limit(1),
 						),
 					)(channelId, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const findByConversationId = (conversationId: ConnectConversationId, tx?: TxFn) =>
 				db.makeQuery((execute, input: ConnectConversationId) =>
@@ -82,7 +81,7 @@ export class ConnectConversationChannelRepo extends Effect.Service<ConnectConver
 									.limit(1),
 							),
 					)({ conversationId, organizationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			return {
 				...baseRepo,
@@ -92,4 +91,6 @@ export class ConnectConversationChannelRepo extends Effect.Service<ConnectConver
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

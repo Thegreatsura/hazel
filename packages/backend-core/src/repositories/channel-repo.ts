@@ -1,16 +1,19 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { OrganizationId } from "@hazel/schema"
 import { Channel } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.channelsTable, Channel.Model, {
-			idColumn: "id",
-			name: "Channel",
-		})
+export class ChannelRepo extends ServiceMap.Service<ChannelRepo>()("ChannelRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.channelsTable,
+			{ insert: Channel.Insert, update: Channel.Update },
+			{
+				idColumn: "id",
+				name: "Channel",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByOrgAndName = (organizationId: OrganizationId, name: string, tx?: TxFn) =>
@@ -30,11 +33,13 @@ export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
 							.limit(1),
 					),
 				)({ organizationId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		return {
 			...baseRepo,
 			findByOrgAndName,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

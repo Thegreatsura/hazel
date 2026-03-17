@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
@@ -8,7 +8,7 @@ export const MAX_RECENT_SEARCHES = 10
  * Schema for a resolved search filter
  */
 const SearchFilterSchema = Schema.Struct({
-	type: Schema.Literal("from", "in", "has", "before", "after"),
+	type: Schema.Literals(["from", "in", "has", "before", "after"]),
 	value: Schema.String,
 	displayValue: Schema.String,
 	id: Schema.String,
@@ -38,6 +38,6 @@ const RecentSearchesSchema = Schema.Array(RecentSearchSchema)
 export const recentSearchesAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "recentSearches",
-	schema: RecentSearchesSchema,
+	schema: Schema.toCodecIso(RecentSearchesSchema),
 	defaultValue: () => [] as RecentSearch[],
 }).pipe(Atom.keepAlive)

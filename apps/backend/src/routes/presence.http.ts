@@ -1,13 +1,15 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { withRemapDbErrors } from "@hazel/domain"
+import { MarkOfflineResponse } from "@hazel/domain/http"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 
 export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePublic", (handlers) =>
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const userPresenceStatusRepo = yield* UserPresenceStatusRepo
 
 		return handlers.handle(
 			"markOffline",
@@ -16,7 +18,7 @@ export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePu
 				yield* db
 					.transaction(
 						Effect.asVoid(
-							UserPresenceStatusRepo.updateStatus({
+							userPresenceStatusRepo.updateStatus({
 								userId: payload.userId,
 								status: "offline",
 								customMessage: null,
@@ -25,9 +27,9 @@ export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePu
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update"))
 
-				return {
+				return new MarkOfflineResponse({
 					success: true,
-				}
+				})
 			}),
 		)
 	}),

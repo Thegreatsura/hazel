@@ -7,10 +7,10 @@
  * Store file: settings.json (separate from auth.json used for tokens)
  */
 
-import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import { SystemError } from "@effect/platform/Error"
+import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
+import { KeyValueStoreError as SystemError } from "effect/unstable/persistence/KeyValueStore"
 import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Layer } from "effect"
 
 const STORE_NAME = "settings.json"
 
@@ -25,11 +25,10 @@ const loadStore: Effect.Effect<StoreType, SystemError> = Effect.tryPromise({
 	},
 	catch: (error) =>
 		new SystemError({
-			reason: "Unknown",
-			module: "KeyValueStore",
+			message: `Failed to load Tauri store: ${error}`,
 			method: "getStore",
-			pathOrDescriptor: STORE_NAME,
-			description: `Failed to load Tauri store: ${error}`,
+			key: STORE_NAME,
+			cause: error,
 		}),
 })
 
@@ -38,11 +37,10 @@ const getStore = Effect.cached(loadStore)
 
 const makeError = (method: string, key: string, error: unknown) =>
 	new SystemError({
-		reason: "Unknown",
-		module: "KeyValueStore",
+		message: `Tauri store ${method} failed: ${error}`,
 		method,
-		pathOrDescriptor: key,
-		description: `Tauri store ${method} failed: ${error}`,
+		key,
+		cause: error,
 	})
 
 /**
@@ -57,10 +55,7 @@ export const layerTauriStore: Layer.Layer<KeyValueStore.KeyValueStore> = Layer.e
 		return KeyValueStore.makeStringOnly({
 			get: (key: string) =>
 				Effect.tryPromise({
-					try: async () => {
-						const value = await store.get<string>(key)
-						return Option.fromNullable(value)
-					},
+					try: async () => await store.get<string>(key),
 					catch: (error) => makeError("get", key, error),
 				}),
 

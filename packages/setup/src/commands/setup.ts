@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "@effect/cli"
+import { Command, Flag, Prompt } from "effect/unstable/cli"
 import { Console, Effect, Redacted } from "effect"
 import pc from "picocolors"
 import { SecretGenerator } from "../services/secrets.ts"
@@ -13,29 +13,29 @@ import {
 	type Config,
 } from "../templates.ts"
 import { promptWithExisting, getExistingValue } from "../prompts.ts"
-import { certsCommand } from "./certs.ts"
+import { certsCommand, certsSetupEffect } from "./certs.ts"
 
 // CLI Options
-const skipValidation = Options.boolean("skip-validation").pipe(
-	Options.withDescription("Skip credential validation (API calls)"),
-	Options.withDefault(false),
+const skipValidation = Flag.boolean("skip-validation").pipe(
+	Flag.withDescription("Skip credential validation (API calls)"),
+	Flag.withDefault(false),
 )
 
-const force = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription("Overwrite existing .env files without prompting"),
-	Options.withDefault(false),
+const force = Flag.boolean("force").pipe(
+	Flag.withAlias("f"),
+	Flag.withDescription("Overwrite existing .env files without prompting"),
+	Flag.withDefault(false),
 )
 
-const dryRun = Options.boolean("dry-run").pipe(
-	Options.withAlias("n"),
-	Options.withDescription("Show what would be done without writing files"),
-	Options.withDefault(false),
+const dryRun = Flag.boolean("dry-run").pipe(
+	Flag.withAlias("n"),
+	Flag.withDescription("Show what would be done without writing files"),
+	Flag.withDefault(false),
 )
 
-const skipDoctor = Options.boolean("skip-doctor").pipe(
-	Options.withDescription("Skip environment checks"),
-	Options.withDefault(false),
+const skipDoctor = Flag.boolean("skip-doctor").pipe(
+	Flag.withDescription("Skip environment checks"),
+	Flag.withDefault(false),
 )
 
 export const setupCommand = Command.make(
@@ -46,7 +46,7 @@ export const setupCommand = Command.make(
 			yield* Console.log(`\n${pc.bold("\u{1F33F} Hazel Local Development Setup")}\n`)
 
 			// Run the certs setup
-			yield* certsCommand.handler({})
+			yield* certsSetupEffect
 
 			// Start Docker Compose after that
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Starting Docker Compose \u2500\u2500\u2500"))
@@ -70,7 +70,7 @@ export const setupCommand = Command.make(
 					error: undefined,
 				}
 			}).pipe(
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					Effect.succeed({
 						ok: false,
 						exitCode: null,
@@ -187,9 +187,9 @@ export const setupCommand = Command.make(
 				const validator = yield* CredentialValidator
 				const dbResult = yield* validator
 					.validateDatabase("postgresql://user:password@localhost:5432/app")
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
-				if (dbResult._tag === "Left") {
+				if (dbResult._tag === "Failure") {
 					yield* Console.log(
 						pc.yellow("\u26A0\uFE0F  Database not reachable.") +
 							` Run ${pc.cyan("`docker compose up -d`")} first.`,
@@ -242,10 +242,10 @@ export const setupCommand = Command.make(
 				const validator = yield* CredentialValidator
 				const result = yield* validator
 					.validateWorkOS(workosApiKey, workosClientId)
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
-				if (result._tag === "Left") {
-					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.left.message}`))
+				if (result._tag === "Failure") {
+					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.failure.message}`))
 					yield* Console.log(pc.dim("Please check your credentials and try again."))
 					return
 				}
@@ -569,7 +569,7 @@ export const setupCommand = Command.make(
 						return proc.exitCode === 0
 					},
 					catch: () => false,
-				}).pipe(Effect.catchAll(() => Effect.succeed(false)))
+				}).pipe(Effect.catch(() => Effect.succeed(false)))
 
 				if (dbPushResult) {
 					yield* Console.log(pc.green("\n\u2713") + " Database schema pushed")

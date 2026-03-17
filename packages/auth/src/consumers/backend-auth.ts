@@ -7,8 +7,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { Config, Effect, Layer, Option, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
+import { ServiceMap, Config, Effect, Layer, Option, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { WorkOSClient } from "../session/workos-client.ts"
 
@@ -73,15 +72,15 @@ export interface UserRepoLike {
 			timezone: string | null
 			settings: User.UserSettings | null
 		},
-		{ _tag: "DatabaseError" } | { _tag: "ParseError" },
+		{ _tag: "DatabaseError" } | { _tag: "SchemaError" },
 		any
 	>
 }
 
-export const decodeWorkOSJwtClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+export const decodeWorkOSJwtClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
 
 export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
-	Schema.decodeUnknown(OrganizationId)(externalId)
+	Schema.decodeUnknownEffect(OrganizationId)(externalId)
 
 /**
  * Backend authentication service.
@@ -89,12 +88,10 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
  *
  * This is used by the backend HTTP API and WebSocket RPC handlers.
  */
-export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
-	accessors: true,
-	dependencies: [WorkOSClient.Default],
-	effect: Effect.gen(function* () {
+export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
+	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
-		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+		const clientId = yield* Config.string("WORKOS_CLIENT_ID")
 		const decodeClaims = decodeWorkOSJwtClaims
 
 		/**
@@ -115,7 +112,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		): Effect.Effect<OrganizationId | undefined, never> =>
 			workos.getOrganization(workosOrgId).pipe(
 				Effect.flatMap((org) =>
-					Option.fromNullable(org.externalId).pipe(
+					Option.fromNullishOr(org.externalId).pipe(
 						Option.match({
 							onNone: () =>
 								Effect.logWarning("WorkOS organization is missing externalId", {
@@ -123,13 +120,13 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
 								decodeInternalOrganizationIdFromWorkOS(externalId).pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
 											{
 												workosOrgId,
 												externalId,
-												error: TreeFormatter.formatErrorSync(error),
+												error: String(error),
 											},
 										).pipe(Effect.as(undefined)),
 									),
@@ -239,7 +236,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 														detail: String(err),
 													}),
 												),
-											ParseError: (err) =>
+											SchemaError: (err) =>
 												Effect.fail(
 													new SessionLoadError({
 														message: "Failed to parse user update response",
@@ -279,7 +276,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					})
 
 				const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-					Effect.orElse(() =>
+					Effect.catch(() =>
 						verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
 					),
 				)
@@ -289,7 +286,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 						(error) =>
 							new InvalidJwtPayloadError({
 								message: "Invalid JWT claims",
-								detail: TreeFormatter.formatErrorSync(error),
+								detail: String(error),
 							}),
 					),
 				)
@@ -353,8 +350,10 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(WorkOSClient.layer))
+
 	/** Mock user ID - a valid UUID */
-	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
+	static readonly mockUserId = "00000000-0000-4000-8000-000000000001" as UserId
 
 	/** Default mock user for tests */
 	static mockUser = () => ({
@@ -385,7 +384,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 
 	/** Test layer with successful authentication */
 	static Test = Layer.mock(this, {
-		_tag: "@hazel/auth/BackendAuth",
 		authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 			Effect.succeed(BackendAuth.mockCurrentUser()),
 		syncUserFromWorkOS: (
@@ -406,7 +404,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		}
 	}) =>
 		Layer.mock(BackendAuth, {
-			_tag: "@hazel/auth/BackendAuth",
 			authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 				options.shouldFail?.authenticateWithBearer ??
 				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
@@ -424,7 +421,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 /**
  * Layer that provides BackendAuth with all its dependencies.
  *
- * With Effect.Service dependencies, BackendAuth.Default automatically includes:
- * - WorkOSClient.Default (which includes AuthConfig.Default)
+ * With Effect.Service dependencies, BackendAuth.layer automatically includes:
+ * - WorkOSClient.layer (which includes AuthConfig.layer)
  */
-export const BackendAuthLive = BackendAuth.Default
+export const BackendAuthLive = BackendAuth.layer

@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpClient } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpClient } from "effect/unstable/http"
 import { KlipyApiError } from "@hazel/domain/http"
 import { Config, Effect, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
@@ -85,11 +86,8 @@ const fetchKlipy = (
 			return response.json
 		}),
 		Effect.scoped,
-		Effect.catchTag("RequestError", (error) =>
+		Effect.catchTag("HttpClientError", (error) =>
 			Effect.fail(new KlipyApiError({ message: `Klipy request failed: ${String(error)}` })),
-		),
-		Effect.catchTag("ResponseError", (error) =>
-			Effect.fail(new KlipyApiError({ message: `Klipy response error: ${String(error)}` })),
 		),
 	)
 }
@@ -97,17 +95,17 @@ const fetchKlipy = (
 export const HttpKlipyLive = HttpApiBuilder.group(HazelApi, "klipy", (handlers) =>
 	Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
-		const apiKeyRedacted = yield* Config.redacted("KLIPY_API_KEY").pipe(Effect.orDie)
+		const apiKeyRedacted = yield* Config.redacted("KLIPY_API_KEY")
 		const apiKey = Redacted.value(apiKeyRedacted)
 
 		return handlers
-			.handle("trending", ({ urlParams }) =>
+			.handle("trending", ({ query }) =>
 				Effect.gen(function* () {
 					const raw = yield* fetchKlipy(httpClient, apiKey, "/gifs/trending", {
-						page: String(urlParams.page),
-						per_page: String(urlParams.per_page),
+						page: String(query.page),
+						per_page: String(query.per_page),
 					})
-					const parsed = yield* Schema.decodeUnknown(KlipyRawSearchResponse)(raw).pipe(
+					const parsed = yield* Schema.decodeUnknownEffect(KlipyRawSearchResponse)(raw).pipe(
 						Effect.mapError(
 							(error) =>
 								new KlipyApiError({
@@ -118,14 +116,14 @@ export const HttpKlipyLive = HttpApiBuilder.group(HazelApi, "klipy", (handlers) 
 					return parsed.data
 				}),
 			)
-			.handle("search", ({ urlParams }) =>
+			.handle("search", ({ query }) =>
 				Effect.gen(function* () {
 					const raw = yield* fetchKlipy(httpClient, apiKey, "/gifs/search", {
-						q: urlParams.q,
-						page: String(urlParams.page),
-						per_page: String(urlParams.per_page),
+						q: query.q,
+						page: String(query.page),
+						per_page: String(query.per_page),
 					})
-					const parsed = yield* Schema.decodeUnknown(KlipyRawSearchResponse)(raw).pipe(
+					const parsed = yield* Schema.decodeUnknownEffect(KlipyRawSearchResponse)(raw).pipe(
 						Effect.mapError(
 							(error) =>
 								new KlipyApiError({
@@ -141,7 +139,7 @@ export const HttpKlipyLive = HttpApiBuilder.group(HazelApi, "klipy", (handlers) 
 					const raw = yield* fetchKlipy(httpClient, apiKey, "/gifs/categories", {
 						locale: "en_US",
 					})
-					const parsed = yield* Schema.decodeUnknown(KlipyRawCategoriesResponse)(raw).pipe(
+					const parsed = yield* Schema.decodeUnknownEffect(KlipyRawCategoriesResponse)(raw).pipe(
 						Effect.mapError(
 							(error) =>
 								new KlipyApiError({

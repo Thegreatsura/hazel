@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, MessageId, PinnedMessageId } from "@hazel/schema"
@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the pinned message data and a transaction ID for optimistic updates.
  */
 export class PinnedMessageResponse extends Schema.Class<PinnedMessageResponse>("PinnedMessageResponse")({
-	data: PinnedMessage.Model.json,
+	data: PinnedMessage.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -21,7 +21,7 @@ export class PinnedMessageResponse extends Schema.Class<PinnedMessageResponse>("
  * Error thrown when a pinned message is not found.
  * Used in update and delete operations.
  */
-export class PinnedMessageNotFoundError extends Schema.TaggedError<PinnedMessageNotFoundError>()(
+export class PinnedMessageNotFoundError extends Schema.TaggedErrorClass<PinnedMessageNotFoundError>()(
 	"PinnedMessageNotFoundError",
 	{
 		pinnedMessageId: PinnedMessageId,
@@ -77,7 +77,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 			messageId: MessageId,
 		}),
 		success: PinnedMessageResponse,
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),
@@ -97,10 +97,10 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	Rpc.make("pinnedMessage.update", {
 		payload: Schema.Struct({
 			id: PinnedMessageId,
-			...PinnedMessage.Model.jsonUpdate.fields,
+			...PinnedMessage.Patch.fields,
 		}),
 		success: PinnedMessageResponse,
-		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),
@@ -120,7 +120,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	Rpc.make("pinnedMessage.delete", {
 		payload: Schema.Struct({ id: PinnedMessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),

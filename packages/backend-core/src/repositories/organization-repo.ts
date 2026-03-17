@@ -1,16 +1,15 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 import { ChannelMemberRepo } from "./channel-member-repo"
 import { ChannelRepo } from "./channel-repo"
 
-export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("OrganizationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("OrganizationRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.organizationsTable,
-			Organization.Model,
+			{ insert: Organization.Insert, update: Organization.Update },
 			{
 				idColumn: "id",
 				name: "Organization",
@@ -31,7 +30,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 							.limit(1),
 					),
 				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
 			db
@@ -50,7 +49,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 							.limit(1),
 					),
 				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>
@@ -117,5 +116,9 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 			setupDefaultChannels,
 		}
 	}),
-	dependencies: [ChannelRepo.Default, ChannelMemberRepo.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ChannelMemberRepo.layer),
+	)
+}

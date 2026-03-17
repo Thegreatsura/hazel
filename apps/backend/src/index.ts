@@ -1,12 +1,7 @@
-import {
-	FetchHttpClient,
-	HttpApiScalar,
-	HttpLayerRouter,
-	HttpMiddleware,
-	HttpServerResponse,
-} from "@effect/platform"
+import { HttpApiScalar } from "effect/unstable/httpapi"
+import { FetchHttpClient, HttpRouter, HttpMiddleware, HttpServerResponse } from "effect/unstable/http"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { RpcSerialization, RpcServer } from "@effect/rpc"
+import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import {
 	AttachmentRepo,
 	BotCommandRepo,
@@ -46,7 +41,7 @@ import {
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
-import { Config, ConfigProvider, Effect, Layer, Scope } from "effect"
+import { Config, ConfigProvider, Effect, Layer, ServiceMap } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -75,7 +70,7 @@ import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { ChatSyncAttributionReconciler } from "./services/chat-sync/chat-sync-attribution-reconciler"
-import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
+import { DiscordSyncWorkerLayer } from "./services/chat-sync/discord-sync-worker"
 import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-service"
 import { MessageOutboxDispatcher } from "./services/message-outbox-dispatcher"
 import { MessageSideEffectService } from "./services/message-side-effect-service"
@@ -85,6 +80,7 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
+import { AuthRedemptionStore } from "./services/auth-redemption-store"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { ConnectConversationService } from "./services/connect-conversation-service"
 import { OrgResolver } from "./services/org-resolver"
@@ -96,17 +92,14 @@ export { HazelApi }
 // Export RPC groups for frontend consumption
 export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
-const HealthRouter = HttpLayerRouter.use((router) =>
-	router.add("GET", "/health", HttpServerResponse.text("OK")),
-)
+const HealthRouter = HttpRouter.use((router) => router.add("GET", "/health", HttpServerResponse.text("OK")))
 
-const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
-	api: HazelApi,
+const DocsRoute = HttpApiScalar.layer(HazelApi, {
 	path: "/docs",
 })
 
 // HTTP RPC endpoint
-const RpcRoute = RpcServer.layerHttpRouter({
+const RpcRoute = RpcServer.layerHttp({
 	group: AllRpcs,
 	path: "/rpc",
 	protocol: "http",
@@ -114,7 +107,7 @@ const RpcRoute = RpcServer.layerHttpRouter({
 
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
 	Layer.provide(
-		HttpLayerRouter.cors({
+		HttpRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
 				"http://localhost:5173",
@@ -131,62 +124,62 @@ const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRout
 const TracerLive = createTracingLayer("api")
 
 const RepoLive = Layer.mergeAll(
-	MessageRepo.Default,
-	ChannelRepo.Default,
-	ChannelMemberRepo.Default,
-	ChannelSectionRepo.Default,
-	ChatSyncConnectionRepo.Default,
-	ChatSyncChannelLinkRepo.Default,
-	ChatSyncMessageLinkRepo.Default,
-	ChatSyncEventReceiptRepo.Default,
-	ConnectConversationRepo.Default,
-	ConnectConversationChannelRepo.Default,
-	ConnectInviteRepo.Default,
-	ConnectParticipantRepo.Default,
-	UserRepo.Default,
-	OrganizationRepo.Default,
-	OrganizationMemberRepo.Default,
-	InvitationRepo.Default,
-	PinnedMessageRepo.Default,
-	AttachmentRepo.Default,
-	NotificationRepo.Default,
-	TypingIndicatorRepo.Default,
-	MessageReactionRepo.Default,
-	MessageOutboxRepo.Default,
-	UserPresenceStatusRepo.Default,
-	IntegrationConnectionRepo.Default,
-	IntegrationTokenRepo.Default,
-	ChannelWebhookRepo.Default,
-	GitHubSubscriptionRepo.Default,
-	RssSubscriptionRepo.Default,
-	BotRepo.Default,
-	BotCommandRepo.Default,
-	BotInstallationRepo.Default,
-	CustomEmojiRepo.Default,
+	MessageRepo.layer,
+	ChannelRepo.layer,
+	ChannelMemberRepo.layer,
+	ChannelSectionRepo.layer,
+	ChatSyncConnectionRepo.layer,
+	ChatSyncChannelLinkRepo.layer,
+	ChatSyncMessageLinkRepo.layer,
+	ChatSyncEventReceiptRepo.layer,
+	ConnectConversationRepo.layer,
+	ConnectConversationChannelRepo.layer,
+	ConnectInviteRepo.layer,
+	ConnectParticipantRepo.layer,
+	UserRepo.layer,
+	OrganizationRepo.layer,
+	OrganizationMemberRepo.layer,
+	InvitationRepo.layer,
+	PinnedMessageRepo.layer,
+	AttachmentRepo.layer,
+	NotificationRepo.layer,
+	TypingIndicatorRepo.layer,
+	MessageReactionRepo.layer,
+	MessageOutboxRepo.layer,
+	UserPresenceStatusRepo.layer,
+	IntegrationConnectionRepo.layer,
+	IntegrationTokenRepo.layer,
+	ChannelWebhookRepo.layer,
+	GitHubSubscriptionRepo.layer,
+	RssSubscriptionRepo.layer,
+	BotRepo.layer,
+	BotCommandRepo.layer,
+	BotInstallationRepo.layer,
+	CustomEmojiRepo.layer,
 )
 
 const PolicyLive = Layer.mergeAll(
-	OrgResolver.Default,
-	OrganizationPolicy.Default,
-	ChannelPolicy.Default,
-	ChannelSectionPolicy.Default,
-	MessagePolicy.Default,
-	InvitationPolicy.Default,
-	OrganizationMemberPolicy.Default,
-	ChannelMemberPolicy.Default,
-	MessageReactionPolicy.Default,
-	UserPolicy.Default,
-	AttachmentPolicy.Default,
-	PinnedMessagePolicy.Default,
-	TypingIndicatorPolicy.Default,
-	NotificationPolicy.Default,
-	UserPresenceStatusPolicy.Default,
-	IntegrationConnectionPolicy.Default,
-	ChannelWebhookPolicy.Default,
-	GitHubSubscriptionPolicy.Default,
-	RssSubscriptionPolicy.Default,
-	BotPolicy.Default,
-	CustomEmojiPolicy.Default,
+	OrgResolver.layer,
+	OrganizationPolicy.layer,
+	ChannelPolicy.layer,
+	ChannelSectionPolicy.layer,
+	MessagePolicy.layer,
+	InvitationPolicy.layer,
+	OrganizationMemberPolicy.layer,
+	ChannelMemberPolicy.layer,
+	MessageReactionPolicy.layer,
+	UserPolicy.layer,
+	AttachmentPolicy.layer,
+	PinnedMessagePolicy.layer,
+	TypingIndicatorPolicy.layer,
+	NotificationPolicy.layer,
+	UserPresenceStatusPolicy.layer,
+	IntegrationConnectionPolicy.layer,
+	ChannelWebhookPolicy.layer,
+	GitHubSubscriptionPolicy.layer,
+	RssSubscriptionPolicy.layer,
+	BotPolicy.layer,
+	CustomEmojiPolicy.layer,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)
@@ -195,48 +188,52 @@ const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.Defa
 const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
-	MockDataGenerator.Default,
-	WorkOSAuth.Default,
-	WorkOSClient.Default,
-	WorkOSSync.Default,
-	WorkOSWebhookVerifier.Default,
+	MockDataGenerator.layer,
+	WorkOSAuth.layer,
+	AuthRedemptionStore.layer,
+	WorkOSClient.layer,
+	WorkOSSync.layer,
+	WorkOSWebhookVerifier.layer,
 	DatabaseLive,
 	S3.Default,
 	Redis.Default,
 	PersistenceLive,
-	GitHub.GitHubAppJWTService.Default,
-	GitHub.GitHubApiClient.Default,
-	IntegrationTokenService.Default,
-	OAuthProviderRegistry.Default,
-	IntegrationBotService.Default,
-	ChatSyncAttributionReconciler.Default,
-	DiscordSyncWorker.Default,
-	DiscordGatewayService.Default,
-	MessageSideEffectService.Default,
-	MessageOutboxDispatcher.Default,
-	BotGatewayService.Default,
-	WebhookBotService.Default,
-	ChannelAccessSyncService.Default,
-	ConnectConversationService.Default,
-	RateLimiter.Default,
-	// SessionManager.Default includes BackendAuth.Default via dependencies
-	SessionManager.Default,
+	GitHub.GitHubAppJWTService.layer,
+	GitHub.GitHubApiClient.layer,
+	IntegrationTokenService.layer,
+	OAuthProviderRegistry.layer,
+	IntegrationBotService.layer,
+	ChatSyncAttributionReconciler.layer,
+	DiscordSyncWorkerLayer,
+	DiscordGatewayService.layer,
+	MessageSideEffectService.layer,
+	MessageOutboxDispatcher.layer,
+	BotGatewayService.layer,
+	WebhookBotService.layer,
+	ChannelAccessSyncService.layer,
+	ConnectConversationService.layer,
+	RateLimiter.layer,
+	// SessionManager.layer includes BackendAuth.layer via dependencies
+	SessionManager.layer,
 ).pipe(
 	Layer.provideMerge(FetchHttpClient.layer),
-	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
+	Layer.provideMerge(ConfigProvider.layer(ConfigProvider.fromEnv())),
 )
 
-const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
-	HttpMiddleware.withTracerDisabledWhen(
-		(request) => request.url === "/health" || request.method === "OPTIONS",
+const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
+	Layer.provide(
+		Layer.succeed(
+			HttpMiddleware.TracerDisabledWhen,
+			(request) => request.url === "/health" || request.method === "OPTIONS",
+		),
 	),
 	Layer.provide(MainLive),
 	Layer.provide(TracerLive),
 	Layer.provide(
 		AuthorizationLive.pipe(
-			// SessionManager.Default includes BackendAuth and UserRepo via dependencies
-			Layer.provideMerge(SessionManager.Default),
-			Layer.provideMerge(WorkOSAuth.Default),
+			// SessionManager.layer includes BackendAuth and UserRepo via dependencies
+			Layer.provideMerge(SessionManager.layer),
+			Layer.provideMerge(WorkOSAuth.layer),
 			Layer.provideMerge(PersistenceLive),
 			Layer.provideMerge(Redis.Default),
 			Layer.provideMerge(DatabaseLive),
@@ -252,8 +249,9 @@ const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
 	),
 )
 
-const ServerProgram = Effect.scoped(
-	ServerLayer.pipe(Layer.launch) as unknown as Effect.Effect<never, never, Scope.Scope>,
-)
-
-BunRuntime.runMain(ServerProgram)
+// The `as never` cast is required because ChatSyncCoreWorkerMake (in chat-sync-core-worker.ts)
+// is explicitly typed as Effect<..., unknown, unknown> to break a circular type dependency.
+// Those `unknown` types propagate through DiscordSyncWorkerLayer -> ServiceLive -> MainLive -> ServerLayer,
+// causing TypeScript to collapse the layer's type parameters to `unknown`.
+// All actual dependencies are wired correctly at runtime.
+ServerLayer.pipe(Layer.launch as never, BunRuntime.runMain)

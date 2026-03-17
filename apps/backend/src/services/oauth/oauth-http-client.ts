@@ -5,9 +5,8 @@
  * Uses HttpClient with proper schema validation and error handling.
  */
 
-import { FetchHttpClient, HttpBody, HttpClient } from "@effect/platform"
-import { Duration, Effect, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
+import { FetchHttpClient, HttpBody, HttpClient } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Layer, Predicate, Schema, SchemaGetter, SchemaIssue } from "effect"
 import type { OAuthIntegrationProvider } from "./provider-config"
 
 // ============================================================================
@@ -22,17 +21,22 @@ const DEFAULT_TIMEOUT = Duration.seconds(30)
 
 const OAuthTokenApiResponse = Schema.Struct({
 	access_token: Schema.String,
-	refresh_token: Schema.optional(Schema.String),
-	expires_in: Schema.optional(Schema.Number),
-	scope: Schema.optional(Schema.String),
-	token_type: Schema.optionalWith(Schema.String, { default: () => "Bearer" }),
+	refresh_token: Schema.optionalKey(Schema.String),
+	expires_in: Schema.optionalKey(Schema.Number),
+	scope: Schema.optionalKey(Schema.String),
+	token_type: Schema.optional(Schema.String).pipe(
+		Schema.decodeTo(Schema.toType(Schema.String), {
+			decode: SchemaGetter.withDefault(() => "Bearer"),
+			encode: SchemaGetter.required(),
+		}),
+	),
 })
 
 // ============================================================================
 // Error Types
 // ============================================================================
 
-export class OAuthHttpError extends Schema.TaggedError<OAuthHttpError>()("OAuthHttpError", {
+export class OAuthHttpError extends Schema.TaggedErrorClass<OAuthHttpError>()("OAuthHttpError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
@@ -81,9 +85,8 @@ const encodeFormData = (params: Record<string, string>): string =>
  * Provides Effect-based HTTP methods for OAuth token operations using HttpClient
  * with proper schema validation and error handling.
  */
-export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHttpClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAuthHttpClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		/**
@@ -127,19 +130,15 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			}
 
 			const data = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
-				Effect.catchTags({
-					ParseError: (error) =>
+				Effect.flatMap(Schema.decodeUnknownEffect(OAuthTokenApiResponse)),
+				Effect.catch((error) =>
+					Effect.fail(
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
+							message: `Failed to parse token response: ${String(error)}`,
 							cause: error,
 						}),
-					ResponseError: (error) =>
-						new OAuthHttpError({
-							message: `Failed to read response body: ${error.message}`,
-							cause: error,
-						}),
-				}),
+					),
+				),
 			)
 
 			return {
@@ -192,19 +191,15 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			}
 
 			const data = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
-				Effect.catchTags({
-					ParseError: (error) =>
+				Effect.flatMap(Schema.decodeUnknownEffect(OAuthTokenApiResponse)),
+				Effect.catch((error) =>
+					Effect.fail(
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
+							message: `Failed to parse token response: ${String(error)}`,
 							cause: error,
 						}),
-					ResponseError: (error) =>
-						new OAuthHttpError({
-							message: `Failed to read response body: ${error.message}`,
-							cause: error,
-						}),
-				}),
+					),
+				),
 			)
 
 			return {
@@ -222,22 +217,13 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			params: { code: string; redirectUri: string; clientId: string; clientSecret: string },
 		) =>
 			exchangeCode(tokenUrl, params).pipe(
-				Effect.catchTag("TimeoutException", () =>
+				Effect.catchTag("TimeoutError", () =>
 					Effect.fail(new OAuthHttpError({ message: "Request timed out" })),
 				),
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Network error: ${String(error)}`,
-							cause: error,
-						}),
-					),
-				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new OAuthHttpError({
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
 							cause: error,
 						}),
 					),
@@ -250,22 +236,13 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			params: { refreshToken: string; clientId: string; clientSecret: string },
 		) =>
 			refreshToken(provider, params).pipe(
-				Effect.catchTag("TimeoutException", () =>
+				Effect.catchTag("TimeoutError", () =>
 					Effect.fail(new OAuthHttpError({ message: "Request timed out" })),
 				),
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Network error: ${String(error)}`,
-							cause: error,
-						}),
-					),
-				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new OAuthHttpError({
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
 							cause: error,
 						}),
 					),
@@ -278,5 +255,6 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			refreshToken: wrappedRefreshToken,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
+}

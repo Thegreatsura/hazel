@@ -1,28 +1,81 @@
+import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
+import { NodeHttpPlatform, NodeServices } from "@effect/platform-node"
 import { describe, expect, it, layer } from "@effect/vitest"
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
+import { Etag, HttpRouter } from "effect/unstable/http"
+import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"
+import { AuthGroup, RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
+import { OrganizationMember, User } from "@hazel/domain/models"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { ConfigProvider, Effect, Layer, Option, Schema } from "effect"
+import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { vi } from "vitest"
 import { AuthState, RelativeUrl } from "../lib/schema.ts"
+import { HttpAuthLive } from "./auth.http.ts"
+import { AuthRedemptionStore } from "../services/auth-redemption-store.ts"
+import { configLayer, serviceShape } from "../test/effect-helpers"
 import { WorkOSAuth as WorkOS, WorkOSAuthError as WorkOSApiError } from "../services/workos-auth.ts"
+
+vi.mock("@hazel/effect-bun", async () => {
+	const { Layer, ServiceMap } = await import("effect")
+	class Redis extends ServiceMap.Service<
+		Redis,
+		{
+			readonly get: (key: string) => unknown
+			readonly del: (key: string) => unknown
+			readonly send: <T = unknown>(command: string, args: string[]) => T
+		}
+	>()("@hazel/effect-bun/Redis") {}
+
+	return {
+		Redis: Object.assign(Redis, {
+			Default: Layer.empty,
+		}),
+	}
+})
+
+import { Redis } from "@hazel/effect-bun"
 
 // ===== Mock Configuration =====
 
-const TestConfigProvider = ConfigProvider.fromMap(
-	new Map([
-		["WORKOS_CLIENT_ID", "client_test_123"],
-		["WORKOS_REDIRECT_URI", "http://localhost:3000/auth/callback"],
-		["FRONTEND_URL", "http://localhost:3000"],
-		["WORKOS_API_KEY", "sk_test_123"],
-	]),
-)
+const TestConfigLive = configLayer({
+	WORKOS_CLIENT_ID: "client_test_123",
+	WORKOS_REDIRECT_URI: "http://localhost:3000/auth/callback",
+	FRONTEND_URL: "http://localhost:3000",
+	WORKOS_API_KEY: "sk_test_123",
+})
 
-const TestConfigLive = Layer.setConfigProvider(TestConfigProvider)
+const NOW = new Date("2026-03-05T12:00:00.000Z")
+const makeJwt = (exp: number = Math.floor(Date.now() / 1000) + 3600) => {
+	const encode = (value: Record<string, unknown>) =>
+		Buffer.from(JSON.stringify(value)).toString("base64url")
+	return `${encode({ alg: "none", typ: "JWT" })}.${encode({ exp, sid: "session_test_123" })}.`
+}
+
+const makeUserRecord = (overrides: Partial<Schema.Schema.Type<typeof User.Schema>> = {}) =>
+	({
+		id: "usr_default123" as UserId,
+		externalId: "user_default",
+		email: "test@example.com",
+		firstName: "Test",
+		lastName: "User",
+		avatarUrl: null,
+		userType: "user",
+		settings: null,
+		isOnboarded: false,
+		timezone: null,
+		createdAt: NOW,
+		updatedAt: NOW,
+		deletedAt: null,
+		...overrides,
+	}) satisfies Schema.Schema.Type<typeof User.Schema>
 
 // ===== Mock WorkOS Service =====
 
 const createMockWorkOSLive = (options?: {
 	authorizationUrl?: string
 	authenticateResponse?: {
+		accessToken?: string
+		refreshToken?: string
 		user: {
 			id: string
 			email: string
@@ -33,17 +86,22 @@ const createMockWorkOSLive = (options?: {
 		sealedSession?: string
 		organizationId?: string
 	}
+	refreshResponse?: {
+		accessToken?: string
+		refreshToken?: string
+	}
 	shouldFailAuth?: boolean
+	shouldFailRefresh?: boolean
 	shouldFailLogin?: boolean
 	shouldFailGetOrg?: boolean
 }) =>
 	Layer.succeed(WorkOS, {
-		call: <A>(f: (client: any, signal: AbortSignal) => Promise<A>) =>
+		call: <A>(f: (client: WorkOSNodeAPI, signal: AbortSignal) => Promise<A>) =>
 			Effect.tryPromise({
 				try: async () => {
 					const mockClient = {
 						userManagement: {
-							getAuthorizationUrl: (params: any) => {
+							getAuthorizationUrl: (params: { clientId: string; state?: string }) => {
 								if (options?.shouldFailLogin) {
 									throw new Error("WorkOS API error")
 								}
@@ -57,6 +115,9 @@ const createMockWorkOSLive = (options?: {
 									throw new Error("Authentication failed")
 								}
 								return {
+									accessToken: options?.authenticateResponse?.accessToken ?? makeJwt(),
+									refreshToken:
+										options?.authenticateResponse?.refreshToken ?? "refresh-token",
 									user: options?.authenticateResponse?.user ?? {
 										id: "user_01ABC123",
 										email: "test@example.com",
@@ -68,6 +129,16 @@ const createMockWorkOSLive = (options?: {
 										options?.authenticateResponse?.sealedSession ??
 										"sealed-session-cookie",
 									organizationId: options?.authenticateResponse?.organizationId,
+								}
+							},
+							authenticateWithRefreshToken: async () => {
+								if (options?.shouldFailRefresh) {
+									throw new Error("Refresh failed")
+								}
+								return {
+									accessToken: options?.refreshResponse?.accessToken ?? makeJwt(),
+									refreshToken:
+										options?.refreshResponse?.refreshToken ?? "refresh-token-next",
 								}
 							},
 							listOrganizationMemberships: async () => ({
@@ -95,11 +166,12 @@ const createMockWorkOSLive = (options?: {
 							},
 						},
 					}
-					return f(mockClient as any, new AbortController().signal)
+
+					return f(mockClient as unknown as WorkOSNodeAPI, new AbortController().signal)
 				},
 				catch: (cause) => new WorkOSApiError({ cause }),
 			}),
-	} as unknown as WorkOS)
+	} satisfies ServiceMap.Service.Shape<typeof WorkOS>)
 
 // ===== Mock UserRepo =====
 
@@ -117,24 +189,46 @@ const createMockUserRepoLive = (options?: {
 	Layer.succeed(UserRepo, {
 		findByExternalId: (_externalId: string) =>
 			Effect.succeed(options?.existingUser ? Option.some(options.existingUser) : Option.none()),
-		upsertByExternalId: (user: any) =>
-			Effect.succeed({
-				id: "usr_new123" as UserId,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				avatarUrl: user.avatarUrl,
-				isOnboarded: user.isOnboarded,
-				timezone: user.timezone,
-			}),
-	} as unknown as UserRepo)
+		upsertByExternalId: (user: Schema.Schema.Type<typeof User.Insert>) =>
+			Effect.succeed(
+				makeUserRecord({
+					id: "usr_new123" as UserId,
+					externalId: user.externalId,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					avatarUrl: user.avatarUrl ?? null,
+					isOnboarded: user.isOnboarded,
+					timezone: user.timezone,
+				}),
+			),
+		upsertWorkOSUser: (user: Schema.Schema.Type<typeof User.Insert>) =>
+			Effect.succeed(
+				makeUserRecord({
+					id: "usr_workos123" as UserId,
+					externalId: user.externalId,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					avatarUrl: user.avatarUrl ?? null,
+					isOnboarded: user.isOnboarded,
+					timezone: user.timezone,
+				}),
+			),
+	} as unknown as ServiceMap.Service.Shape<typeof UserRepo>)
 
 // ===== Mock OrganizationMemberRepo =====
 
-const MockOrganizationMemberRepoLive = Layer.succeed(OrganizationMemberRepo, {
-	findByOrgAndUser: (_orgId: OrganizationId, _userId: UserId) => Effect.succeed(Option.none()),
-	upsertByOrgAndUser: (_membership: any) => Effect.succeed({}),
-} as unknown as OrganizationMemberRepo)
+const MockOrganizationMemberRepoLive = Layer.succeed(
+	OrganizationMemberRepo,
+	serviceShape<typeof OrganizationMemberRepo>({
+		findByOrgAndUser: (_orgId: OrganizationId, _userId: UserId) => Effect.succeed(Option.none()),
+		upsertByOrgAndUser: (_membership: Schema.Schema.Type<typeof OrganizationMember.Insert>) =>
+			Effect.succeed({
+				id: "00000000-0000-4000-8000-000000000099",
+			}),
+	}),
+)
 
 // ===== Test Layer Factory =====
 
@@ -150,6 +244,86 @@ const makeTestLayer = (options?: {
 
 // Default test layer
 const TestLayer = makeTestLayer()
+const TestAuthApi = HttpApi.make("HazelApp").add(AuthGroup)
+
+const makeRedisLayer = () => {
+	const store = new Map<string, { value: string; expiresAt: number | null }>()
+
+	const getValue = (key: string): string | null => {
+		const entry = store.get(key)
+		if (!entry) return null
+		if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) {
+			store.delete(key)
+			return null
+		}
+		return entry.value
+	}
+
+	const setValue = (key: string, value: string, ttlMs?: number) => {
+		store.set(key, {
+			value,
+			expiresAt: ttlMs === undefined ? null : Date.now() + ttlMs,
+		})
+	}
+
+	return Layer.succeed(
+		Redis,
+		serviceShape<typeof Redis>({
+			get: (key: string) => Effect.succeed(getValue(key)),
+			del: (key: string) =>
+				Effect.sync(() => {
+					store.delete(key)
+				}),
+			send: <T>(command: string, args: string[]) =>
+				Effect.sync(() => {
+					if (command === "EVAL") {
+						const [, , key, processingValue, ttlMs] = args
+						const existing = getValue(key)
+						if (existing === null) {
+							setValue(key, processingValue, Number(ttlMs))
+							return ["claimed", ""] as T
+						}
+						return ["existing", existing] as T
+					}
+
+					if (command === "SET") {
+						const [key, value, , ttlMs] = args
+						setValue(key, value, Number(ttlMs))
+						return "OK" as T
+					}
+
+					throw new Error(`Unsupported Redis command in test: ${command}`)
+				}),
+		}),
+	)
+}
+
+const makeAuthRouteHandler = (options?: {
+	workosLayer?: Layer.Layer<WorkOS>
+	userRepoLayer?: Layer.Layer<UserRepo>
+}) => {
+	const authStoreLayer = Layer.effect(AuthRedemptionStore, AuthRedemptionStore.make).pipe(
+		Layer.provide(makeRedisLayer()),
+	)
+	const authGroupLayer = HttpAuthLive.pipe(
+		Layer.provideMerge(authStoreLayer),
+		Layer.provideMerge(options?.workosLayer ?? createMockWorkOSLive()),
+		Layer.provideMerge(options?.userRepoLayer ?? createMockUserRepoLive()),
+		Layer.provideMerge(TestConfigLive),
+	)
+
+	const appLayer = HttpApiBuilder.layer(TestAuthApi).pipe(
+		Layer.provideMerge(authGroupLayer),
+		Layer.provideMerge(HttpRouter.layer),
+		Layer.provideMerge(Etag.layer),
+		Layer.provideMerge(NodeServices.layer),
+		Layer.provideMerge(NodeHttpPlatform.layer),
+	)
+
+	return HttpRouter.toWebHandler(appLayer as never, {
+		disableLogger: true,
+	})
+}
 
 // ===== Tests =====
 
@@ -181,14 +355,14 @@ describe("Auth HTTP Endpoint Logic", () => {
 
 	describe("AuthState schema", () => {
 		it("creates valid AuthState", () => {
-			const state = AuthState.make({ returnTo: "/dashboard" })
+			const state = Schema.decodeSync(AuthState)({ returnTo: "/dashboard" })
 			expect(state.returnTo).toBe("/dashboard")
 		})
 
 		it("serializes and deserializes correctly", () => {
-			const state = AuthState.make({ returnTo: "/settings/profile" })
+			const state = Schema.decodeSync(AuthState)({ returnTo: "/settings/profile" })
 			const serialized = JSON.stringify(state)
-			const parsed = AuthState.make(JSON.parse(serialized))
+			const parsed = Schema.decodeSync(AuthState)(JSON.parse(serialized))
 			expect(parsed.returnTo).toBe("/settings/profile")
 		})
 	})
@@ -303,9 +477,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 					Effect.gen(function* () {
 						const userRepo = yield* UserRepo
 
-						const existingUser = yield* userRepo.findByExternalId(
-							"user_new",
-						) as Effect.Effect<any>
+						const existingUser = yield* userRepo.findByExternalId("user_new")
 						expect(Option.isNone(existingUser)).toBe(true)
 
 						const createdUser = yield* userRepo.upsertByExternalId({
@@ -319,7 +491,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 							isOnboarded: false,
 							timezone: null,
 							deletedAt: null,
-						}) as Effect.Effect<any>
+						})
 
 						expect(createdUser.id).toBe("usr_new123")
 						expect(createdUser.email).toBe("new@example.com")
@@ -350,7 +522,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 							id: UserId
 							email: string
 							isOnboarded: boolean
-						}> = yield* userRepo.findByExternalId("user_existing") as Effect.Effect<any>
+						}> = yield* userRepo.findByExternalId("user_existing")
 						expect(Option.isSome(existingUser)).toBe(true)
 
 						if (Option.isSome(existingUser)) {
@@ -420,6 +592,70 @@ describe("Auth HTTP Endpoint Logic", () => {
 					}),
 				)
 			})
+		})
+	})
+
+	describe("HTTP route success encoding", () => {
+		it("returns HTTP 200 with a decodable TokenResponse for /auth/token", async () => {
+			const { handler, dispose } = makeAuthRouteHandler()
+
+			try {
+				const response = await handler(
+					new Request("http://localhost/auth/token", {
+						method: "POST",
+						headers: {
+							"content-type": "application/json",
+							"x-auth-attempt-id": "attempt_token_123",
+						},
+						body: JSON.stringify({
+							code: "authorization_code",
+							state: JSON.stringify({ returnTo: "/" }),
+						}),
+					}),
+					ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				)
+
+				expect(response.status).toBe(200)
+
+				const body = await response.json()
+				const decoded = Schema.decodeUnknownSync(TokenResponse)(body)
+
+				expect(decoded.accessToken).toContain(".")
+				expect(decoded.refreshToken).toBe("refresh-token")
+				expect(decoded.user.email).toBe("test@example.com")
+			} finally {
+				await dispose()
+			}
+		})
+
+		it("returns HTTP 200 with a decodable RefreshTokenResponse for /auth/refresh", async () => {
+			const { handler, dispose } = makeAuthRouteHandler()
+
+			try {
+				const response = await handler(
+					new Request("http://localhost/auth/refresh", {
+						method: "POST",
+						headers: {
+							"content-type": "application/json",
+							"x-auth-attempt-id": "attempt_refresh_123",
+						},
+						body: JSON.stringify({
+							refreshToken: "refresh-token",
+						}),
+					}),
+					ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				)
+
+				expect(response.status).toBe(200)
+
+				const body = await response.json()
+				const decoded = Schema.decodeUnknownSync(RefreshTokenResponse)(body)
+
+				expect(decoded.accessToken).toContain(".")
+				expect(decoded.refreshToken).toBe("refresh-token-next")
+			} finally {
+				await dispose()
+			}
 		})
 	})
 })

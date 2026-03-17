@@ -1,18 +1,17 @@
-import { and, Database, eq, inArray, lt, ModelRepository, ne, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, lt, Repository, ne, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
-export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRepo>()(
+export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatusRepo>()(
 	"UserPresenceStatusRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const db = yield* Database.Database
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.userPresenceStatusTable,
-				UserPresenceStatus.Model,
+				{ insert: UserPresenceStatus.Insert, update: UserPresenceStatus.Update },
 				{
 					idColumn: "id",
 					name: "UserPresenceStatus",
@@ -31,7 +30,7 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 								.limit(1),
 						),
 					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Upsert user presence status
 			const upsertByUserId = (data: Schema.Schema.Type<typeof UserPresenceStatus.Insert>, tx?: TxFn) =>
@@ -40,14 +39,14 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 						execute((client) =>
 							client
 								.insert(schema.userPresenceStatusTable)
-								.values(input)
+								.values(input as any)
 								.onConflictDoUpdate({
 									target: schema.userPresenceStatusTable.userId,
 									set: {
 										status: input.status,
 										customMessage: input.customMessage,
 										statusEmoji: input.statusEmoji,
-										statusExpiresAt: input.statusExpiresAt,
+										statusExpiresAt: input.statusExpiresAt as any,
 										activeChannelId: input.activeChannelId,
 										updatedAt: new Date(),
 										lastSeenAt: new Date(),
@@ -116,7 +115,7 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 								.returning(),
 						),
 					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find users with stale heartbeats (for cron job cleanup)
 			const findStaleUsers = (timeout: Date) =>
@@ -161,4 +160,6 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

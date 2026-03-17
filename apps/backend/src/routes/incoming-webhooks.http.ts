@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto"
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { ChannelWebhookRepo, MessageOutboxRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
@@ -48,9 +48,9 @@ const convertEmbedToDb = (embed: MessageEmbed.MessageEmbed): DbMessageEmbed => (
 
 export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-webhooks", (handlers) =>
 	handlers
-		.handle("execute", ({ path, payload }) =>
+		.handle("execute", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
@@ -154,7 +154,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
@@ -164,9 +164,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				}),
 			),
 		)
-		.handle("executeOpenStatus", ({ path, payload }) =>
+		.handle("executeOpenStatus", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
@@ -257,7 +257,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
@@ -267,9 +267,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				}),
 			),
 		)
-		.handle("executeRailway", ({ path, payload }) =>
+		.handle("executeRailway", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
@@ -357,7 +357,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",

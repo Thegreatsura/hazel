@@ -15,19 +15,25 @@ import { WebTokenStorage } from "./services/web/token-storage"
 import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
-const DesktopTokenStorageLive = TokenStorage.Default
-const WebTokenStorageLive = WebTokenStorage.Default
+const DesktopTokenStorageLive = TokenStorage.layer
+const WebTokenStorageLive = WebTokenStorage.layer
 
 /**
  * Clear tokens from appropriate storage (desktop or web)
  */
 const clearTokens = async (): Promise<void> => {
 	const effect = isTauri()
-		? TokenStorage.clearTokens.pipe(Effect.provide(DesktopTokenStorageLive))
-		: WebTokenStorage.clearTokens.pipe(Effect.provide(WebTokenStorageLive))
+		? Effect.gen(function* () {
+				const storage = yield* TokenStorage
+				yield* storage.clearTokens
+			}).pipe(Effect.provide(DesktopTokenStorageLive))
+		: Effect.gen(function* () {
+				const storage = yield* WebTokenStorage
+				yield* storage.clearTokens
+			}).pipe(Effect.provide(WebTokenStorageLive))
 	return runtime.runPromise(
 		effect.pipe(
-			Effect.catchAll(() => Effect.void),
+			Effect.catch(() => Effect.void),
 			Effect.withSpan("clearTokens"),
 		),
 	)

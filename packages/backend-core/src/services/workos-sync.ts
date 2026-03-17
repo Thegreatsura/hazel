@@ -8,8 +8,7 @@ import {
 	type UserId,
 } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
-import { Effect, Match, Option, pipe, Schema, Stream } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
+import { ServiceMap, Effect, Layer, Match, Option, pipe, Result, Schema, Stream } from "effect"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
@@ -17,7 +16,7 @@ import { UserRepo } from "../repositories/user-repo"
 import { WorkOSClient } from "./workos"
 
 // Error types
-export class WorkOSSyncError extends Schema.TaggedError<WorkOSSyncError>("WorkOSSyncError")(
+export class WorkOSSyncError extends Schema.TaggedErrorClass<WorkOSSyncError>("WorkOSSyncError")(
 	"WorkOSSyncError",
 	{
 		message: Schema.String,
@@ -77,18 +76,17 @@ export const WorkOSSyncMembershipRemovedPayload = Schema.Struct({
 })
 
 export const decodeInternalOrganizationId = (externalId: string) =>
-	Schema.decodeUnknown(OrganizationId)(externalId)
+	Schema.decodeUnknownEffect(OrganizationId)(externalId)
 
 export const normalizeWorkOSRole = (
 	role: unknown,
 ): Effect.Effect<Schema.Schema.Type<typeof WorkOSRole>, never> =>
-	Schema.decodeUnknown(WorkOSRole)(role).pipe(
+	Schema.decodeUnknownEffect(WorkOSRole)(role).pipe(
 		Effect.orElseSucceed((): Schema.Schema.Type<typeof WorkOSRole> => "member"),
 	)
 
-export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
+	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
 		const userRepo = yield* UserRepo
@@ -96,20 +94,20 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		const orgMemberRepo = yield* OrganizationMemberRepo
 		const invitationRepo = yield* InvitationRepo
 		const decodeWebhookData =
-			<S extends Schema.Schema.AnyNoContext>(schema: S) =>
+			<S extends Schema.Top>(schema: S) =>
 			(data: unknown) =>
-				Schema.decodeUnknown(schema)(data).pipe(
+				Schema.decodeUnknownEffect(schema)(data).pipe(
 					Effect.mapError(
 						(error) =>
 							new WorkOSSyncError({
 								message: "Invalid WorkOS webhook payload",
-								cause: TreeFormatter.formatErrorSync(error),
+								cause: String(error),
 							}),
 					),
 				)
-		const decodeWorkOSUserId = Schema.decodeUnknown(WorkOSUserId)
-		const decodeWorkOSOrganizationId = Schema.decodeUnknown(WorkOSOrganizationId)
-		const decodeWorkOSInvitationId = Schema.decodeUnknown(WorkOSInvitationId)
+		const decodeWorkOSUserId = Schema.decodeUnknownEffect(WorkOSUserId)
+		const decodeWorkOSOrganizationId = Schema.decodeUnknownEffect(WorkOSOrganizationId)
+		const decodeWorkOSInvitationId = Schema.decodeUnknownEffect(WorkOSInvitationId)
 
 		const resolveInternalOrganizationId = (externalId: string, workosOrgId: string) =>
 			decodeInternalOrganizationId(externalId).pipe(
@@ -117,7 +115,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					(error) =>
 						new WorkOSSyncError({
 							message: `Invalid WorkOS externalId for organization ${workosOrgId}`,
-							cause: TreeFormatter.formatErrorSync(error),
+							cause: String(error),
 						}),
 				),
 			)
@@ -136,29 +134,29 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		) =>
 			pipe(
 				effect,
-				Effect.either,
+				Effect.result,
 				// biome-ignore lint/suspicious/useIterableCallbackReturn: <explanation>
-				Effect.map((either) => {
-					if (either._tag === "Right") {
-						onSuccess(either.right)
+				Effect.map((r) => {
+					if (Result.isSuccess(r)) {
+						onSuccess(r.success)
 					} else {
-						onError(either.left)
+						onError(r.failure)
 					}
 				}),
 			)
 
 		// Pagination helpers using Effect Stream to fetch all pages from WorkOS
-		// Stream.paginateEffect takes initial cursor and returns Effect<[pageData, Option<nextCursor>]>
+		// Stream.paginate takes initial cursor and returns Effect<[pageData, Option<nextCursor>]>
 		// Stream.runCollect gathers all pages, then we flatten them into a single array
 
 		const fetchAllUsers = pipe(
-			Stream.paginateEffect(undefined as string | undefined, (after) =>
+			Stream.paginate(undefined as string | undefined, (after) =>
 				workos
 					.call((client) => client.userManagement.listUsers({ limit: 100, after }))
 					.pipe(
 						Effect.map(
 							(response) =>
-								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+								[response.data, Option.fromNullishOr(response.listMetadata?.after)] as const,
 						),
 					),
 			),
@@ -168,13 +166,13 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		)
 
 		const fetchAllOrganizations = pipe(
-			Stream.paginateEffect(undefined as string | undefined, (after) =>
+			Stream.paginate(undefined as string | undefined, (after) =>
 				workos
 					.call((client) => client.organizations.listOrganizations({ limit: 100, after }))
 					.pipe(
 						Effect.map(
 							(response) =>
-								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+								[response.data, Option.fromNullishOr(response.listMetadata?.after)] as const,
 						),
 					),
 			),
@@ -185,7 +183,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const fetchAllMemberships = (workosOrgId: WorkOSOrganizationId) =>
 			pipe(
-				Stream.paginateEffect(undefined as string | undefined, (after) =>
+				Stream.paginate(undefined as string | undefined, (after) =>
 					workos
 						.call((client) =>
 							client.userManagement.listOrganizationMemberships({
@@ -199,7 +197,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								(response) =>
 									[
 										response.data,
-										Option.fromNullable(response.listMetadata?.after),
+										Option.fromNullishOr(response.listMetadata?.after),
 									] as const,
 							),
 						),
@@ -213,7 +211,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const fetchAllInvitations = (workosOrgId: WorkOSOrganizationId) =>
 			pipe(
-				Stream.paginateEffect(undefined as string | undefined, (after) =>
+				Stream.paginate(undefined as string | undefined, (after) =>
 					workos
 						.call((client) =>
 							client.userManagement.listInvitations({
@@ -227,7 +225,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								(response) =>
 									[
 										response.data,
-										Option.fromNullable(response.listMetadata?.after),
+										Option.fromNullishOr(response.listMetadata?.after),
 									] as const,
 							),
 						),
@@ -246,14 +244,14 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Fetch all users from WorkOS (with pagination)
 			yield* Effect.logInfo("Fetching users from WorkOS...")
 			const fetchStart = Date.now()
-			const workosUsersResult = yield* pipe(fetchAllUsers, Effect.either)
+			const workosUsersResult = yield* pipe(fetchAllUsers, Effect.result)
 
-			if (workosUsersResult._tag === "Left") {
-				result.errors.push(`Failed to fetch users from WorkOS: ${workosUsersResult.left}`)
+			if (workosUsersResult._tag === "Failure") {
+				result.errors.push(`Failed to fetch users from WorkOS: ${workosUsersResult.failure}`)
 				return result
 			}
 
-			const workosUsers = workosUsersResult.right
+			const workosUsers = workosUsersResult.success
 			yield* Effect.logInfo(
 				`Fetched ${workosUsers.length} users from WorkOS in ${Date.now() - fetchStart}ms`,
 			)
@@ -345,14 +343,14 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Fetch all organizations from WorkOS (with pagination)
 			yield* Effect.logInfo("Fetching organizations from WorkOS...")
 			const fetchStart = Date.now()
-			const workosOrgsResult = yield* pipe(fetchAllOrganizations, Effect.either)
+			const workosOrgsResult = yield* pipe(fetchAllOrganizations, Effect.result)
 
-			if (workosOrgsResult._tag === "Left") {
-				result.errors.push(`Failed to fetch organizations from WorkOS: ${workosOrgsResult.left}`)
+			if (workosOrgsResult._tag === "Failure") {
+				result.errors.push(`Failed to fetch organizations from WorkOS: ${workosOrgsResult.failure}`)
 				return result
 			}
 
-			const workosOrgs = workosOrgsResult.right
+			const workosOrgs = workosOrgsResult.success
 			yield* Effect.logInfo(
 				`Fetched ${workosOrgs.length} organizations from WorkOS in ${Date.now() - fetchStart}ms`,
 			)
@@ -440,43 +438,43 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Fetch WorkOS organization by our internal organization ID (stored as externalId in WorkOS)
 			const workosOrgResult = yield* pipe(
 				workos.call((client) => client.organizations.getOrganizationByExternalId(organizationId)),
-				Effect.either,
+				Effect.result,
 			)
 
-			if (workosOrgResult._tag === "Left") {
+			if (workosOrgResult._tag === "Failure") {
 				result.errors.push(
-					`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.left}`,
+					`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.failure}`,
 				)
 				return result
 			}
 
-			const workosOrg = workosOrgResult.right
+			const workosOrg = workosOrgResult.success
 
 			// Fetch memberships from WorkOS using WorkOS organization ID (with pagination)
 			const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
-				Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
-				Effect.either,
+				Effect.mapError((error) => String(String(error))),
+				Effect.result,
 			)
-			if (workosOrganizationId._tag === "Left") {
+			if (workosOrganizationId._tag === "Failure") {
 				result.errors.push(
-					`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.left}`,
+					`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.failure}`,
 				)
 				return result
 			}
 
 			const workosMembershipsResult = yield* pipe(
-				fetchAllMemberships(workosOrganizationId.right),
-				Effect.either,
+				fetchAllMemberships(workosOrganizationId.success),
+				Effect.result,
 			)
 
-			if (workosMembershipsResult._tag === "Left") {
+			if (workosMembershipsResult._tag === "Failure") {
 				result.errors.push(
-					`Failed to fetch memberships for org ${organizationId}: ${workosMembershipsResult.left}`,
+					`Failed to fetch memberships for org ${organizationId}: ${workosMembershipsResult.failure}`,
 				)
 				return result
 			}
 
-			const workosMemberships = workosMembershipsResult.right
+			const workosMemberships = workosMembershipsResult.success
 
 			// Get all existing memberships for this org
 			const existingMemberships = yield* orgMemberRepo.findAllByOrganization(organizationId)
@@ -567,43 +565,43 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Fetch WorkOS organization by our internal organization ID (stored as externalId in WorkOS)
 			const workosOrgResult = yield* pipe(
 				workos.call((client) => client.organizations.getOrganizationByExternalId(organizationId)),
-				Effect.either,
+				Effect.result,
 			)
 
-			if (workosOrgResult._tag === "Left") {
+			if (workosOrgResult._tag === "Failure") {
 				result.errors.push(
-					`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.left}`,
+					`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.failure}`,
 				)
 				return result
 			}
 
-			const workosOrg = workosOrgResult.right
+			const workosOrg = workosOrgResult.success
 
 			// Fetch invitations from WorkOS using WorkOS organization ID (with pagination)
 			const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
-				Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
-				Effect.either,
+				Effect.mapError((error) => String(String(error))),
+				Effect.result,
 			)
-			if (workosOrganizationId._tag === "Left") {
+			if (workosOrganizationId._tag === "Failure") {
 				result.errors.push(
-					`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.left}`,
+					`Failed to decode WorkOS organization ID for ${organizationId}: ${workosOrganizationId.failure}`,
 				)
 				return result
 			}
 
 			const workosInvitationsResult = yield* pipe(
-				fetchAllInvitations(workosOrganizationId.right),
-				Effect.either,
+				fetchAllInvitations(workosOrganizationId.success),
+				Effect.result,
 			)
 
-			if (workosInvitationsResult._tag === "Left") {
+			if (workosInvitationsResult._tag === "Failure") {
 				result.errors.push(
-					`Failed to fetch invitations for org ${organizationId}: ${workosInvitationsResult.left}`,
+					`Failed to fetch invitations for org ${organizationId}: ${workosInvitationsResult.failure}`,
 				)
 				return result
 			}
 
-			const workosInvitations = workosInvitationsResult.right
+			const workosInvitations = workosInvitationsResult.success
 
 			// Get all existing invitations for this org
 			const existingInvitations = yield* invitationRepo.findAllByOrganization(organizationId)
@@ -675,12 +673,12 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 			// Mark expired invitations
-			const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.either)
+			const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.result)
 
-			if (expiredResult._tag === "Right") {
-				result.expired = expiredResult.right.length
+			if (expiredResult._tag === "Success") {
+				result.expired = expiredResult.success.length
 			} else {
-				result.errors.push(`Error marking expired invitations: ${expiredResult.left}`)
+				result.errors.push(`Error marking expired invitations: ${expiredResult.failure}`)
 			}
 
 			return result
@@ -858,15 +856,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				// Fetch WorkOS org to get externalId (our internal org ID)
 				const workosOrgResult = yield* pipe(
 					workos.call((client) => client.organizations.getOrganization(data.organizationId)),
-					Effect.either,
+					Effect.result,
 				)
 
-				if (workosOrgResult._tag === "Left") {
+				if (workosOrgResult._tag === "Failure") {
 					yield* Effect.logError(`Failed to fetch WorkOS org ${data.organizationId}`)
 					return
 				}
 
-				const workosOrg = workosOrgResult.right
+				const workosOrg = workosOrgResult.success
 
 				if (!workosOrg.externalId) {
 					yield* Effect.logWarning(`WorkOS org ${data.organizationId} has no externalId`)
@@ -903,15 +901,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				// Fetch WorkOS org to get externalId (our internal org ID)
 				const workosOrgResult = yield* pipe(
 					workos.call((client) => client.organizations.getOrganization(data.organizationId)),
-					Effect.either,
+					Effect.result,
 				)
 
-				if (workosOrgResult._tag === "Left") {
+				if (workosOrgResult._tag === "Failure") {
 					yield* Effect.logError(`Failed to fetch WorkOS org ${data.organizationId}`)
 					return
 				}
 
-				const workosOrg = workosOrgResult.right
+				const workosOrg = workosOrgResult.success
 
 				if (!workosOrg.externalId) {
 					yield* Effect.logWarning(`WorkOS org ${data.organizationId} has no externalId`)
@@ -976,7 +974,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				Effect.tap(() => Effect.logDebug(`Successfully processed: ${event.event}`)),
 				Effect.as({ success: true }),
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					Effect.logError(`Failed to process ${event.event}`, { error }).pipe(
 						Effect.as({ success: false, error: String(error) }),
 					),
@@ -992,11 +990,12 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			processWebhookEvent: (event: Event) => processWebhookEvent(event),
 		}
 	}),
-	dependencies: [
-		WorkOSClient.Default,
-		UserRepo.Default,
-		OrganizationRepo.Default,
-		OrganizationMemberRepo.Default,
-		InvitationRepo.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(WorkOSClient.layer),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(InvitationRepo.layer),
+	)
+}

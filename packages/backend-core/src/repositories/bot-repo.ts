@@ -1,28 +1,19 @@
-import {
-	and,
-	Database,
-	eq,
-	ilike,
-	inArray,
-	isNull,
-	ModelRepository,
-	or,
-	schema,
-	sql,
-	type TxFn,
-} from "@hazel/db"
+import { and, Database, eq, ilike, inArray, isNull, Repository, or, schema, sql, type TxFn } from "@hazel/db"
 
 import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
-export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.botsTable, Bot.Model, {
-			idColumn: "id",
-			name: "Bot",
-		})
+export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.botsTable,
+			{ insert: Bot.Insert, update: Bot.Update },
+			{
+				idColumn: "id",
+				name: "Bot",
+			},
+		)
 		const db = yield* Database.Database
 
 		// Find bot by ID
@@ -37,7 +28,7 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ id }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find bot by token hash
 		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
@@ -56,7 +47,7 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find bot by user ID
 		const findByUserId = (userId: UserId, tx?: TxFn) =>
@@ -75,7 +66,7 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ userId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find all bots created by a user
 		const findByCreator = (createdBy: UserId, tx?: TxFn) =>
@@ -262,4 +253,6 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 			decrementInstallCount,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

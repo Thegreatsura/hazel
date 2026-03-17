@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest } from "effect/unstable/http"
+import { InternalServerError } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
@@ -24,7 +26,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 
 				const rawBody = yield* pipe(
 					request.text,
-					Effect.orElseFail(
+					Effect.mapError(
 						() =>
 							new InvalidWebhookSignature({
 								message: "Invalid request body",
@@ -100,7 +102,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 
 				const rawBody = yield* pipe(
 					request.text,
-					Effect.orElseFail(
+					Effect.mapError(
 						() =>
 							new InvalidGitHubWebhookSignature({
 								message: "Invalid request body",
@@ -109,10 +111,12 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				)
 
 				const skipSignatureVerification = yield* Config.boolean("GITHUB_WEBHOOK_SKIP_SIGNATURE").pipe(
-					Effect.orElseSucceed(() => false),
+					Config.withDefault(false),
 				)
 
-				const webhookSecret = yield* Config.redacted("GITHUB_WEBHOOK_SECRET").pipe(
+				const webhookSecret = yield* Effect.gen(function* () {
+					return yield* Config.redacted("GITHUB_WEBHOOK_SECRET")
+				}).pipe(
 					Effect.catchTag("ConfigError", () =>
 						skipSignatureVerification
 							? Effect.succeed(Redacted.make(""))
@@ -168,6 +172,12 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 					processed: true,
 					messagesCreated: 0,
 				})
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
+				),
+			),
 		),
 )

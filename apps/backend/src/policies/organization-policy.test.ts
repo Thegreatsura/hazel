@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { UnauthorizedError } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
-import { Either, Layer } from "effect"
+import { Result, Layer } from "effect"
 import { OrganizationPolicy } from "./organization-policy.ts"
 import {
 	makeActor,
@@ -15,21 +15,24 @@ import {
 type Role = "admin" | "member" | "owner"
 
 const makePolicyLayer = (members: Record<string, Role>) =>
-	OrganizationPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(OrganizationPolicy, OrganizationPolicy.make).pipe(
 		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 	)
 
 describe("OrganizationPolicy", () => {
 	it("canCreate allows any authenticated actor", async () => {
-		const result = await runWithActorEither(OrganizationPolicy.canCreate(), makePolicyLayer({}))
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			OrganizationPolicy.use((policy) => policy.canCreate()),
+			makePolicyLayer({}),
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows admin and owner, denies plain member", async () => {
 		const adminActor = makeActor()
 		const memberActor = makeActor({
-			id: "00000000-0000-0000-0000-000000000222" as UserId,
+			id: "00000000-0000-4000-8000-000000000222" as UserId,
 		})
 
 		const layer = makePolicyLayer({
@@ -38,27 +41,27 @@ describe("OrganizationPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			OrganizationPolicy.canUpdate(TEST_ORG_ID),
+			OrganizationPolicy.use((policy) => policy.canUpdate(TEST_ORG_ID)),
 			layer,
 			adminActor,
 		)
 		const memberResult = await runWithActorEither(
-			OrganizationPolicy.canUpdate(TEST_ORG_ID),
+			OrganizationPolicy.use((policy) => policy.canUpdate(TEST_ORG_ID)),
 			layer,
 			memberActor,
 		)
 
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isLeft(memberResult)).toBe(true)
-		if (Either.isLeft(memberResult)) {
-			expect(UnauthorizedError.is(memberResult.left)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isFailure(memberResult)).toBe(true)
+		if (Result.isFailure(memberResult)) {
+			expect(UnauthorizedError.is(memberResult.failure)).toBe(true)
 		}
 	})
 
 	it("canDelete allows owner only", async () => {
 		const ownerActor = makeActor()
 		const adminActor = makeActor({
-			id: "00000000-0000-0000-0000-000000000223" as UserId,
+			id: "00000000-0000-4000-8000-000000000223" as UserId,
 		})
 
 		const layer = makePolicyLayer({
@@ -67,18 +70,18 @@ describe("OrganizationPolicy", () => {
 		})
 
 		const ownerResult = await runWithActorEither(
-			OrganizationPolicy.canDelete(TEST_ORG_ID),
+			OrganizationPolicy.use((policy) => policy.canDelete(TEST_ORG_ID)),
 			layer,
 			ownerActor,
 		)
 		const adminResult = await runWithActorEither(
-			OrganizationPolicy.canDelete(TEST_ORG_ID),
+			OrganizationPolicy.use((policy) => policy.canDelete(TEST_ORG_ID)),
 			layer,
 			adminActor,
 		)
 
-		expect(Either.isRight(ownerResult)).toBe(true)
-		expect(Either.isLeft(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
+		expect(Result.isFailure(adminResult)).toBe(true)
 	})
 
 	it("isMember denies users without membership in target org", async () => {
@@ -87,10 +90,14 @@ describe("OrganizationPolicy", () => {
 			[`${TEST_ALT_ORG_ID}:${actor.id}`]: "member",
 		})
 
-		const result = await runWithActorEither(OrganizationPolicy.isMember(TEST_ORG_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+		const result = await runWithActorEither(
+			OrganizationPolicy.use((policy) => policy.isMember(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -101,10 +108,10 @@ describe("OrganizationPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			OrganizationPolicy.canManagePublicInvite(TEST_ORG_ID),
+			OrganizationPolicy.use((policy) => policy.canManagePublicInvite(TEST_ORG_ID)),
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 })

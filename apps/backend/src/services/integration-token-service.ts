@@ -3,22 +3,21 @@ import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
 import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
-import { Effect, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
-import { DatabaseLive } from "./database"
+import { ServiceMap, Effect, Layer, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { OAuthHttpClient } from "./oauth/oauth-http-client"
 import { type OAuthIntegrationProvider, loadProviderConfig } from "./oauth/provider-config"
 
-export class TokenNotFoundError extends Schema.TaggedError<TokenNotFoundError>()("TokenNotFoundError", {
+export class TokenNotFoundError extends Schema.TaggedErrorClass<TokenNotFoundError>()("TokenNotFoundError", {
 	connectionId: IntegrationConnectionIdSchema,
 }) {}
 
-export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()("TokenRefreshError", {
+export class TokenRefreshError extends Schema.TaggedErrorClass<TokenRefreshError>()("TokenRefreshError", {
 	provider: IntegrationConnection.IntegrationProvider,
 	cause: Schema.Unknown,
 }) {}
 
-export class ConnectionNotFoundError extends Schema.TaggedError<ConnectionNotFoundError>()(
+export class ConnectionNotFoundError extends Schema.TaggedErrorClass<ConnectionNotFoundError>()(
 	"ConnectionNotFoundError",
 	{
 		connectionId: IntegrationConnectionIdSchema,
@@ -60,15 +59,14 @@ const refreshOAuthToken = (
 			scope: result.scope,
 		}
 	}).pipe(
-		Effect.provide(OAuthHttpClient.Default),
+		Effect.provide(OAuthHttpClient.layer),
 		Effect.mapError((cause) => new TokenRefreshError({ provider, cause })),
 	)
 
-export class IntegrationTokenService extends Effect.Service<IntegrationTokenService>()(
+export class IntegrationTokenService extends ServiceMap.Service<IntegrationTokenService>()(
 	"IntegrationTokenService",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const encryption = yield* IntegrationEncryption
 			const tokenRepo = yield* IntegrationTokenRepo
 			const connectionRepo = yield* IntegrationConnectionRepo
@@ -226,15 +224,17 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 				// Load provider config to get client credentials
 				const providerConfig = yield* loadProviderConfig(
 					connection.provider as OAuthIntegrationProvider,
-				).pipe(
-					Effect.mapError(
-						(cause) =>
-							new TokenRefreshError({
-								provider: connection.provider,
-								cause: `Failed to load provider config: ${cause}`,
-							}),
-					),
 				)
+					.asEffect()
+					.pipe(
+						Effect.mapError(
+							(cause) =>
+								new TokenRefreshError({
+									provider: connection.provider,
+									cause: `Failed to load provider config: ${cause}`,
+								}),
+						),
+					)
 
 				yield* Effect.logDebug("Refreshing OAuth token", { provider: connection.provider })
 
@@ -438,12 +438,12 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 				deleteTokens,
 			}
 		}),
-		dependencies: [
-			DatabaseLive,
-			IntegrationEncryption.Default,
-			IntegrationTokenRepo.Default,
-			IntegrationConnectionRepo.Default,
-			GitHub.GitHubAppJWTService.Default,
-		],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(IntegrationEncryption.layer),
+		Layer.provide(IntegrationTokenRepo.layer),
+		Layer.provide(IntegrationConnectionRepo.layer),
+		Layer.provide(GitHub.GitHubAppJWTService.layer),
+	)
+}

@@ -17,7 +17,7 @@ export type { CollectionStatus } from "@tanstack/db"
  * Error returned when the collection's last error is retrieved.
  * Wraps the underlying TanStack DB error with collection context.
  */
-export class CollectionSyncEffectError extends Schema.TaggedError<CollectionSyncEffectError>()(
+export class CollectionSyncEffectError extends Schema.TaggedErrorClass<CollectionSyncEffectError>()(
 	"CollectionSyncEffectError",
 	{
 		message: Schema.String,
@@ -421,7 +421,7 @@ export type EffectCollection<
  *   id: "messages",
  *   runtime: runtime,
  *   shapeOptions: { url: electricUrl, params: { table: "messages" } },
- *   schema: Message.Model.json,  // Direct Effect Schema!
+ *   schema: Message.Schema,  // Direct Effect Schema!
  *   getKey: (item) => item.id,
  *   onInsert: ({ transaction }) => Effect.gen(function* () { ... }),
  * })
@@ -429,17 +429,17 @@ export type EffectCollection<
  * // messageCollection.utils.awaitTxIdEffect is properly typed!
  * ```
  */
-export function createEffectCollection<A extends Row<unknown>, I, TRuntime>(
+export function createEffectCollection<A extends Row<unknown>, TRuntime>(
 	config: Omit<
 		EffectElectricCollectionConfig<A, string | number, never, Record<string, never>, TRuntime>,
 		"schema"
 	> & {
-		schema: Schema.Schema<A, I>
+		schema: Schema.Schema<A>
 		runtime: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
 	},
 ): EffectCollection<A> {
 	// Convert Effect Schema to StandardSchemaV1 internally
-	const standardSchema = Schema.standardSchemaV1(config.schema)
+	const standardSchema = Schema.toStandardSchemaV1(config.schema as any)
 
 	const options = effectElectricCollectionOptions({
 		...config,

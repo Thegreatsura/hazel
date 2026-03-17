@@ -1,16 +1,15 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, UserId } from "@hazel/schema"
 import { ConnectParticipant } from "@hazel/domain/models"
-import { Effect, Option, type Schema as EffectSchema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema as EffectSchema } from "effect"
 
-export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRepo>()(
+export class ConnectParticipantRepo extends ServiceMap.Service<ConnectParticipantRepo>()(
 	"ConnectParticipantRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.connectParticipantsTable,
-				ConnectParticipant.Model,
+				{ insert: ConnectParticipant.Insert, update: ConnectParticipant.Update },
 				{
 					idColumn: "id",
 					name: "ConnectParticipant",
@@ -35,7 +34,7 @@ export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRep
 								.limit(1),
 						),
 					)({ channelId, userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const listByChannel = (channelId: ChannelId, tx?: TxFn) =>
 				db.makeQuery((execute, input: ChannelId) =>
@@ -113,4 +112,6 @@ export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRep
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

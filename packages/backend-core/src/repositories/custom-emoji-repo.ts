@@ -1,16 +1,19 @@
-import { and, Database, eq, isNotNull, isNull, ModelRepository, schema } from "@hazel/db"
+import { and, Database, eq, isNotNull, isNull, Repository, schema } from "@hazel/db"
 
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { CustomEmoji } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.customEmojisTable, CustomEmoji.Model, {
-			idColumn: "id",
-			name: "CustomEmoji",
-		})
+export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.customEmojisTable,
+			{ insert: CustomEmoji.Insert, update: CustomEmoji.Update },
+			{
+				idColumn: "id",
+				name: "CustomEmoji",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByOrgAndName = (organizationId: OrganizationId, name: string) =>
@@ -30,7 +33,7 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 							.limit(1),
 					),
 				)({ organizationId, name })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findDeletedByOrgAndName = (organizationId: OrganizationId, name: string) =>
 			db
@@ -49,7 +52,7 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 							.limit(1),
 					),
 				)({ organizationId, name })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const restore = (id: CustomEmojiId, imageUrl?: string) =>
 			db
@@ -71,7 +74,7 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 							.returning(),
 					),
 				)({ id, imageUrl })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const softDelete = (id: CustomEmojiId) =>
 			db
@@ -89,7 +92,7 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 							.returning(),
 					),
 				)(id)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		return {
 			...baseRepo,
@@ -99,4 +102,6 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 			restore,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

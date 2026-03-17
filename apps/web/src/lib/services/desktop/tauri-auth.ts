@@ -22,7 +22,7 @@ import {
 	TauriCommandError,
 	TauriNotAvailableError,
 } from "@hazel/domain/errors"
-import { Deferred, Duration, Effect, FiberId } from "effect"
+import { ServiceMap, Deferred, Duration, Effect, Fiber, Layer } from "effect"
 import { TokenExchange } from "./token-exchange"
 import { TokenStorage } from "./token-storage"
 
@@ -82,10 +82,8 @@ const getTauriEvent = Effect.gen(function* () {
 	return event
 })
 
-export class TauriAuth extends Effect.Service<TauriAuth>()("TauriAuth", {
-	accessors: true,
-	dependencies: [TokenStorage.Default, TokenExchange.Default],
-	effect: Effect.gen(function* () {
+export class TauriAuth extends ServiceMap.Service<TauriAuth>()("TauriAuth", {
+	make: Effect.gen(function* () {
 		const tokenStorage = yield* TokenStorage
 		const tokenExchange = yield* TokenExchange
 
@@ -150,28 +148,24 @@ export class TauriAuth extends Effect.Service<TauriAuth>()("TauriAuth", {
 					yield* Effect.log("[tauri-auth] Browser opened, waiting for web callback...")
 
 					// Wait for OAuth callback with timeout and cleanup
-					// Uses Deferred to ensure cleanup works even if listener setup is async
-					const callbackUrl = yield* Effect.async<string, never>((resume) => {
-						const unlistenDeferred = Deferred.unsafeMake<() => void, never>(FiberId.none)
+					const callbackUrl = yield* Effect.callback<string, never>((resume) => {
+						let unlistenFn: (() => void) | null = null
 
 						event
-							.listen<string>("oauth-callback", (evt) => {
+							.listen<string>("oauth-callback", (evt: { payload: string }) => {
 								resume(Effect.succeed(evt.payload))
 							})
-							.then((unlistenFn) => {
-								Deferred.unsafeDone(unlistenDeferred, Effect.succeed(unlistenFn))
+							.then((fn: () => void) => {
+								unlistenFn = fn
 							})
 
-						// Return cleanup function that waits for unlisten to be available
-						return Deferred.await(unlistenDeferred).pipe(
-							Effect.flatMap((fn) => Effect.sync(() => fn())),
-							// If deferred isn't done yet, just skip cleanup
-							Effect.timeout(Duration.millis(100)),
-							Effect.ignore,
-						)
+						// Return cleanup effect
+						return Effect.sync(() => {
+							if (unlistenFn) unlistenFn()
+						})
 					}).pipe(
 						Effect.timeout(Duration.minutes(2)),
-						Effect.catchTag("TimeoutException", () =>
+						Effect.catchTag("TimeoutError", () =>
 							Effect.fail(
 								new OAuthTimeoutError({
 									message: "OAuth callback timeout after 2 minutes",
@@ -206,4 +200,9 @@ export class TauriAuth extends Effect.Service<TauriAuth>()("TauriAuth", {
 				}).pipe(Effect.withSpan("TauriAuth.initiateAuth")),
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(TokenStorage.layer),
+		Layer.provide(TokenExchange.layer),
+	)
+}

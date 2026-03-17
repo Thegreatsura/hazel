@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { InvitationRepo, UserRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { InvitationPolicy } from "./invitation-policy.ts"
 import {
 	makeActor,
@@ -10,15 +10,16 @@ import {
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const INVITATION_ID = "00000000-0000-0000-0000-000000000821" as InvitationId
-const MISSING_INVITATION_ID = "00000000-0000-0000-0000-000000000829" as InvitationId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000822" as UserId
+const INVITATION_ID = "00000000-0000-4000-8000-000000000821" as InvitationId
+const MISSING_INVITATION_ID = "00000000-0000-4000-8000-000000000829" as InvitationId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000822" as UserId
 
 const makeInvitationRepoLayer = (
 	invitations: Record<string, { invitedBy: UserId; organizationId: OrganizationId; email: string }>,
@@ -38,22 +39,25 @@ const makeInvitationRepoLayer = (
 			}
 			return f(invitation)
 		},
-	} as unknown as InvitationRepo)
+	} as ServiceMap.Service.Shape<typeof InvitationRepo>)
 
 const makeUserRepoLayer = (users: Record<string, { email: string }>) =>
-	Layer.succeed(UserRepo, {
-		findById: (id: UserId) => {
-			const user = users[id]
-			return Effect.succeed(user ? Option.some(user) : Option.none())
-		},
-	} as unknown as UserRepo)
+	Layer.succeed(
+		UserRepo,
+		serviceShape<typeof UserRepo>({
+			findById: (id: UserId) => {
+				const user = users[id]
+				return Effect.succeed(user ? Option.some(user) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	invitations: Record<string, { invitedBy: UserId; organizationId: OrganizationId; email: string }>,
 	users: Record<string, { email: string }> = {},
 ) =>
-	InvitationPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(InvitationPolicy, InvitationPolicy.make).pipe(
 		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 		Layer.provide(makeInvitationRepoLayer(invitations)),
@@ -65,9 +69,13 @@ describe("InvitationPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {})
 
-		const result = await runWithActorEither(InvitationPolicy.canRead(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canRead(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate allows admin-or-owner", async () => {
@@ -79,9 +87,13 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies regular member", async () => {
@@ -93,9 +105,13 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows creator", async () => {
@@ -111,9 +127,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin who is not creator", async () => {
@@ -131,9 +151,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, admin)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			admin,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-creator non-admin", async () => {
@@ -151,9 +175,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, outsider)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			outsider,
+		)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows creator", async () => {
@@ -169,9 +197,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canDelete(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin who is not creator", async () => {
@@ -189,9 +221,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, admin)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canDelete(INVITATION_ID)),
+			layer,
+			admin,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canAccept allows when user email matches invitation email", async () => {
@@ -210,9 +246,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canAccept denies when user email does not match", async () => {
@@ -231,9 +271,13 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canAccept denies when user is not found", async () => {
@@ -250,9 +294,13 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canList allows admin-or-owner", async () => {
@@ -264,9 +312,13 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canList(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canList denies regular member", async () => {
@@ -278,8 +330,12 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			InvitationPolicy.use((policy) => policy.canList(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

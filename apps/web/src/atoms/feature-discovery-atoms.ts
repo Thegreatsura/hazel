@@ -1,4 +1,5 @@
-import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Schema } from "effect"
 import { useCallback } from "react"
 import { platformStorageRuntime } from "~/lib/platform-storage"
@@ -7,15 +8,12 @@ const HINT_IDS = ["command-palette", "create-channel"] as const
 
 export type HintId = (typeof HINT_IDS)[number]
 
-const DismissedHintsSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.Boolean,
-})
+const DismissedHintsSchema = Schema.Record(Schema.String, Schema.Boolean)
 
 export const dismissedHintsAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-dismissed-hints",
-	schema: DismissedHintsSchema,
+	schema: Schema.toCodecIso(DismissedHintsSchema),
 	defaultValue: () => ({}) as Record<string, boolean>,
 }).pipe(Atom.keepAlive)
 

@@ -1,4 +1,4 @@
-import { BackendAuth } from "@hazel/auth/backend"
+import { BackendAuth, type UserRepoLike } from "@hazel/auth/backend"
 import {
 	CurrentUser,
 	InvalidBearerTokenError,
@@ -6,7 +6,7 @@ import {
 	WorkOSUserFetchError,
 } from "@hazel/domain"
 import { UserRepo } from "@hazel/backend-core"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
 /**
  * Session management service that handles authentication via WorkOS.
@@ -14,19 +14,22 @@ import { Effect } from "effect"
  *
  * This service delegates to @hazel/auth/backend for the actual authentication logic.
  */
-export class SessionManager extends Effect.Service<SessionManager>()("SessionManager", {
-	accessors: true,
-	dependencies: [BackendAuth.Default, UserRepo.Default],
-	effect: Effect.gen(function* () {
+export class SessionManager extends ServiceMap.Service<SessionManager>()("SessionManager", {
+	make: Effect.gen(function* () {
 		const auth = yield* BackendAuth
 		const userRepo = yield* UserRepo
+		const userRepoLike: UserRepoLike = {
+			findByWorkOSUserId: userRepo.findByWorkOSUserId,
+			upsertWorkOSUser: userRepo.upsertWorkOSUser,
+			update: userRepo.update,
+		}
 
 		/**
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
 		const authenticateWithBearer = (bearerToken: string) =>
-			auth.authenticateWithBearer(bearerToken, userRepo)
+			auth.authenticateWithBearer(bearerToken, userRepoLike)
 
 		return {
 			authenticateWithBearer: authenticateWithBearer as (
@@ -38,4 +41,9 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 			>,
 		} as const
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(BackendAuth.layer),
+		Layer.provide(UserRepo.layer),
+	)
+}

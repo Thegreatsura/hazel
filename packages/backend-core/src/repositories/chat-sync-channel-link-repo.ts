@@ -1,24 +1,23 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncChannelLink } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
 
-export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkRepo>()(
+export class ChatSyncChannelLinkRepo extends ServiceMap.Service<ChatSyncChannelLinkRepo>()(
 	"ChatSyncChannelLinkRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.chatSyncChannelLinksTable,
-				ChatSyncChannelLink.Model,
+				{ insert: ChatSyncChannelLink.Insert, update: ChatSyncChannelLink.Update },
 				{
 					idColumn: "id",
 					name: "ChatSyncChannelLink",
 				},
 			)
 			const db = yield* Database.Database
-			const decodeChannelLink = Schema.decodeUnknownSync(ChatSyncChannelLink.Model)
+			const decodeChannelLink = Schema.decodeUnknownSync(ChatSyncChannelLink.Schema)
 			const decodeChannelLinkRows = (rows: readonly unknown[]) =>
 				rows.map((row) => decodeChannelLink(row))
 			const decodeChannelLinkOption = <T>(value: Option.Option<T>) =>
@@ -47,7 +46,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 					)({ id }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 
@@ -128,7 +127,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 					)({ syncConnectionId, hazelChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 
@@ -168,7 +167,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 					)({ syncConnectionId, externalChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 
@@ -294,4 +293,6 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

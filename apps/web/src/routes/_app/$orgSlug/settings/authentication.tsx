@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
@@ -197,7 +198,7 @@ function DomainManagement({
 	const isAddingDomain = addDomainResult.waiting
 	const isRemovingDomain = removeDomainResult.waiting
 
-	const domains: Domain[] = Result.getOrElse(domainsResult, () => []) as Domain[]
+	const domains: Domain[] = AsyncResult.getOrElse(domainsResult, () => []) as Domain[]
 	// Only show loading on initial load, not during background refreshes (polling)
 	const isLoadingDomains = domainsResult._tag === "Initial"
 

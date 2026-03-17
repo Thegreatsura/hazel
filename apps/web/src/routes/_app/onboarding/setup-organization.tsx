@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
@@ -93,9 +93,9 @@ function RouteComponent() {
 			})
 
 			exitToast(exit)
-				.onErrorTag("OrganizationSlugAlreadyExistsError", (error) => ({
+				.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({
 					title: "Slug already taken",
-					description: `The slug "${error.slug}" is already in use. Please choose a different one.`,
+					description: "That workspace URL is already in use. Please choose a different one.",
 					isRetryable: false,
 				}))
 				.onErrorTag("OrganizationNotFoundError", () => ({

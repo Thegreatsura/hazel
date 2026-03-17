@@ -4,13 +4,13 @@ import { useEffect, useRef } from "react"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { Avatar } from "~/components/ui/avatar"
-import { cn } from "~/lib/utils"
+import { cn, toDate } from "~/lib/utils"
 import { MarkdownText } from "./markdown-text"
 
 interface SearchResultItemProps {
-	message: typeof Message.Model.Type
-	author: typeof User.Model.Type | null
-	channel: typeof Channel.Model.Type | null
+	message: Message.Type
+	author: User.Type | null
+	channel: Channel.Type | null
 	attachmentCount: number
 	searchQuery?: string
 	isSelected?: boolean
@@ -92,7 +92,7 @@ export function SearchResultItem({
 					)}
 
 					<span className="ml-auto shrink-0 text-muted-fg text-xs">
-						{formatRelativeTime(message.createdAt)}
+						{formatRelativeTime(toDate(message.createdAt))}
 					</span>
 				</div>
 

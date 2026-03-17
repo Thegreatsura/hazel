@@ -2,7 +2,7 @@
 
 import { Database } from "@hazel/db"
 import { WorkOSClient } from "@hazel/backend-core"
-import { Effect, Logger, LogLevel } from "effect"
+import { Effect, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
 // Parse command line arguments
@@ -257,8 +257,8 @@ const resetScript = Effect.gen(function* () {
 // Run the script with proper Effect runtime
 const runnable = resetScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(WorkOSClient.Default),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provide(WorkOSClient.layer),
+	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 
 Effect.runPromise(runnable).catch((error) => {

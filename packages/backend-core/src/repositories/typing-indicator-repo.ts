@@ -1,16 +1,15 @@
-import { and, Database, eq, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, lt, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
-export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
-		const baseRepo = yield* ModelRepository.makeRepository(
+		const baseRepo = yield* Repository.makeRepository(
 			schema.typingIndicatorsTable,
-			TypingIndicator.Model,
+			{ insert: TypingIndicator.Insert, update: TypingIndicator.Update },
 			{
 				idColumn: "id",
 				name: "TypingIndicator",
@@ -55,7 +54,7 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 					return client
 						.insert(schema.typingIndicatorsTable)
 						.values({
-							id: TypingIndicatorId.make(crypto.randomUUID()),
+							id: TypingIndicatorId.makeUnsafe(crypto.randomUUID()),
 							channelId: params.channelId,
 							memberId: params.memberId,
 							lastTyped: params.lastTyped,
@@ -91,4 +90,6 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 			deleteStale,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

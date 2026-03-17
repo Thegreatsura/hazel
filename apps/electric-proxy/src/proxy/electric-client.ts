@@ -6,7 +6,7 @@ import { proxyElectricDuration, proxyElectricErrors } from "../observability/met
 /**
  * Error thrown when Electric proxy request fails
  */
-export class ElectricProxyError extends Schema.TaggedError<ElectricProxyError>()("ElectricProxyError", {
+export class ElectricProxyError extends Schema.TaggedErrorClass<ElectricProxyError>()("ElectricProxyError", {
 	message: Schema.String,
 	detail: Schema.optional(Schema.String),
 }) {}
@@ -83,8 +83,9 @@ export const proxyElectricRequest = Effect.fn("ElectricClient.proxyElectricReque
 		if (upstreamRequestId) {
 			yield* Effect.annotateCurrentSpan("electric.upstream_request_id", upstreamRequestId)
 		}
-		yield* Metric.increment(proxyElectricErrors).pipe(
-			Effect.tagMetrics({ status_code: String(response.status) }),
+		yield* Metric.update(
+			Metric.withAttributes(proxyElectricErrors, { status_code: String(response.status) }),
+			1,
 		)
 		const errorBody = yield* Effect.promise(() => response.text())
 		yield* Effect.logWarning("Electric returned non-2xx", {

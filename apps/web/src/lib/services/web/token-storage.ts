@@ -5,7 +5,7 @@
  */
 
 import { TokenNotFoundError, TokenStoreError } from "@hazel/domain/errors"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 const STORAGE_PREFIX = "hazel_auth_"
 const ACCESS_TOKEN_KEY = `${STORAGE_PREFIX}access_token`
@@ -28,9 +28,8 @@ const checkStorage = Effect.gen(function* () {
 	return window.localStorage
 })
 
-export class WebTokenStorage extends Effect.Service<WebTokenStorage>()("WebTokenStorage", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class WebTokenStorage extends ServiceMap.Service<WebTokenStorage>()("WebTokenStorage", {
+	make: Effect.gen(function* () {
 		return {
 			/**
 			 * Store all auth tokens in localStorage
@@ -84,7 +83,7 @@ export class WebTokenStorage extends Effect.Service<WebTokenStorage>()("WebToken
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -101,7 +100,7 @@ export class WebTokenStorage extends Effect.Service<WebTokenStorage>()("WebToken
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -217,6 +216,8 @@ export class WebTokenStorage extends Effect.Service<WebTokenStorage>()("WebToken
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	/**
 	 * Mock token data for testing
 	 */

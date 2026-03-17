@@ -1,5 +1,5 @@
 import { Redis, type RedisErrors } from "@hazel/effect-bun"
-import { Effect, Layer, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 
 /**
  * Result of a rate limit check
@@ -15,7 +15,7 @@ export interface RateLimitResult {
 	readonly limit: number
 }
 
-export class RateLimiterError extends Schema.TaggedError<RateLimiterError>()("RateLimiterError", {
+export class RateLimiterError extends Schema.TaggedErrorClass<RateLimiterError>()("RateLimiterError", {
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -58,9 +58,8 @@ end
 /**
  * Rate limiter service backed by Redis via @hazel/effect-bun
  */
-export class RateLimiter extends Effect.Service<RateLimiter>()("RateLimiter", {
-	dependencies: [Redis.Default],
-	effect: Effect.gen(function* () {
+export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter", {
+	make: Effect.gen(function* () {
 		const redis = yield* Redis
 
 		return {
@@ -98,7 +97,9 @@ export class RateLimiter extends Effect.Service<RateLimiter>()("RateLimiter", {
 					),
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(Redis.Default))
+}
 
 /**
  * In-memory rate limiter for testing (no Redis required)
@@ -107,7 +108,7 @@ const memoryStore = new Map<string, number>()
 
 export const RateLimiterMemoryLive = Layer.succeed(
 	RateLimiter,
-	RateLimiter.make({
+	RateLimiter.of({
 		consume: (key: string, limit: number, windowMs: number) =>
 			Effect.sync(() => {
 				// Simple in-memory implementation using a Map

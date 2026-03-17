@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { KlipyCategory, KlipyGif, KlipySearchResponse } from "@hazel/domain/http"
 import { Exit } from "effect"
 import { useCallback, useMemo, useRef, useState } from "react"
@@ -22,7 +23,7 @@ interface UseKlipyReturn {
 export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn {
 	// === Auto-fetching query atoms (no useEffect needed) ===
 	const trendingResult = useAtomValue(
-		HazelApiClient.query("klipy", "trending", { urlParams: { page: 1, per_page: perPage } }),
+		HazelApiClient.query("klipy", "trending", { query: { page: 1, per_page: perPage } }),
 	)
 	const categoriesResult = useAtomValue(HazelApiClient.query("klipy", "categories", {}))
 
@@ -53,7 +54,7 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 
 	// Initialize pagination from trending query result
 	const trendingInitRef = useRef(false)
-	if (!trendingInitRef.current && Result.isSuccess(trendingResult) && overrideGifs === null) {
+	if (!trendingInitRef.current && AsyncResult.isSuccess(trendingResult) && overrideGifs === null) {
 		trendingInitRef.current = true
 		pageRef.current = trendingResult.value.current_page
 		const more = trendingResult.value.has_next
@@ -62,7 +63,7 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 	}
 
 	// === Derived display values ===
-	const categories = Result.isSuccess(categoriesResult) ? [...categoriesResult.value.categories] : []
+	const categories = AsyncResult.isSuccess(categoriesResult) ? [...categoriesResult.value.categories] : []
 
 	let gifs: KlipyGif[]
 	let isLoading: boolean
@@ -70,7 +71,7 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 	if (overrideGifs !== null) {
 		gifs = overrideGifs
 		isLoading = isMutating
-	} else if (Result.isSuccess(trendingResult)) {
+	} else if (AsyncResult.isSuccess(trendingResult)) {
 		gifs = [...trendingResult.value.data]
 		isLoading = false
 	} else {
@@ -92,9 +93,9 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 			try {
 				let exit: Exit.Exit<KlipySearchResponse, unknown>
 				if (query) {
-					exit = await searchRef.current({ urlParams: { q: query, page, per_page: perPage } })
+					exit = await searchRef.current({ query: { q: query, page, per_page: perPage } })
 				} else {
-					exit = await trendingMutRef.current({ urlParams: { page, per_page: perPage } })
+					exit = await trendingMutRef.current({ query: { page, per_page: perPage } })
 				}
 
 				if (requestIdRef.current !== id) return

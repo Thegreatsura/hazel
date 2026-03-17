@@ -33,7 +33,7 @@ const hasAuthToken = (): boolean => {
 const retrySchedule = Schedule.exponential("2 seconds").pipe(
 	Schedule.jittered,
 	Schedule.either(Schedule.spaced("60 seconds")),
-	Schedule.upTo(8),
+	Schedule.compose(Schedule.recurs(8)),
 )
 
 /**
@@ -43,7 +43,7 @@ const shouldRetry = (response: Response): boolean => response.status >= 500 && r
 
 /**
  * Electric fetch client with exponential backoff retry for server errors.
- * - Retries 5xx errors with exponential backoff (2s → 4s → 8s... up to 60s)
+ * - Retries 5xx errors with exponential backoff (2s -> 4s -> 8s... up to 60s)
  * - Does NOT retry 4xx client errors (auth, validation, etc.)
  * - Uses jitter to prevent thundering herd
  */
@@ -76,8 +76,8 @@ export const electricFetchClient = async (
 			while: (error) => error instanceof Response && shouldRetry(error),
 		}),
 		// If all retries exhausted, return the last failed response
-		Effect.catchAll((error) => (error instanceof Response ? Effect.succeed(error) : Effect.fail(error))),
+		Effect.catch((error) => (error instanceof Response ? Effect.succeed(error) : Effect.fail(error))),
 	)
 
-	return runtime.runPromise(withRetry)
+	return runtime.runPromise(withRetry) as Promise<Response>
 }

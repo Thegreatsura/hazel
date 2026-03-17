@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvitationId, OrganizationId } from "@hazel/schema"
@@ -12,7 +12,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the invitation data and a transaction ID for optimistic updates.
  */
 export class InvitationResponse extends Schema.Class<InvitationResponse>("InvitationResponse")({
-	data: Invitation.Model.json,
+	data: Invitation.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -23,7 +23,7 @@ export class InvitationResponse extends Schema.Class<InvitationResponse>("Invita
 export class InvitationBatchResult extends Schema.Class<InvitationBatchResult>("InvitationBatchResult")({
 	email: Schema.String,
 	success: Schema.Boolean,
-	data: Schema.optional(Invitation.Model.json),
+	data: Schema.optional(Invitation.Schema),
 	error: Schema.optional(Schema.String),
 	transactionId: Schema.optional(TransactionId),
 }) {}
@@ -44,7 +44,7 @@ export class InvitationBatchResponse extends Schema.Class<InvitationBatchRespons
  * Error thrown when an invitation is not found.
  * Used in update and delete operations.
  */
-export class InvitationNotFoundError extends Schema.TaggedError<InvitationNotFoundError>()(
+export class InvitationNotFoundError extends Schema.TaggedErrorClass<InvitationNotFoundError>()(
 	"InvitationNotFoundError",
 	{
 		invitationId: InvitationId,
@@ -69,12 +69,12 @@ export class InvitationRpcs extends RpcGroup.make(
 			invites: Schema.Array(
 				Schema.Struct({
 					email: Schema.String,
-					role: Schema.Literal("member", "admin"),
+					role: Schema.Literals(["member", "admin"]),
 				}),
 			),
 		}),
 		success: InvitationBatchResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -94,7 +94,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.resend", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: InvitationResponse,
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -114,7 +114,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.revoke", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -134,10 +134,10 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.update", {
 		payload: Schema.Struct({
 			id: InvitationId,
-			...Invitation.Model.jsonUpdate.fields,
+			...Invitation.Patch.fields,
 		}),
 		success: InvitationResponse,
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -157,7 +157,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.delete", {
 		payload: Schema.Struct({ id: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),

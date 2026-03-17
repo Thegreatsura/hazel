@@ -1,14 +1,13 @@
-import { and, Database, eq, isNull, ModelRepository, or, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, or, schema, type TxFn } from "@hazel/db"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { ConnectInvite } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ConnectInviteRepo extends Effect.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class ConnectInviteRepo extends ServiceMap.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.connectInvitesTable,
-			ConnectInvite.Model,
+			{ insert: ConnectInvite.Insert, update: ConnectInvite.Update },
 			{
 				idColumn: "id",
 				name: "ConnectInvite",
@@ -32,7 +31,7 @@ export class ConnectInviteRepo extends Effect.Service<ConnectInviteRepo>()("Conn
 							.limit(1),
 					),
 				)(id, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const listIncomingForOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
 			db.makeQuery((execute, input: OrganizationId) =>
@@ -91,4 +90,6 @@ export class ConnectInviteRepo extends Effect.Service<ConnectInviteRepo>()("Conn
 			findPendingForGuestOrganization,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

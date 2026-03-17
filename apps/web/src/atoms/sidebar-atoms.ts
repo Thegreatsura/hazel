@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
@@ -14,7 +14,7 @@ export type SidebarState = "expanded" | "collapsed"
 export const sidebarOpenAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "sidebar_state",
-	schema: Schema.NullOr(Schema.Boolean),
+	schema: Schema.toCodecIso(Schema.NullOr(Schema.Boolean)),
 	defaultValue: () => true,
 })
 

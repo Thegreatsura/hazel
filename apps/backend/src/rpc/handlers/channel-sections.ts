@@ -1,7 +1,12 @@
 import { ChannelRepo, ChannelSectionRepo } from "@hazel/backend-core"
 import { Database, schema } from "@hazel/db"
 import { ErrorUtils, withRemapDbErrors } from "@hazel/domain"
-import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
+import {
+	ChannelNotFoundError,
+	ChannelSectionNotFoundError,
+	ChannelSectionResponse,
+	ChannelSectionRpcs,
+} from "@hazel/domain/rpc"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -13,6 +18,10 @@ import { OrgResolver } from "../../services/org-resolver"
 export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const channelSectionPolicy = yield* ChannelSectionPolicy
+		const channelRepo = yield* ChannelRepo
+		const channelSectionRepo = yield* ChannelSectionRepo
+		const orgResolver = yield* OrgResolver
 
 		return {
 			"channelSection.create": ({ id, ...payload }) =>
@@ -44,17 +53,17 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 								? { id, ...payload, order, deletedAt: null }
 								: { ...payload, order, deletedAt: null }
 
-							yield* ChannelSectionPolicy.canCreate(payload.organizationId)
-							const createdSection = yield* ChannelSectionRepo.insert(
-								insertData as typeof payload & { order: number; deletedAt: null },
-							).pipe(Effect.map((res) => res[0]!))
+							yield* channelSectionPolicy.canCreate(payload.organizationId)
+							const createdSection = yield* channelSectionRepo
+								.insert(insertData as typeof payload & { order: number; deletedAt: null })
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelSectionResponse({
 								data: createdSection,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("ChannelSection", "create")),
@@ -63,18 +72,18 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ChannelSectionPolicy.canUpdate(id)
-							const updatedSection = yield* ChannelSectionRepo.update({
+							yield* channelSectionPolicy.canUpdate(id)
+							const updatedSection = yield* channelSectionRepo.update({
 								id,
 								...payload,
 							})
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelSectionResponse({
 								data: updatedSection,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("ChannelSection", "update")),
@@ -83,9 +92,9 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ChannelSectionPolicy.canDelete(id)
+							yield* channelSectionPolicy.canDelete(id)
 							// First, move all channels in this section back to default (sectionId = null)
-							const section = yield* ChannelSectionRepo.findById(id)
+							const section = yield* channelSectionRepo.findById(id)
 
 							if (Option.isNone(section)) {
 								return yield* Effect.fail(new ChannelSectionNotFoundError({ sectionId: id }))
@@ -100,7 +109,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							)
 
 							// Delete the section
-							yield* ChannelSectionRepo.deleteById(id)
+							yield* channelSectionRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -113,7 +122,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ChannelSectionPolicy.canReorder(organizationId)
+							yield* channelSectionPolicy.canReorder(organizationId)
 							yield* transactionAwareExecute((client) =>
 								client
 									.update(schema.channelSectionsTable)
@@ -143,14 +152,14 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							// Get channel first to know its organization
-							const channel = yield* ChannelRepo.findById(channelId)
+							const channel = yield* channelRepo.findById(channelId)
 							if (Option.isNone(channel)) {
 								return yield* Effect.fail(new ChannelNotFoundError({ channelId }))
 							}
 
 							// Validate target section exists and belongs to same org
 							if (sectionId !== null) {
-								const section = yield* ChannelSectionRepo.findById(sectionId)
+								const section = yield* channelSectionRepo.findById(sectionId)
 								if (Option.isNone(section)) {
 									return yield* Effect.fail(new ChannelSectionNotFoundError({ sectionId }))
 								}
@@ -160,14 +169,14 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							}
 
 							if (sectionId !== null) {
-								yield* ChannelSectionPolicy.canUpdate(sectionId)
+								yield* channelSectionPolicy.canUpdate(sectionId)
 							} else {
 								yield* ErrorUtils.refailUnauthorized(
 									"ChannelSection",
 									"moveChannel",
 								)(
 									withAnnotatedScope((scope) =>
-										OrgResolver.requireAdminOrOwner(
+										orgResolver.requireAdminOrOwner(
 											channel.value.organizationId,
 											scope,
 											"ChannelSection",
@@ -177,7 +186,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 								)
 							}
 							// Update the channel's sectionId
-							yield* ChannelRepo.update({
+							yield* channelRepo.update({
 								id: channelId,
 								sectionId,
 							})

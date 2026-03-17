@@ -1,13 +1,13 @@
 import { and, eq, isNull, notInArray, schema } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { transactionAwareExecute } from "../lib/transaction-aware-execute"
+import { DatabaseLive } from "./database"
 
-export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncService>()(
+export class ChannelAccessSyncService extends ServiceMap.Service<ChannelAccessSyncService>()(
 	"ChannelAccessSyncService",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const upsertChannelUsers = Effect.fn("ChannelAccessSyncService.upsertChannelUsers")(function* (
 				channelId: ChannelId,
 				organizationId: OrganizationId,
@@ -394,4 +394,6 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(DatabaseLive))
+}

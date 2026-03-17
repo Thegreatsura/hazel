@@ -1,16 +1,19 @@
-import { and, Database, eq, lte, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, lte, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { InvitationId, OrganizationId, WorkOSInvitationId } from "@hazel/schema"
 import { Invitation } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
-export class InvitationRepo extends Effect.Service<InvitationRepo>()("InvitationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.invitationsTable, Invitation.Model, {
-			idColumn: "id",
-			name: "Invitation",
-		})
+export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("InvitationRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.invitationsTable,
+			{ insert: Invitation.Insert, update: Invitation.Update },
+			{
+				idColumn: "id",
+				name: "Invitation",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByWorkosId = (workosInvitationId: WorkOSInvitationId, tx?: TxFn) =>
@@ -24,7 +27,7 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 							.limit(1),
 					),
 				)(workosInvitationId, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const upsertByWorkosId = (data: Schema.Schema.Type<typeof Invitation.Insert>, tx?: TxFn) =>
 			db
@@ -32,12 +35,12 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 					execute((client) =>
 						client
 							.insert(schema.invitationsTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: schema.invitationsTable.workosInvitationId,
 								set: {
 									status: input.status,
-									acceptedAt: input.acceptedAt,
+									acceptedAt: input.acceptedAt as any,
 									acceptedBy: input.acceptedBy,
 								},
 							})
@@ -120,4 +123,6 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 			bulkUpsertByWorkosId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

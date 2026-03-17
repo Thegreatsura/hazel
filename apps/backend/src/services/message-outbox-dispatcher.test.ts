@@ -9,16 +9,17 @@ import {
 } from "@hazel/backend-core"
 import { Database, asc, eq, inArray, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageOutboxEventId, UserId } from "@hazel/schema"
-import { Effect, Layer, Redacted } from "effect"
+import { Effect, Layer, Redacted, ServiceMap } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { EnvVars } from "../lib/env-vars"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
+import { serviceShape } from "../test/effect-helpers"
 import { MessageOutboxDispatcher } from "./message-outbox-dispatcher"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000001" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000002" as MessageId
-const AUTHOR_ID = "00000000-0000-0000-0000-000000000003" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000001" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000002" as MessageId
+const AUTHOR_ID = "00000000-0000-4000-8000-000000000003" as UserId
 
 type SideEffectCall =
 	| { eventType: "message_created"; payload: MessageCreatedPayload; dedupeKey: string }
@@ -33,24 +34,27 @@ type SideEffectOptions = {
 }
 
 const runRepoEffect = <A, E, R>(harness: ChatSyncDbHarness, effect: Effect.Effect<A, E, R>) =>
-	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.Default)))
+	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.layer)))
 
 const runDispatcherEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
-	sideEffects: MessageSideEffectService,
-	effect: Effect.Effect<A, E, R>,
+	sideEffects: ServiceMap.Service.Shape<typeof MessageSideEffectService>,
+	make: Effect.Effect<A, E, R>,
 ) =>
 	Effect.runPromise(
 		Effect.scoped(
-			effect.pipe(
-				Effect.provide(MessageOutboxDispatcher.DefaultWithoutDependencies),
+			make.pipe(
+				Effect.provide(Layer.effect(MessageOutboxDispatcher, MessageOutboxDispatcher.make)),
 				Effect.provide(Layer.succeed(MessageSideEffectService, sideEffects)),
-				Effect.provide(MessageOutboxRepo.Default),
+				Effect.provide(MessageOutboxRepo.layer),
 				Effect.provide(
-					Layer.succeed(EnvVars, {
-						IS_DEV: true,
-						DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
-					} as EnvVars),
+					Layer.succeed(
+						EnvVars,
+						serviceShape<typeof EnvVars>({
+							IS_DEV: true,
+							DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
+						}),
+					),
 				),
 				Effect.provide(harness.dbLayer),
 			),
@@ -61,7 +65,7 @@ const makeSideEffectService = (calls: SideEffectCall[], options: SideEffectOptio
 	let messageUpdatedFailures = 0
 	let messageDeletedFailures = 0
 
-	return {
+	return serviceShape<typeof MessageSideEffectService>({
 		handleMessageCreated: (payload: MessageCreatedPayload, dedupeKey: string) =>
 			Effect.sync(() => {
 				calls.push({ eventType: "message_created", payload, dedupeKey })
@@ -92,7 +96,7 @@ const makeSideEffectService = (calls: SideEffectCall[], options: SideEffectOptio
 			Effect.sync(() => {
 				calls.push({ eventType: "reaction_deleted", payload, dedupeKey })
 			}),
-	} as unknown as MessageSideEffectService
+	})
 }
 
 const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 8_000) => {

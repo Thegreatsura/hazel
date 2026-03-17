@@ -35,6 +35,8 @@ const generateBotToken = async (): Promise<{ token: string; tokenHash: string }>
 export const BotRpcLive = BotRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const botPolicy = yield* BotPolicy
+		const channelAccessSync = yield* ChannelAccessSyncService
 
 		return {
 			"bot.create": (payload) =>
@@ -53,7 +55,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canCreate(organizationId)
+								yield* botPolicy.canCreate(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
@@ -126,10 +128,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									}),
 								)
 
-								yield* ChannelAccessSyncService.syncUserInOrganization(
-									botUserId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(botUserId, organizationId)
 
 								const txid = yield* generateTransactionId()
 
@@ -156,7 +155,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 			"bot.get": ({ id }) =>
 				Effect.gen(function* () {
-					yield* BotPolicy.canRead(id)
+					yield* botPolicy.canRead(id)
 					const botRepo = yield* BotRepo
 
 					const botOption = yield* botRepo.findById(id)
@@ -182,7 +181,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canUpdate(id)
+								yield* botPolicy.canUpdate(id)
 								const botRepo = yield* BotRepo
 
 								// Check bot exists
@@ -227,7 +226,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* BotPolicy.canDelete(id)
+							yield* botPolicy.canDelete(id)
 							const botRepo = yield* BotRepo
 
 							// Check bot exists
@@ -256,7 +255,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canUpdate(id)
+								yield* botPolicy.canUpdate(id)
 								const botRepo = yield* BotRepo
 
 								// Check bot exists
@@ -285,7 +284,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 			"bot.getCommands": ({ botId }) =>
 				Effect.gen(function* () {
-					yield* BotPolicy.canRead(botId)
+					yield* botPolicy.canRead(botId)
 					const botRepo = yield* BotRepo
 					const commandRepo = yield* BotCommandRepo
 
@@ -393,7 +392,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canInstall(organizationId)
+								yield* botPolicy.canInstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
@@ -446,10 +445,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										}),
 								)
 
-								yield* ChannelAccessSyncService.syncUserInOrganization(
-									bot.userId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(bot.userId, organizationId)
 
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId)
@@ -478,7 +474,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canUninstall(organizationId)
+								yield* botPolicy.canUninstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
@@ -523,7 +519,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											),
 									)
 
-									yield* ChannelAccessSyncService.syncUserInOrganization(
+									yield* channelAccessSync.syncUserInOrganization(
 										botOption.value.userId,
 										organizationId,
 									)
@@ -556,7 +552,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* BotPolicy.canInstall(organizationId)
+								yield* botPolicy.canInstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
@@ -606,10 +602,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										}),
 								)
 
-								yield* ChannelAccessSyncService.syncUserInOrganization(
-									bot.userId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(bot.userId, organizationId)
 
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId)
@@ -626,7 +619,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* BotPolicy.canUpdate(id)
+							yield* botPolicy.canUpdate(id)
 							const botRepo = yield* BotRepo
 
 							// Check bot exists

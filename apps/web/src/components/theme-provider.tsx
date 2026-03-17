@@ -1,4 +1,5 @@
-import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
+import { useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Theme as ThemeModel } from "@hazel/domain/models"
 import { Schema } from "effect"
 import { applyBrandColor, applyGrayPalette, applyRadius } from "~/lib/theme/apply"
@@ -13,14 +14,11 @@ type ThemeProviderProps = {
 	storageKey?: string
 }
 
-const ThemeSchema = Schema.Literal("dark", "light", "system")
+const ThemeSchema = Schema.Literals(["dark", "light", "system"])
 
-const HexColorSchema = Schema.String.pipe(
-	Schema.pattern(/^#[0-9A-Fa-f]{6}$/),
-	Schema.annotations({ message: () => "Must be a valid hex color (#RRGGBB)" }),
-)
+const HexColorSchema = Schema.String.pipe(Schema.check(Schema.isPattern(/^#[0-9A-Fa-f]{6}$/)))
 
-const GrayPaletteSchema = Schema.Literal(
+const GrayPaletteSchema = Schema.Literals([
 	"gray",
 	"gray-blue",
 	"gray-cool",
@@ -29,9 +27,9 @@ const GrayPaletteSchema = Schema.Literal(
 	"gray-iron",
 	"gray-true",
 	"gray-warm",
-)
+])
 
-const RadiusPresetSchema = Schema.Literal("tight", "normal", "round", "full")
+const RadiusPresetSchema = Schema.Literals(["tight", "normal", "round", "full"])
 
 const ThemeCustomizationSchema = Schema.Struct({
 	primary: HexColorSchema,
@@ -39,28 +37,30 @@ const ThemeCustomizationSchema = Schema.Struct({
 	radius: RadiusPresetSchema,
 })
 
+type ThemeCustomization = typeof ThemeCustomizationSchema.Type
+
 // Theme mode atom with automatic localStorage persistence
 export const themeAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-ui-theme",
-	schema: Schema.NullOr(ThemeSchema),
-	defaultValue: () => "system" as const,
+	schema: Schema.toCodecJson(Schema.NullOr(ThemeSchema)),
+	defaultValue: () => "system" as Theme | null,
 })
 
 // Brand color atom (legacy, kept for backward compatibility)
 export const brandColorAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "brand-color",
-	schema: Schema.NullOr(HexColorSchema),
-	defaultValue: () => DEFAULT_BRAND_COLOR as string,
+	schema: Schema.toCodecJson(Schema.NullOr(HexColorSchema)),
+	defaultValue: () => DEFAULT_BRAND_COLOR as string | null,
 })
 
 // Full theme customization atom
 export const themeCustomizationAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-theme-customization",
-	schema: Schema.NullOr(ThemeCustomizationSchema),
-	defaultValue: () => getDefaultThemeCustomization() as ThemeModel.ThemeCustomization,
+	schema: Schema.toCodecJson(Schema.NullOr(ThemeCustomizationSchema)),
+	defaultValue: () => getDefaultThemeCustomization() as ThemeCustomization | null,
 })
 
 // Resolved theme (system -> light/dark)
@@ -68,7 +68,7 @@ export const resolvedThemeAtom = Atom.transform(themeAtom, (get) => {
 	const theme = get(themeAtom)
 	if (theme !== "system" && theme !== null) return theme
 
-	if (typeof window === "undefined") return "light"
+	if (typeof window === "undefined") return "light" as const
 
 	// Listen to system theme changes
 	const matcher = window.matchMedia("(prefers-color-scheme: dark)")
@@ -76,10 +76,10 @@ export const resolvedThemeAtom = Atom.transform(themeAtom, (get) => {
 	matcher.addEventListener("change", onChange)
 	get.addFinalizer(() => matcher.removeEventListener("change", onChange))
 
-	return matcher.matches ? "dark" : "light"
+	return matcher.matches ? ("dark" as const) : ("light" as const)
 
 	function onChange() {
-		get.setSelf(matcher.matches ? "dark" : "light")
+		get.setSelf(matcher.matches ? ("dark" as const) : ("light" as const))
 	}
 })
 
@@ -114,7 +114,7 @@ export const applyThemeCustomizationAtom = Atom.make((get) => {
 	const isDarkMode = resolvedTheme === "dark"
 
 	// Apply all customization parts
-	applyBrandColor(customization.primary as ThemeModel.HexColor)
+	applyBrandColor(customization.primary as unknown as ThemeModel.HexColor)
 	applyGrayPalette(customization.grayPalette as ThemeModel.GrayPalette, isDarkMode)
 	applyRadius(customization.radius as ThemeModel.RadiusPreset)
 })
@@ -131,7 +131,7 @@ export const applyBrandColorAtom = Atom.make((get) => {
 	if (typeof document === "undefined") return
 
 	const hexColor = brandColor || DEFAULT_BRAND_COLOR
-	applyBrandColor(hexColor as ThemeModel.HexColor)
+	applyBrandColor(hexColor as unknown as ThemeModel.HexColor)
 })
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
@@ -156,19 +156,19 @@ export const useTheme = () => {
 
 	// When setting brand color, also update the customization
 	const handleSetBrandColor = (color: string) => {
-		setBrandColor(color)
+		setBrandColor(color as string & null)
 		if (customization) {
 			setCustomization({
 				...customization,
 				primary: color,
-			})
+			} as unknown as ThemeCustomization)
 		}
 	}
 
 	return {
-		theme: theme || "system",
-		setTheme,
-		brandColor: customization?.primary || brandColor || DEFAULT_BRAND_COLOR,
+		theme: (theme || "system") as Theme,
+		setTheme: setTheme as (value: Theme | null) => void,
+		brandColor: (customization?.primary || brandColor || DEFAULT_BRAND_COLOR) as string,
 		setBrandColor: handleSetBrandColor,
 	}
 }
@@ -187,29 +187,29 @@ export const useThemeCustomization = () => {
 		setCustomization({
 			...activeCustomization,
 			primary: color,
-		})
+		} as unknown as ThemeCustomization)
 	}
 
 	const setGrayPalette = (palette: ThemeModel.GrayPalette) => {
 		setCustomization({
 			...activeCustomization,
 			grayPalette: palette,
-		})
+		} as unknown as ThemeCustomization)
 	}
 
 	const setRadius = (radius: ThemeModel.RadiusPreset) => {
 		setCustomization({
 			...activeCustomization,
 			radius: radius,
-		})
+		} as unknown as ThemeCustomization)
 	}
 
 	const setFullCustomization = (newCustomization: ThemeModel.ThemeCustomization) => {
-		setCustomization(newCustomization)
+		setCustomization(newCustomization as unknown as ThemeCustomization)
 	}
 
 	return {
-		customization: activeCustomization,
+		customization: activeCustomization as ThemeModel.ThemeCustomization,
 		isDarkMode: resolvedTheme === "dark",
 		setPrimary,
 		setGrayPalette,

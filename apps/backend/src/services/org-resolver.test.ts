@@ -2,24 +2,28 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { PermissionError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { OrgResolver } from "./org-resolver"
 import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers"
 import { CurrentUser } from "@hazel/domain"
+import { serviceShape } from "../test/effect-helpers"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000501" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000601" as MessageId
-const CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000701" as ChannelMemberId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000501" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000601" as MessageId
+const CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000701" as ChannelMemberId
 
 const makeOrgMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	} as unknown as OrganizationMemberRepo)
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = members[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (
 	channels: Record<
@@ -27,30 +31,41 @@ const makeChannelRepoLayer = (
 		{ organizationId: OrganizationId; type: string; parentChannelId?: string | null; id: string }
 	>,
 ) =>
-	Layer.succeed(ChannelRepo, {
-		findById: (id: ChannelId) => {
-			const channel = channels[id]
-			return Effect.succeed(channel ? Option.some(channel) : Option.none())
-		},
-	} as unknown as ChannelRepo)
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) => {
+				const channel = channels[id]
+				return Effect.succeed(channel ? Option.some(channel) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelMemberRepoLayer = (memberships: Record<string, boolean>) =>
-	Layer.succeed(ChannelMemberRepo, {
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			return Effect.succeed(
-				memberships[key] ? Option.some({ id: CHANNEL_MEMBER_ID, channelId, userId }) : Option.none(),
-			)
-		},
-	} as unknown as ChannelMemberRepo)
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				return Effect.succeed(
+					memberships[key]
+						? Option.some({ id: CHANNEL_MEMBER_ID, channelId, userId })
+						: Option.none(),
+				)
+			},
+		}),
+	)
 
 const makeMessageRepoLayer = (messages: Record<string, { channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, {
-		findById: (id: MessageId) => {
-			const message = messages[id]
-			return Effect.succeed(message ? Option.some(message) : Option.none())
-		},
-	} as unknown as MessageRepo)
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			findById: (id: MessageId) => {
+				const message = messages[id]
+				return Effect.succeed(message ? Option.some(message) : Option.none())
+			},
+		}),
+	)
 
 const makeResolverLayer = (opts: {
 	members?: Record<string, Role>
@@ -61,7 +76,7 @@ const makeResolverLayer = (opts: {
 	channelMembers?: Record<string, boolean>
 	messages?: Record<string, { channelId: ChannelId }>
 }) =>
-	OrgResolver.DefaultWithoutDependencies.pipe(
+	Layer.effect(OrgResolver, OrgResolver.make).pipe(
 		Layer.provide(makeOrgMemberRepoLayer(opts.members ?? {})),
 		Layer.provide(makeChannelRepoLayer(opts.channels ?? {})),
 		Layer.provide(makeChannelMemberRepoLayer(opts.channelMembers ?? {})),
@@ -69,19 +84,21 @@ const makeResolverLayer = (opts: {
 	)
 
 const runEither = <A, E>(
-	effect: Effect.Effect<A, E, OrgResolver | CurrentUser.Context>,
-	layer: Layer.Layer<OrgResolver, any, never>,
+	make: Effect.Effect<A, E, OrgResolver | CurrentUser.Context>,
+	layer: Layer.Layer<OrgResolver, any, any>,
 	actor: CurrentUser.Schema = makeActor(),
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.either),
+		make.pipe(
+			Effect.provide(layer),
+			Effect.provideService(CurrentUser.Context, actor),
+			Effect.result,
+		) as Effect.Effect<any, never, never>,
 	)
 
-const use = (fn: (resolver: OrgResolver) => Effect.Effect<any, any, any>) =>
-	Effect.gen(function* () {
-		const resolver = yield* OrgResolver
-		return yield* fn(resolver)
-	})
+const use = <A, E, R>(
+	fn: (resolver: ServiceMap.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
+) => OrgResolver.use(fn)
 
 describe("OrgResolver", () => {
 	describe("requireScope", () => {
@@ -96,7 +113,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies access for non-members", async () => {
@@ -108,9 +125,9 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
-				expect(PermissionError.is(result.left)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
+				expect(PermissionError.is(result.failure)).toBe(true)
 			}
 		})
 	})
@@ -129,7 +146,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("grants access for owner", async () => {
@@ -145,7 +162,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies access for regular member", async () => {
@@ -161,9 +178,9 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
-				expect(PermissionError.is(result.left)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
+				expect(PermissionError.is(result.failure)).toBe(true)
 			}
 		})
 	})
@@ -171,7 +188,7 @@ describe("OrgResolver", () => {
 	describe("requireOwner", () => {
 		it("grants access for owner only", async () => {
 			const actor = makeActor()
-			const adminActor = makeActor({ id: "00000000-0000-0000-0000-000000000502" as UserId })
+			const adminActor = makeActor({ id: "00000000-0000-4000-8000-000000000502" as UserId })
 
 			const layer = makeResolverLayer({
 				members: {
@@ -191,8 +208,8 @@ describe("OrgResolver", () => {
 				adminActor,
 			)
 
-			expect(Either.isRight(ownerResult)).toBe(true)
-			expect(Either.isLeft(adminResult)).toBe(true)
+			expect(Result.isSuccess(ownerResult)).toBe(true)
+			expect(Result.isFailure(adminResult)).toBe(true)
 		})
 	})
 
@@ -215,7 +232,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("fails for missing channel", async () => {
@@ -224,13 +241,13 @@ describe("OrgResolver", () => {
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 			})
 
-			const missingChannelId = "00000000-0000-0000-0000-000000000599" as ChannelId
+			const missingChannelId = "00000000-0000-4000-8000-000000000599" as ChannelId
 			const result = await runEither(
 				use((r) => r.fromChannel(missingChannelId, "channels:read", "Channel", "read")),
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 	})
 
@@ -253,7 +270,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("allows private channel for admin without membership", async () => {
@@ -274,7 +291,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies private channel for non-admin without channel membership", async () => {
@@ -296,7 +313,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 
 		it("allows private channel for member with channel membership", async () => {
@@ -318,12 +335,12 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("allows direct channel only for channel members", async () => {
 			const actor = makeActor()
-			const outsider = makeActor({ id: "00000000-0000-0000-0000-000000000503" as UserId })
+			const outsider = makeActor({ id: "00000000-0000-4000-8000-000000000503" as UserId })
 
 			const layer = makeResolverLayer({
 				members: {
@@ -351,14 +368,14 @@ describe("OrgResolver", () => {
 				outsider,
 			)
 
-			expect(Either.isRight(memberResult)).toBe(true)
-			expect(Either.isLeft(outsiderResult)).toBe(true)
+			expect(Result.isSuccess(memberResult)).toBe(true)
+			expect(Result.isFailure(outsiderResult)).toBe(true)
 		})
 
 		it("checks parent channel access for threads", async () => {
 			const actor = makeActor()
-			const parentChannelId = "00000000-0000-0000-0000-000000000502" as ChannelId
-			const threadId = "00000000-0000-0000-0000-000000000503" as ChannelId
+			const parentChannelId = "00000000-0000-4000-8000-000000000502" as ChannelId
+			const threadId = "00000000-0000-4000-8000-000000000503" as ChannelId
 
 			const layer = makeResolverLayer({
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
@@ -382,7 +399,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 	})
 
@@ -408,7 +425,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("fails for missing message", async () => {
@@ -417,13 +434,13 @@ describe("OrgResolver", () => {
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 			})
 
-			const missingId = "00000000-0000-0000-0000-000000000699" as MessageId
+			const missingId = "00000000-0000-4000-8000-000000000699" as MessageId
 			const result = await runEither(
 				use((r) => r.fromMessage(missingId, "messages:read", "Message", "read")),
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 	})
 })

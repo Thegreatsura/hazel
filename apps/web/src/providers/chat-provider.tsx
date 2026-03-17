@@ -1,12 +1,13 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
-import {
-	type AttachmentId,
+import type {
+	AttachmentId,
 	ChannelId,
-	type MessageId,
-	type MessageReactionId,
-	type OrganizationId,
-	type PinnedMessageId,
+	MessageId,
+	MessageReactionId,
+	OrganizationId,
+	PinnedMessageId,
 	UserId,
 } from "@hazel/schema"
 import { Exit } from "effect"
@@ -49,7 +50,7 @@ interface SendMessageProps {
 export interface ChatStableValue {
 	channelId: ChannelId
 	organizationId: OrganizationId
-	channel: typeof Channel.Model.Type | undefined
+	channel: Channel.Type | undefined
 	// All actions (sendMessage is stabilized via refs)
 	sendMessage: (props: SendMessageProps) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
@@ -99,7 +100,7 @@ export interface ChatThreadValue {
 export interface ChatState {
 	channelId: ChannelId
 	organizationId: OrganizationId
-	channel: typeof Channel.Model.Type | undefined
+	channel: Channel.Type | undefined
 	replyToMessageId: MessageId | null
 	attachmentIds: AttachmentId[]
 	isUploading: boolean
@@ -283,7 +284,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const setUploadingFiles = useAtomSet(uploadingFilesAtomFamily(channelId))
 
 	const channelResult = useAtomValue(channelByIdAtomFamily(channelId))
-	const channel = Result.getOrElse(channelResult, () => undefined)
+	const channel = AsyncResult.getOrElse(channelResult, () => undefined)
 
 	// Track pending thread creation to disable composer until thread is created
 	const [pendingThreadChannelId, setPendingThreadChannelId] = useState<ChannelId | null>(null)
@@ -395,7 +396,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 			const tx = await sendMessageMutation({
 				channelId,
-				authorId: UserId.make(user.id),
+				authorId: user.id as UserId,
 				content,
 				replyToMessageId: savedReplyToMessageId,
 				threadChannelId: null,
@@ -502,7 +503,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				messageId,
 				channelId,
 				emoji,
-				userId: UserId.make(user.id),
+				userId: user.id as UserId,
 			})
 
 			exitToast(tx)
@@ -528,7 +529,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			const exit = await pinMessageMutation({
 				messageId,
 				channelId,
-				userId: UserId.make(user.id),
+				userId: user.id as UserId,
 			})
 
 			exitToast(exit)
@@ -575,7 +576,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				if (!user?.id) return
 
 				// Generate thread channel ID upfront for optimistic UI
-				const threadChannelId = ChannelId.make(crypto.randomUUID())
+				const threadChannelId = crypto.randomUUID() as ChannelId
 
 				// Open panel IMMEDIATELY with optimistic ID
 				setActiveThreadChannelId(threadChannelId)
@@ -590,7 +591,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 					messageId,
 					parentChannelId: channelId,
 					organizationId,
-					currentUserId: UserId.make(user.id),
+					currentUserId: user.id as UserId,
 				})
 
 				// Clear pending state

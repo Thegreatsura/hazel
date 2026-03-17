@@ -1,6 +1,12 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
-import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "../errors"
+import {
+	InternalServerError,
+	OAuthCodeExpiredError,
+	OAuthRedemptionPendingError,
+	OAuthStateMismatchError,
+	UnauthorizedError,
+} from "../errors"
 import { OrganizationId } from "@hazel/schema"
 import { RequiredScopes } from "../scopes/required-scopes"
 
@@ -16,6 +22,10 @@ export class LoginResponse extends Schema.Class<LoginResponse>("LoginResponse")(
 export class TokenRequest extends Schema.Class<TokenRequest>("TokenRequest")({
 	code: Schema.String,
 	state: Schema.String,
+}) {}
+
+export class AuthRequestHeaders extends Schema.Class<AuthRequestHeaders>("AuthRequestHeaders")({
+	"x-auth-attempt-id": Schema.optional(Schema.String),
 }) {}
 
 export class TokenResponse extends Schema.Class<TokenResponse>("TokenResponse")({
@@ -58,17 +68,16 @@ export class DesktopAuthState extends Schema.Class<DesktopAuthState>("DesktopAut
 
 export class AuthGroup extends HttpApiGroup.make("auth")
 	.add(
-		HttpApiEndpoint.get("login")`/login`
-			.addSuccess(LoginResponse)
-			.addError(InternalServerError)
-			.setUrlParams(
-				Schema.Struct({
-					returnTo: Schema.String,
-					organizationId: Schema.optional(OrganizationId),
-					invitationToken: Schema.optional(Schema.String),
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("login", "/login", {
+			query: {
+				returnTo: Schema.String,
+				organizationId: Schema.optional(OrganizationId),
+				invitationToken: Schema.optional(Schema.String),
+			},
+			success: LoginResponse,
+			error: InternalServerError,
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Login",
 					description: "Get WorkOS authorization URL for authentication",
@@ -78,17 +87,15 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.get("callback")`/callback`
-			.addSuccess(Schema.Void, { status: 302 })
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setUrlParams(
-				Schema.Struct({
-					code: Schema.String,
-					state: Schema.String,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("callback", "/callback", {
+			query: {
+				code: Schema.String,
+				state: Schema.String,
+			},
+			success: Schema.Void.pipe(HttpApiSchema.status(302)),
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "OAuth Callback",
 					description: "Handle OAuth callback from WorkOS and set session cookie",
@@ -98,15 +105,14 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.get("logout")`/logout`
-			.addSuccess(Schema.Void)
-			.addError(InternalServerError)
-			.setUrlParams(
-				Schema.Struct({
-					redirectTo: Schema.optional(Schema.String),
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("logout", "/logout", {
+			query: {
+				redirectTo: Schema.optional(Schema.String),
+			},
+			success: Schema.Void,
+			error: InternalServerError,
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Logout",
 					description: "Clear session and logout user",
@@ -116,19 +122,18 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.get("loginDesktop")`/login/desktop`
-			.addSuccess(Schema.Void, { status: 302 })
-			.addError(InternalServerError)
-			.setUrlParams(
-				Schema.Struct({
-					returnTo: Schema.String,
-					desktopPort: Schema.NumberFromString,
-					desktopNonce: Schema.String,
-					organizationId: Schema.optional(OrganizationId),
-					invitationToken: Schema.optional(Schema.String),
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("loginDesktop", "/login/desktop", {
+			query: {
+				returnTo: Schema.String,
+				desktopPort: Schema.NumberFromString,
+				desktopNonce: Schema.String,
+				organizationId: Schema.optional(OrganizationId),
+				invitationToken: Schema.optional(Schema.String),
+			},
+			success: Schema.Void.pipe(HttpApiSchema.status(302)),
+			error: InternalServerError,
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Desktop Login",
 					description: "Initiate OAuth flow for desktop apps with web callback",
@@ -138,13 +143,19 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("token")`/token`
-			.addSuccess(TokenResponse)
-			.addError(UnauthorizedError)
-			.addError(OAuthCodeExpiredError)
-			.addError(InternalServerError)
-			.setPayload(TokenRequest)
-			.annotateContext(
+		HttpApiEndpoint.post("token", "/token", {
+			headers: AuthRequestHeaders,
+			payload: TokenRequest,
+			success: TokenResponse,
+			error: [
+				UnauthorizedError,
+				OAuthCodeExpiredError,
+				OAuthStateMismatchError,
+				OAuthRedemptionPendingError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Token Exchange",
 					description: "Exchange authorization code for access token (desktop apps)",
@@ -154,12 +165,13 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("refresh")`/refresh`
-			.addSuccess(RefreshTokenResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPayload(RefreshTokenRequest)
-			.annotateContext(
+		HttpApiEndpoint.post("refresh", "/refresh", {
+			headers: AuthRequestHeaders,
+			payload: RefreshTokenRequest,
+			success: RefreshTokenResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Refresh Token",
 					description: "Exchange refresh token for new access token (desktop apps)",

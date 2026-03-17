@@ -1,4 +1,4 @@
-import { Effect, Either } from "effect"
+import { ConfigProvider, Effect, Result } from "effect"
 import { afterEach, describe, expect, it } from "vitest"
 import { JwksService } from "./jwks-service"
 
@@ -32,12 +32,16 @@ describe("JwksService", () => {
 			Effect.gen(function* () {
 				const service = yield* JwksService
 				return yield* service.getJwks()
-			}).pipe(Effect.provide(JwksService.Default), Effect.either),
+			}).pipe(
+				Effect.provide(JwksService.layer),
+				Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(process.env))),
+				Effect.result,
+			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left._tag).toBe("ConfigError")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure._tag).toBe("ConfigError")
 		}
 	})
 
@@ -50,7 +54,10 @@ describe("JwksService", () => {
 				const firstJwks = yield* service.getJwks()
 				const secondJwks = yield* service.getJwks()
 				return [firstJwks, secondJwks] as const
-			}).pipe(Effect.provide(JwksService.Default)),
+			}).pipe(
+				Effect.provide(JwksService.layer),
+				Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(process.env))),
+			),
 		)
 
 		expect(typeof first).toBe("function")

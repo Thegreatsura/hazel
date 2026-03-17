@@ -1,17 +1,16 @@
-import { and, Database, eq, gte, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, gte, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceiptRepo>()(
+export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventReceiptRepo>()(
 	"ChatSyncEventReceiptRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.chatSyncEventReceiptsTable,
-				ChatSyncEventReceipt.Model,
+				{ insert: ChatSyncEventReceipt.Insert, update: ChatSyncEventReceipt.Update },
 				{
 					idColumn: "id",
 					name: "ChatSyncEventReceipt",
@@ -52,7 +51,7 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 									.limit(1),
 							),
 					)({ syncConnectionId, source, dedupeKey }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const claimByDedupeKey = (
 				params: {
@@ -220,4 +219,6 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

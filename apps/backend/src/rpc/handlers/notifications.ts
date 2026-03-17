@@ -1,7 +1,7 @@
 import { ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
-import { NotificationRpcs } from "@hazel/domain/rpc"
+import { NotificationResponse, NotificationRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { NotificationPolicy } from "../../policies/notification-policy"
@@ -22,23 +22,29 @@ import { NotificationPolicy } from "../../policies/notification-policy"
 export const NotificationRpcLive = NotificationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const notificationPolicy = yield* NotificationPolicy
+		const channelRepo = yield* ChannelRepo
+		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const notificationRepo = yield* NotificationRepo
 
 		return {
 			"notification.create": (payload) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canCreate(payload.memberId)
-							const createdNotification = yield* NotificationRepo.insert({
-								...payload,
-							}).pipe(Effect.map((res) => res[0]!))
+							yield* notificationPolicy.canCreate(payload.memberId)
+							const createdNotification = yield* notificationRepo
+								.insert({
+									...payload,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new NotificationResponse({
 								data: createdNotification,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Notification", "create")),
@@ -47,18 +53,18 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canUpdate(id)
-							const updatedNotification = yield* NotificationRepo.update({
+							yield* notificationPolicy.canUpdate(id)
+							const updatedNotification = yield* notificationRepo.update({
 								id,
 								...payload,
 							})
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new NotificationResponse({
 								data: updatedNotification,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Notification", "update")),
@@ -67,8 +73,8 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canDelete(id)
-							yield* NotificationRepo.deleteById(id)
+							yield* notificationPolicy.canDelete(id)
+							yield* notificationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -88,9 +94,9 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const user = yield* CurrentUser.Context
 
 					// Get the channel to find the organization (system operation)
-					const channelOption = yield* ChannelRepo.findById(channelId).pipe(
-						withRemapDbErrors("Channel", "select"),
-					)
+					const channelOption = yield* channelRepo
+						.findById(channelId)
+						.pipe(withRemapDbErrors("Channel", "select"))
 
 					if (Option.isNone(channelOption)) {
 						return yield* Effect.fail(
@@ -104,10 +110,9 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const channel = channelOption.value
 
 					// Get the organization member for this user (system operation)
-					const memberOption = yield* OrganizationMemberRepo.findByOrgAndUser(
-						channel.organizationId,
-						user.id,
-					).pipe(withRemapDbErrors("OrganizationMember", "select"))
+					const memberOption = yield* organizationMemberRepo
+						.findByOrgAndUser(channel.organizationId, user.id)
+						.pipe(withRemapDbErrors("OrganizationMember", "select"))
 
 					if (Option.isNone(memberOption)) {
 						return yield* Effect.fail(
@@ -125,7 +130,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const result = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								const deleted = yield* NotificationRepo.deleteByMessageIds(
+								const deleted = yield* notificationRepo.deleteByMessageIds(
 									messageIds,
 									member.id,
 								)

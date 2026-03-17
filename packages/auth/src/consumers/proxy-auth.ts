@@ -6,8 +6,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
+import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -16,7 +15,7 @@ import type { AuthenticatedUserContext } from "../types.ts"
 /**
  * Authentication error for proxy auth.
  */
-export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthenticationError>()(
+export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthenticationError>()(
 	"ProxyAuthenticationError",
 	{
 		message: Schema.String,
@@ -35,35 +34,33 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
-	accessors: true,
-	dependencies: [UserLookupCache.Default, WorkOSClient.Default],
-	effect: Effect.gen(function* () {
+export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
+	make: Effect.gen(function* () {
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
-		const decodeClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+		const decodeClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
 
 		const resolveInternalOrganizationId = (
 			workosOrgId: WorkOSOrganizationId,
 		): Effect.Effect<OrganizationId | undefined, never> =>
 			workos.getOrganization(workosOrgId).pipe(
 				Effect.flatMap((org) =>
-					Option.fromNullable(org.externalId).pipe(
+					Option.fromNullishOr(org.externalId).pipe(
 						Option.match({
 							onNone: () =>
 								Effect.logWarning("WorkOS organization is missing externalId", {
 									workosOrgId,
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
-								Schema.decodeUnknown(OrganizationId)(externalId).pipe(
-									Effect.catchAll((error) =>
+								Schema.decodeUnknownEffect(OrganizationId)(externalId).pipe(
+									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
 											{
 												workosOrgId,
 												externalId,
-												error: TreeFormatter.formatErrorSync(error),
+												error: String(error),
 											},
 										).pipe(Effect.as(undefined)),
 									),
@@ -86,7 +83,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (workosUserId: WorkOSUserId) {
 			// Check cache first
 			const cached = yield* userLookupCache.get(workosUserId).pipe(
-				Effect.catchAll((error) => {
+				Effect.catch((error) => {
 					// Log cache error but continue with database lookup
 					return Effect.logWarning("User lookup cache error", error).pipe(
 						Effect.map(() => Option.none<{ internalUserId: UserId }>()),
@@ -109,21 +106,21 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 						.limit(1),
 				)
 				.pipe(
-					Effect.catchTag(
-						"DatabaseError",
-						(error) =>
+					Effect.catchTag("DatabaseError", (error) =>
+						Effect.fail(
 							new ProxyAuthenticationError({
 								message: "Failed to lookup user in database",
 								detail: error.message,
 							}),
+						),
 					),
 				)
-			const userOption = Option.fromNullable(userResult[0])
+			const userOption = Option.fromNullishOr(userResult[0])
 
 			// Cache successful lookup
 			if (Option.isSome(userOption)) {
 				yield* userLookupCache.set(workosUserId, userOption.value.id).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						// Log cache error but don't fail the request
 						Effect.logWarning("Failed to cache user lookup", error),
 					),
@@ -158,7 +155,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 				})
 
 			const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-				Effect.orElse(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
+				Effect.catch(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
 			)
 
 			const claims = yield* decodeClaims(payload).pipe(
@@ -166,7 +163,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 					(error) =>
 						new ProxyAuthenticationError({
 							message: "Invalid JWT claims",
-							detail: TreeFormatter.formatErrorSync(error),
+							detail: String(error),
 						}),
 				),
 			)
@@ -206,7 +203,12 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			validateBearerToken,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserLookupCache.layer),
+		Layer.provide(WorkOSClient.layer),
+	)
+}
 
 /**
  * Layer that provides ProxyAuth with all its dependencies via Effect.Service dependencies.
@@ -214,4 +216,4 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
  * External dependencies that must be provided:
  * - Database.Database (for user lookup)
  */
-export const ProxyAuthLive = ProxyAuth.Default
+export const ProxyAuthLive = ProxyAuth.layer

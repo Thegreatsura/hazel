@@ -1,4 +1,5 @@
-import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Schema } from "effect"
 import { useCallback } from "react"
 import { platformStorageRuntime } from "~/lib/platform-storage"
@@ -35,7 +36,7 @@ export const panelWidthAtomFamily = Atom.family((panelType: PanelType) =>
 	Atom.kvs({
 		runtime: platformStorageRuntime,
 		key: `panel_width_${panelType}`,
-		schema: Schema.NullOr(Schema.Number),
+		schema: Schema.toCodecIso(Schema.NullOr(Schema.Number)),
 		defaultValue: () => DEFAULT_PANEL_WIDTHS[panelType],
 	}),
 )

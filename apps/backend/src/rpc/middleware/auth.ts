@@ -1,7 +1,7 @@
-import { Headers } from "@effect/platform"
+import { Headers } from "effect/unstable/http"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError } from "@hazel/domain"
-import { Effect, FiberRef, Layer, Option } from "effect"
+import { CurrentUser, InvalidBearerTokenError, SessionNotProvidedError } from "@hazel/domain"
+import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
 import { SessionManager } from "../../services/session-manager"
@@ -34,7 +34,7 @@ export const AuthMiddlewareLive = Layer.effect(
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
 
-		return AuthMiddleware.of(({ headers }) =>
+		return AuthMiddleware.of((effect, { headers }) =>
 			Effect.gen(function* () {
 				// Check for Bearer token first (bot SDK or desktop app authentication)
 				const authHeader = Headers.get(headers, "authorization")
@@ -46,7 +46,7 @@ export const AuthMiddlewareLive = Layer.effect(
 					if (isJwtToken(token)) {
 						// Authenticate using WorkOS JWT
 						const currentUser = yield* sessionManager.authenticateWithBearer(token)
-						return currentUser
+						return yield* Effect.provideService(effect, CurrentUser.Context, currentUser)
 					}
 
 					// Otherwise, treat as bot token (hash-based lookup)
@@ -74,9 +74,7 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					const bot = botOption.value
 
-					// Set the bot's declared scopes for authorization
 					const botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
-					yield* FiberRef.set(CurrentBotScopes, Option.some(botApiScopes))
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(
@@ -114,7 +112,11 @@ export const AuthMiddlewareLive = Layer.effect(
 						settings: user.settings,
 					}
 
-					return botUser
+					return yield* Effect.provideService(
+						Effect.provideService(effect, CurrentUser.Context, botUser),
+						CurrentBotScopes,
+						Option.some(botApiScopes),
+					)
 				}
 
 				// No valid authentication provided

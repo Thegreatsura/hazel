@@ -1,15 +1,14 @@
-import { and, Database, eq, inArray, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("BotInstallationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class BotInstallationRepo extends ServiceMap.Service<BotInstallationRepo>()("BotInstallationRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.botInstallationsTable,
-			BotInstallation.Model,
+			{ insert: BotInstallation.Insert, update: BotInstallation.Update },
 			{
 				idColumn: "id",
 				name: "BotInstallation",
@@ -56,7 +55,7 @@ export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("
 							.limit(1),
 					),
 				)({ botId, organizationId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Check if a bot is installed in an organization
 		const isInstalled = (botId: BotId, organizationId: OrganizationId, tx?: TxFn) =>
@@ -77,4 +76,6 @@ export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("
 			getBotIdsForOrg,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

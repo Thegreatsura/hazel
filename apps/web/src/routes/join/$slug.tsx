@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Match } from "effect"
 import { motion } from "motion/react"
@@ -158,7 +159,7 @@ function JoinPage() {
 		)
 	}
 
-	const org = Result.getOrElse(orgResult, () => null)
+	const org = AsyncResult.getOrElse(orgResult, () => null)
 
 	// Organization not found or not public
 	if (!org) {

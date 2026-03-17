@@ -28,7 +28,7 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
@@ -43,21 +43,21 @@ import {
 export const DEFAULT_MAX_MESSAGES_PER_CHANNEL = 50
 export const DEFAULT_CHAT_SYNC_CONCURRENCY = 5
 
-export class DiscordSyncConfigurationError extends Schema.TaggedError<DiscordSyncConfigurationError>()(
+export class DiscordSyncConfigurationError extends Schema.TaggedErrorClass<DiscordSyncConfigurationError>()(
 	"DiscordSyncConfigurationError",
 	{
 		message: Schema.String,
 	},
 ) {}
 
-export class DiscordSyncConnectionNotFoundError extends Schema.TaggedError<DiscordSyncConnectionNotFoundError>()(
+export class DiscordSyncConnectionNotFoundError extends Schema.TaggedErrorClass<DiscordSyncConnectionNotFoundError>()(
 	"DiscordSyncConnectionNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
 	},
 ) {}
 
-export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedError<DiscordSyncChannelLinkNotFoundError>()(
+export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedErrorClass<DiscordSyncChannelLinkNotFoundError>()(
 	"DiscordSyncChannelLinkNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
@@ -65,18 +65,21 @@ export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedError<Disc
 	},
 ) {}
 
-export class DiscordSyncMessageNotFoundError extends Schema.TaggedError<DiscordSyncMessageNotFoundError>()(
+export class DiscordSyncMessageNotFoundError extends Schema.TaggedErrorClass<DiscordSyncMessageNotFoundError>()(
 	"DiscordSyncMessageNotFoundError",
 	{
 		messageId: MessageId,
 	},
 ) {}
 
-export class DiscordSyncApiError extends Schema.TaggedError<DiscordSyncApiError>()("DiscordSyncApiError", {
-	message: Schema.String,
-	status: Schema.optional(Schema.Number),
-	detail: Schema.optional(Schema.String),
-}) {}
+export class DiscordSyncApiError extends Schema.TaggedErrorClass<DiscordSyncApiError>()(
+	"DiscordSyncApiError",
+	{
+		message: Schema.String,
+		status: Schema.optional(Schema.Number),
+		detail: Schema.optional(Schema.String),
+	},
+) {}
 
 type ChatSyncProvider = ChatSyncConnection.ChatSyncProvider
 
@@ -147,9 +150,20 @@ export interface ChatSyncIngressThreadCreate {
 	readonly dedupeKey?: string
 }
 
-export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("ChatSyncCoreWorker", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+// Tag-only service: real implementation is provided via ChatSyncCoreWorkerMake + ChatSyncCoreWorkerLayer.
+// Uses two-type-param overload to avoid requiring `make` (which would cause circular inference with DiscordSyncWorker).
+// Shape uses `Record<string, Function>` because the real shape can't be inferred without circular deps.
+// Consumers can access methods via `yield* ChatSyncCoreWorker` — method calls are checked at each call site.
+export class ChatSyncCoreWorker extends ServiceMap.Service<
+	ChatSyncCoreWorker,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+	Record<string, Function>
+>()("ChatSyncCoreWorker") {}
+
+/** @internal — exported for integration tests that provide their own deps */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unknown, unknown> = Effect.gen(
+	function* () {
 		const db = yield* Database.Database
 		const connectionRepo = yield* ChatSyncConnectionRepo
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
@@ -170,7 +184,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")
 
-		const claimReceipt = Effect.fn("DiscordSyncWorker.claimReceipt")(function* (params: {
+		const claimReceipt = Effect.fn("discordSyncWorker.claimReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
 			channelLinkId?: SyncChannelLinkId
 			source: "hazel" | "external"
@@ -184,7 +198,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 		})
 
-		const writeReceipt = Effect.fn("DiscordSyncWorker.writeReceipt")(function* (params: {
+		const writeReceipt = Effect.fn("discordSyncWorker.writeReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
 			channelLinkId?: SyncChannelLinkId
 			source: "hazel" | "external"
@@ -216,9 +230,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return `${normalizedBase}/${attachmentId}`
 		}
 
-		const getAttachmentPublicUrlBase = Effect.fn("DiscordSyncWorker.getAttachmentPublicUrlBase")(
+		const getAttachmentPublicUrlBase = Effect.fn("discordSyncWorker.getAttachmentPublicUrlBase")(
 			function* () {
-				const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Effect.option)
+				const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Config.option)
 				if (Option.isNone(configuredBaseUrl) || configuredBaseUrl.value.trim().length === 0) {
 					return yield* Effect.fail(
 						new DiscordSyncConfigurationError({
@@ -231,7 +245,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		)
 
 		const listMessageAttachmentsForOutboundSync = Effect.fn(
-			"DiscordSyncWorker.listMessageAttachmentsForOutboundSync",
+			"discordSyncWorker.listMessageAttachmentsForOutboundSync",
 		)(function* (hazelMessageId: MessageId) {
 			const rows = yield* db.execute((client) =>
 				client
@@ -264,7 +278,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}))
 		})
 
-		const getOrCreateShadowUserId = Effect.fn("DiscordSyncWorker.getOrCreateShadowUserId")(
+		const getOrCreateShadowUserId = Effect.fn("discordSyncWorker.getOrCreateShadowUserId")(
 			function* (params: {
 				provider: ChatSyncProvider
 				organizationId: OrganizationId
@@ -356,7 +370,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const isWebhookStrategyEnabled = (
 			outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings,
-		): boolean => outboundIdentity.strategy === "webhook"
+		): boolean => outboundIdentity.enabled && outboundIdentity.strategy === "webhook"
 
 		const defaultOutboundIdentitySettings = (): ChatSyncChannelLink.OutboundIdentitySettings => ({
 			enabled: false,
@@ -431,7 +445,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return Option.isSome(webhookConfig) && webhookConfig.value.webhookId === externalWebhookId
 		}
 
-		const persistWebhookIdentity = Effect.fn("DiscordSyncWorker.persistWebhookIdentity")(function* (
+		const persistWebhookIdentity = Effect.fn("discordSyncWorker.persistWebhookIdentity")(function* (
 			link: {
 				id: SyncChannelLinkId
 				settings: Record<string, unknown> | null
@@ -463,7 +477,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			yield* channelLinkRepo.updateSettings(link.id, nextSettings)
 		})
 
-		const ensureDiscordWebhookIdentity = Effect.fn("DiscordSyncWorker.ensureDiscordWebhookIdentity")(
+		const ensureDiscordWebhookIdentity = Effect.fn("discordSyncWorker.ensureDiscordWebhookIdentity")(
 			function* (params: {
 				provider: ChatSyncProvider
 				link: {
@@ -497,7 +511,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						return currentConfig
 					}
 
-					const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
+					const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
 					if (Option.isNone(botTokenOption)) {
 						return Option.none()
 					}
@@ -530,7 +544,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					)
 					return Option.some(nextConfig)
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							if (isDiscordApiError(error) && error.status === 403) {
 								const fallbackOutboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings =
@@ -574,7 +588,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		)
 
 		const getDiscordWebhookIdentityMessageMetadata = Effect.fn(
-			"DiscordSyncWorker.getDiscordWebhookIdentityMessageMetadata",
+			"discordSyncWorker.getDiscordWebhookIdentityMessageMetadata",
 		)(function* (authorId: UserId) {
 			const userOption = yield* userRepo.findById(authorId)
 			if (Option.isNone(userOption)) {
@@ -591,7 +605,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { username, avatarUrl }
 		})
 
-		const sendDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.sendDiscordMessageViaWebhook")(
+		const sendDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.sendDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -636,7 +650,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return Option.some(outboundMessageId as ExternalMessageId)
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning("Discord webhook send failed; falling back to bot API", {
 								error: String(error),
@@ -648,7 +662,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			},
 		)
 
-		const updateDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.updateDiscordMessageViaWebhook")(
+		const updateDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.updateDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -681,7 +695,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return true
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning(
 								"Discord webhook update failed; falling back to bot API",
@@ -696,7 +710,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			},
 		)
 
-		const deleteDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.deleteDiscordMessageViaWebhook")(
+		const deleteDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.deleteDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -727,7 +741,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return true
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning(
 								"Discord webhook delete failed; falling back to bot API",
@@ -742,7 +756,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			},
 		)
 
-		const resolveAuthorUserId = Effect.fn("DiscordSyncWorker.resolveAuthorUserId")(function* (params: {
+		const resolveAuthorUserId = Effect.fn("discordSyncWorker.resolveAuthorUserId")(function* (params: {
 			provider: ChatSyncProvider
 			organizationId: OrganizationId
 			externalUserId: ExternalUserId
@@ -778,7 +792,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const DISCORD_USER_MENTION_PATTERN = /@\[userId:([^\]]+)\]/g
 
 		const getDiscordMentionFallbackDisplayName = Effect.fn(
-			"DiscordSyncWorker.getDiscordMentionFallbackDisplayName",
+			"discordSyncWorker.getDiscordMentionFallbackDisplayName",
 		)(function* (userId: UserId) {
 			const userOption = yield* userRepo.findById(userId)
 			if (Option.isNone(userOption)) {
@@ -800,7 +814,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const translateHazelMentionsForDiscord = Effect.fn(
-			"DiscordSyncWorker.translateHazelMentionsForDiscord",
+			"discordSyncWorker.translateHazelMentionsForDiscord",
 		)(function* (params: { organizationId: OrganizationId; content: string }) {
 			const userIds = [...params.content.matchAll(DISCORD_USER_MENTION_PATTERN)].map(
 				(match) => match[1] as UserId,
@@ -849,7 +863,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			externalMessageId: messageLink.externalMessageId as ExternalMessageId,
 		})
 
-		const resolveExternalMessageId = Effect.fn("DiscordSyncWorker.resolveExternalMessageId")(
+		const resolveExternalMessageId = Effect.fn("discordSyncWorker.resolveExternalMessageId")(
 			function* (params: {
 				syncConnectionId: SyncConnectionId
 				hazelMessageId: MessageId
@@ -894,11 +908,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						)
 						.limit(1),
 				)
-				return Option.fromNullable(links[0]?.externalMessageId as ExternalMessageId | undefined)
+				return Option.fromNullishOr(links[0]?.externalMessageId as ExternalMessageId | undefined)
 			},
 		)
 
-		const resolveHazelMessageId = Effect.fn("DiscordSyncWorker.resolveHazelMessageId")(
+		const resolveHazelMessageId = Effect.fn("discordSyncWorker.resolveHazelMessageId")(
 			function* (params: {
 				syncConnectionId: SyncConnectionId
 				externalMessageId: ExternalMessageId
@@ -946,12 +960,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						)
 						.limit(1),
 				)
-				return Option.fromNullable(links[0]?.hazelMessageId)
+				return Option.fromNullishOr(links[0]?.hazelMessageId)
 			},
 		)
 
 		const resolveOrCreateOutboundLinkForMessage = Effect.fn(
-			"DiscordSyncWorker.resolveOrCreateOutboundLinkForMessage",
+			"discordSyncWorker.resolveOrCreateOutboundLinkForMessage",
 		)(function* (params: {
 			syncConnectionId: SyncConnectionId
 			provider: ChatSyncProvider
@@ -1069,7 +1083,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return normalizeChannelLinkExternalId(threadLink)
 		})
 
-		const syncHazelMessageToProvider = Effect.fn("DiscordSyncWorker.syncHazelMessageToProvider")(
+		const syncHazelMessageToProvider = Effect.fn("discordSyncWorker.syncHazelMessageToProvider")(
 			function* (
 				syncConnectionId: SyncConnectionId,
 				hazelMessageId: MessageId,
@@ -1221,7 +1235,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			},
 		)
 
-		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
+		const syncConnection = Effect.fn("discordSyncWorker.syncConnection")(function* (
 			syncConnectionId: SyncConnectionId,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
@@ -1274,9 +1288,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					const result = yield* syncHazelMessageToProvider(
 						syncConnectionId,
 						unsyncedMessage.id,
-					).pipe(Effect.either)
-					if (result._tag === "Right") {
-						if (result.right.status === "synced") {
+					).pipe(Effect.result)
+					if (result._tag === "Success") {
+						if (result.success.status === "synced") {
 							sent++
 						} else {
 							skipped++
@@ -1287,7 +1301,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							provider: connection.provider,
 							syncConnectionId,
 							hazelMessageId: unsyncedMessage.id,
-							error: result.left,
+							error: result.failure,
 						})
 					}
 				}
@@ -1297,7 +1311,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelMessageUpdateToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToProvider",
+			"discordSyncWorker.syncHazelMessageUpdateToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -1403,7 +1417,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelMessageDeleteToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToProvider",
+			"discordSyncWorker.syncHazelMessageDeleteToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -1499,7 +1513,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelReactionCreateToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToProvider",
+			"discordSyncWorker.syncHazelReactionCreateToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelReactionId: MessageReactionId,
@@ -1586,7 +1600,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelReactionDeleteToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToProvider",
+			"discordSyncWorker.syncHazelReactionDeleteToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			payload: {
@@ -1696,7 +1710,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 		})
 
-		const getActiveOutboundTargets = Effect.fn("DiscordSyncWorker.getActiveOutboundTargets")(function* (
+		const getActiveOutboundTargets = Effect.fn("discordSyncWorker.getActiveOutboundTargets")(function* (
 			hazelChannelId: ChannelId,
 			provider: ChatSyncProvider,
 		) {
@@ -1730,7 +1744,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
+			"discordSyncWorker.syncHazelMessageCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1746,9 +1760,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "synced" || result.right.status === "already_linked") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.success.status === "synced" || result.success.status === "already_linked") {
 						synced++
 					}
 				} else {
@@ -1757,7 +1771,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1766,7 +1780,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelMessageUpdateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
+			"discordSyncWorker.syncHazelMessageUpdateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1782,9 +1796,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "updated") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.success.status === "updated") {
 						synced++
 					}
 				} else {
@@ -1793,7 +1807,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1802,7 +1816,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelMessageDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
+			"discordSyncWorker.syncHazelMessageDeleteToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1818,9 +1832,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "deleted") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.success.status === "deleted") {
 						synced++
 					}
 				} else {
@@ -1829,7 +1843,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1838,7 +1852,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelReactionCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToAllConnections",
+			"discordSyncWorker.syncHazelReactionCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelReactionId: MessageReactionId, dedupeKey?: string) {
 			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
 			if (Option.isNone(reactionOption)) {
@@ -1855,9 +1869,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					target.syncConnectionId,
 					hazelReactionId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "created") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.success.status === "created") {
 						synced++
 					}
 				} else {
@@ -1866,7 +1880,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider,
 						hazelReactionId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1875,7 +1889,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		})
 
 		const syncHazelReactionDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToAllConnections",
+			"discordSyncWorker.syncHazelReactionDeleteToAllConnections",
 		)(function* (
 			provider: ChatSyncProvider,
 			payload: {
@@ -1896,9 +1910,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					target.syncConnectionId,
 					payload,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "deleted") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.success.status === "deleted") {
 						synced++
 					}
 				} else {
@@ -1907,7 +1921,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider,
 						hazelMessageId: payload.hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1915,7 +1929,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { synced, failed }
 		})
 
-		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
+		const syncAllActiveConnections = Effect.fn("discordSyncWorker.syncAllActiveConnections")(function* (
 			provider: ChatSyncProvider,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
@@ -1933,7 +1947,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			)
 		})
 
-		const ingestMessageCreate = Effect.fn("DiscordSyncWorker.ingestMessageCreate")(function* (
+		const ingestMessageCreate = Effect.fn("discordSyncWorker.ingestMessageCreate")(function* (
 			payload: ChatSyncIngressMessageCreate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:create:${payload.externalMessageId}`
@@ -2127,7 +2141,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { status: "created" as const, hazelMessageId: message.id }
 		})
 
-		const ingestMessageUpdate = Effect.fn("DiscordSyncWorker.ingestMessageUpdate")(function* (
+		const ingestMessageUpdate = Effect.fn("discordSyncWorker.ingestMessageUpdate")(function* (
 			payload: ChatSyncIngressMessageUpdate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:update:${payload.externalMessageId}`
@@ -2237,7 +2251,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { status: "updated" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
 
-		const ingestMessageDelete = Effect.fn("DiscordSyncWorker.ingestMessageDelete")(function* (
+		const ingestMessageDelete = Effect.fn("discordSyncWorker.ingestMessageDelete")(function* (
 			payload: ChatSyncIngressMessageDelete,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:delete:${payload.externalMessageId}`
@@ -2348,7 +2362,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { status: "deleted" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
 
-		const ingestReactionAdd = Effect.fn("DiscordSyncWorker.ingestReactionAdd")(function* (
+		const ingestReactionAdd = Effect.fn("discordSyncWorker.ingestReactionAdd")(function* (
 			payload: ChatSyncIngressReactionAdd,
 		) {
 			const dedupeKey =
@@ -2477,7 +2491,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { status: "created" as const, hazelReactionId: reaction.id }
 		})
 
-		const ingestReactionRemove = Effect.fn("DiscordSyncWorker.ingestReactionRemove")(function* (
+		const ingestReactionRemove = Effect.fn("discordSyncWorker.ingestReactionRemove")(function* (
 			payload: ChatSyncIngressReactionRemove,
 		) {
 			const dedupeKey =
@@ -2603,7 +2617,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			return { status: "deleted" as const, hazelReactionId: existingReaction.value.id }
 		})
 
-		const ingestThreadCreate = Effect.fn("DiscordSyncWorker.ingestThreadCreate")(function* (
+		const ingestThreadCreate = Effect.fn("discordSyncWorker.ingestThreadCreate")(function* (
 			payload: ChatSyncIngressThreadCreate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:thread:create:${payload.externalThreadId}`
@@ -2760,22 +2774,23 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			ingestReactionRemove,
 			ingestThreadCreate,
 		}
-	}),
-	dependencies: [
-		ChatSyncConnectionRepo.Default,
-		ChatSyncChannelLinkRepo.Default,
-		ChatSyncMessageLinkRepo.Default,
-		ChatSyncEventReceiptRepo.Default,
-		MessageRepo.Default,
-		MessageOutboxRepo.Default,
-		MessageReactionRepo.Default,
-		ChannelRepo.Default,
-		IntegrationConnectionRepo.Default,
-		UserRepo.Default,
-		OrganizationMemberRepo.Default,
-		IntegrationBotService.Default,
-		ChannelAccessSyncService.Default,
-		ChatSyncProviderRegistry.Default,
-		Discord.DiscordApiClient.Default,
-	],
-}) {}
+	},
+)
+
+export const ChatSyncCoreWorkerLayer = Layer.effect(ChatSyncCoreWorker, ChatSyncCoreWorkerMake).pipe(
+	Layer.provide(ChatSyncConnectionRepo.layer),
+	Layer.provide(ChatSyncChannelLinkRepo.layer),
+	Layer.provide(ChatSyncMessageLinkRepo.layer),
+	Layer.provide(ChatSyncEventReceiptRepo.layer),
+	Layer.provide(MessageRepo.layer),
+	Layer.provide(MessageOutboxRepo.layer),
+	Layer.provide(MessageReactionRepo.layer),
+	Layer.provide(ChannelRepo.layer),
+	Layer.provide(IntegrationConnectionRepo.layer),
+	Layer.provide(UserRepo.layer),
+	Layer.provide(OrganizationMemberRepo.layer),
+	Layer.provide(IntegrationBotService.layer),
+	Layer.provide(ChannelAccessSyncService.layer),
+	Layer.provide(ChatSyncProviderRegistry.layer),
+	Layer.provide(Discord.DiscordApiClient.layer),
+)

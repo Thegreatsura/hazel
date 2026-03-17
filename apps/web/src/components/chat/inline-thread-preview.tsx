@@ -1,8 +1,10 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
 import { useMemo } from "react"
+import { toDate } from "~/lib/utils"
 import { threadMessageCountAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
 import { channelCollection, messageCollection } from "~/db/collections"
 import { useChatStable } from "~/hooks/use-chat"
@@ -33,7 +35,7 @@ export function InlineThreadPreview({
 
 	// Get total thread message count using atom
 	const countResult = useAtomValue(threadMessageCountAtomFamily(threadChannelId))
-	const countData = Result.getOrElse(countResult, () => [])
+	const countData = AsyncResult.getOrElse(countResult, () => [])
 	const totalCount = countData?.[0]?.count ?? 0
 
 	// Get last message timestamp and unique authors for avatar stack
@@ -105,7 +107,7 @@ export function InlineThreadPreview({
 					{lastReplyAt && (
 						<span className="text-muted-fg group-hover/thread:invisible truncate">
 							{totalCount > 1 ? "Last reply " : ""}
-							{formatDistanceToNow(lastReplyAt, { addSuffix: false })} ago
+							{formatDistanceToNow(toDate(lastReplyAt), { addSuffix: false })} ago
 						</span>
 					)}
 					{/* View thread - absolutely positioned on hover */}
@@ -135,7 +137,7 @@ function AvatarStack({ authorIds }: { authorIds: UserId[] }) {
 
 function AvatarStackItem({ authorId, index }: { authorId: UserId; index: number }) {
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(authorId))
-	const data = Result.getOrElse(userPresenceResult, () => [])
+	const data = AsyncResult.getOrElse(userPresenceResult, () => [])
 	const user = data[0]?.user
 	const authorIdentity = useChatAuthorIdentity(authorId, user)
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect, Either, Layer } from "effect"
+import { Effect, Result, Layer, ServiceMap } from "effect"
 import { ChannelPolicy } from "./channel-policy.ts"
 import {
 	makeActor,
@@ -15,8 +15,8 @@ import {
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000301" as ChannelId
-const MISSING_CHANNEL_ID = "00000000-0000-0000-0000-000000000399" as ChannelId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000301" as ChannelId
+const MISSING_CHANNEL_ID = "00000000-0000-4000-8000-000000000399" as ChannelId
 
 const makeChannelRepoLayer = (channels: Record<string, { organizationId: OrganizationId }>) =>
 	Layer.succeed(ChannelRepo, {
@@ -30,13 +30,13 @@ const makeChannelRepoLayer = (channels: Record<string, { organizationId: Organiz
 			}
 			return f(channel)
 		},
-	} as unknown as ChannelRepo)
+	} as ServiceMap.Service.Shape<typeof ChannelRepo>)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	channels: Record<string, { organizationId: OrganizationId }>,
 ) =>
-	ChannelPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(ChannelPolicy, ChannelPolicy.make).pipe(
 		Layer.provide(makeChannelRepoLayer(channels)),
 		Layer.provide(makeOrgResolverLayer(members)),
 	)
@@ -50,34 +50,34 @@ describe("ChannelPolicy", () => {
 		const ownerLayer = makePolicyLayer({ [`${TEST_ORG_ID}:${actor.id}`]: "owner" }, {})
 
 		const memberResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			ChannelPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
 			memberLayer,
 			actor,
 			["channels:write"],
 		)
 		const adminResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			ChannelPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
 			adminLayer,
 			actor,
 			["channels:write"],
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			ChannelPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
 			ownerLayer,
 			actor,
 			["channels:write"],
 		)
 		const noMembership = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ALT_ORG_ID),
+			ChannelPolicy.use((policy) => policy.canCreate(TEST_ALT_ORG_ID)),
 			memberLayer,
 			actor,
 			["channels:write"],
 		)
 
-		expect(Either.isLeft(memberResult)).toBe(true)
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isRight(ownerResult)).toBe(true)
-		expect(Either.isLeft(noMembership)).toBe(true)
+		expect(Result.isFailure(memberResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
+		expect(Result.isFailure(noMembership)).toBe(true)
 	})
 
 	it("canUpdate allows org admins and maps not-found to UnauthorizedError", async () => {
@@ -91,13 +91,21 @@ describe("ChannelPolicy", () => {
 			},
 		)
 
-		const allowed = await runWithActorEither(ChannelPolicy.canUpdate(CHANNEL_ID), layer, actor)
-		const missing = await runWithActorEither(ChannelPolicy.canUpdate(MISSING_CHANNEL_ID), layer, actor)
+		const allowed = await runWithActorEither(
+			ChannelPolicy.use((policy) => policy.canUpdate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		const missing = await runWithActorEither(
+			ChannelPolicy.use((policy) => policy.canUpdate(MISSING_CHANNEL_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(missing)).toBe(true)
-		if (Either.isLeft(missing)) {
-			expect(UnauthorizedError.is(missing.left)).toBe(true)
+		expect(Result.isSuccess(allowed)).toBe(true)
+		expect(Result.isFailure(missing)).toBe(true)
+		if (Result.isFailure(missing)) {
+			expect(UnauthorizedError.is(missing.failure)).toBe(true)
 		}
 	})
 
@@ -112,7 +120,11 @@ describe("ChannelPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(ChannelPolicy.canDelete(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelPolicy.use((policy) => policy.canDelete(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

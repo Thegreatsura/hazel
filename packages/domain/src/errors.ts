@@ -1,16 +1,13 @@
-import { HttpApiSchema } from "@effect/platform"
-import { Effect, Predicate, Schema } from "effect"
+import { Effect, Predicate, Schema, SchemaIssue } from "effect"
 import { ChannelId, MessageId } from "@hazel/schema"
 
-export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
+export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is UnauthorizedError {
 		return Predicate.isTagged(u, "UnauthorizedError")
@@ -21,33 +18,55 @@ export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("Un
  * Error thrown when an OAuth authorization code has expired or has already been used.
  * This is a specific 401 error that indicates the user must restart the OAuth flow.
  */
-export class OAuthCodeExpiredError extends Schema.TaggedError<OAuthCodeExpiredError>("OAuthCodeExpiredError")(
+export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpiredError>(
+	"OAuthCodeExpiredError",
+)(
 	"OAuthCodeExpiredError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is OAuthCodeExpiredError {
 		return Predicate.isTagged(u, "OAuthCodeExpiredError")
 	}
 }
 
-export class InternalServerError extends Schema.TaggedError<InternalServerError>("InternalServerError")(
+export class OAuthStateMismatchError extends Schema.TaggedErrorClass<OAuthStateMismatchError>()(
+	"OAuthStateMismatchError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {
+	static is(u: unknown): u is OAuthStateMismatchError {
+		return Predicate.isTagged(u, "OAuthStateMismatchError")
+	}
+}
+
+export class OAuthRedemptionPendingError extends Schema.TaggedErrorClass<OAuthRedemptionPendingError>()(
+	"OAuthRedemptionPendingError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 503 },
+) {
+	static is(u: unknown): u is OAuthRedemptionPendingError {
+		return Predicate.isTagged(u, "OAuthRedemptionPendingError")
+	}
+}
+
+export class InternalServerError extends Schema.TaggedErrorClass<InternalServerError>("InternalServerError")(
 	"InternalServerError",
 	{
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.annotations({
-		status: 500,
-	}),
+	{ httpApiStatus: 500 },
 ) {}
 
-export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInitializationError>(
+export class WorkflowInitializationError extends Schema.TaggedErrorClass<WorkflowInitializationError>(
 	"WorkflowInitializationError",
 )(
 	"WorkflowInitializationError",
@@ -55,12 +74,10 @@ export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInit
 		message: Schema.String,
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.annotations({
-		status: 500,
-	}),
+	{ httpApiStatus: 500 },
 ) {}
 
-export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
+export class DmChannelAlreadyExistsError extends Schema.TaggedErrorClass<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(
 	"DmChannelAlreadyExistsError",
@@ -68,99 +85,84 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlr
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 	},
-	HttpApiSchema.annotations({
-		status: 409,
-	}),
+	{ httpApiStatus: 409 },
 ) {}
 
 /**
  * Error thrown when a message is not found.
  * Used in update, delete, and thread creation operations.
  */
-export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundError>("MessageNotFoundError")(
+export class MessageNotFoundError extends Schema.TaggedErrorClass<MessageNotFoundError>(
+	"MessageNotFoundError",
+)(
 	"MessageNotFoundError",
 	{
 		messageId: MessageId,
 	},
-	HttpApiSchema.annotations({
-		status: 404,
-	}),
+	{ httpApiStatus: 404 },
 ) {}
 
 /**
  * Error thrown when attempting to create a thread within a thread.
  * Nested threads are not supported.
  */
-export class NestedThreadError extends Schema.TaggedError<NestedThreadError>("NestedThreadError")(
+export class NestedThreadError extends Schema.TaggedErrorClass<NestedThreadError>("NestedThreadError")(
 	"NestedThreadError",
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.annotations({
-		status: 400,
-	}),
+	{ httpApiStatus: 400 },
 ) {}
 
 /**
  * Error thrown when the workflow service is unreachable or unavailable.
  * Used when the cluster service cannot be contacted.
  */
-export class WorkflowServiceUnavailableError extends Schema.TaggedError<WorkflowServiceUnavailableError>(
+export class WorkflowServiceUnavailableError extends Schema.TaggedErrorClass<WorkflowServiceUnavailableError>(
 	"WorkflowServiceUnavailableError",
 )(
 	"WorkflowServiceUnavailableError",
 	{
 		message: Schema.String,
-		cause: Schema.optionalWith(Schema.String, { nullable: true }),
+		cause: Schema.optional(Schema.NullOr(Schema.String)),
 	},
-	HttpApiSchema.annotations({
-		status: 503,
-	}),
+	{ httpApiStatus: 503 },
 ) {}
 
 export function withRemapDbErrors<R, E extends { _tag: string }, A>(
 	entityType: string,
 	action: "update" | "create" | "delete" | "select",
-	entityId?: any | { value: any; key: string }[],
+	entityId?: unknown | { value: unknown; key: string }[],
 ) {
 	return (
 		effect: Effect.Effect<R, E, A>,
-	): Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "ParseError" }> | InternalServerError, A> => {
+	): Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A> => {
+		const toInternalError = (err: unknown, detailPrefix: string) =>
+			Effect.fail(
+				new InternalServerError({
+					message: `Error ${action}ing ${entityType}`,
+					detail: constructDetailMessage(detailPrefix, entityType, entityId),
+					cause: String(err),
+				}),
+			)
+
 		return effect.pipe(
-			Effect.catchTags({
-				DatabaseError: (err: any) =>
-					Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: constructDetailMessage(
-								"There was an error in parsing when",
-								entityType,
-								entityId,
-							),
-							cause: String(err),
-						}),
-					),
-				ParseError: (err: any) =>
-					Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: constructDetailMessage(
-								"There was an error in parsing when",
-								entityType,
-								entityId,
-							),
-							cause: String(err),
-						}),
-					),
-			}),
-		)
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
+				(err) => toInternalError(err, "There was a database error when"),
+			),
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "SchemaError" }> => Predicate.isTagged(e, "SchemaError"),
+				(err) => toInternalError(err, "There was an error in parsing when"),
+			),
+		) as Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A>
 	}
 }
 
 const constructDetailMessage = (
 	title: string,
 	entityType: string,
-	entityId?: any | { value: any; key: string }[],
+	entityId?: unknown | { value: unknown; key: string }[],
 ) => {
 	if (entityId) {
 		if (Array.isArray(entityId)) {

@@ -4,13 +4,13 @@
  * @description Client-side auth middleware that adds Bearer token from storage (Tauri store or localStorage)
  */
 
-import { Headers } from "@effect/platform"
-import { RpcMiddleware } from "@effect/rpc"
+import { Headers } from "effect/unstable/http"
+import { RpcMiddleware } from "effect/unstable/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { waitForRefreshEffect, getAccessTokenEffect } from "~/lib/auth-token"
 
-export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
+export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request, next }) =>
 	Effect.gen(function* () {
 		yield* waitForRefreshEffect
 
@@ -18,9 +18,9 @@ export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware
 
 		if (token) {
 			const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${token}`)
-			return { ...request, headers: newHeaders }
+			return yield* next({ ...request, headers: newHeaders })
 		}
 
-		return request
+		return yield* next(request)
 	}),
 )

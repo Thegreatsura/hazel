@@ -1,4 +1,4 @@
-import { HttpApi, OpenApi } from "@effect/platform"
+import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { ChatSyncGroup } from "./chat-sync"
 import { MessagesApiGroup } from "./api-v1/messages"
 import { AuthGroup } from "./auth"
@@ -31,7 +31,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(KlipyGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)
-	.annotateContext(
+	.annotateMerge(
 		OpenApi.annotations({
 			title: "Hazel Chat API",
 			description: "API for the Hazel chat application",

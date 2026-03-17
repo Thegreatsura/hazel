@@ -1,4 +1,4 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { BotCommandRepo, BotInstallationRepo, BotRepo } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import { AvailableCommandsResponse } from "@hazel/domain/http"
@@ -8,9 +8,9 @@ import { HazelApi } from "../api"
 export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integration-commands", (handlers) =>
 	handlers
 		// Get all available commands for the current organization's installed bots
-		.handle("getAvailableCommands", ({ path }) =>
+		.handle("getAvailableCommands", ({ params }) =>
 			Effect.gen(function* () {
-				const { orgId } = path
+				const { orgId } = params
 
 				const botInstallationRepo = yield* BotInstallationRepo
 				const botCommandRepo = yield* BotCommandRepo

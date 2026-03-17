@@ -4,6 +4,7 @@ import { FileIcon } from "@untitledui/file-icons"
 
 import { useState } from "react"
 import { useAttachments, useMessage } from "~/db/hooks"
+import { toEpochMs } from "~/lib/utils"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { IconDownload } from "../icons/icon-download"
@@ -16,7 +17,7 @@ interface MessageAttachmentsProps {
 }
 
 interface ImageAttachmentItemProps {
-	attachment: typeof Attachment.Model.Type
+	attachment: Attachment.Type
 	imageCount: number
 	index: number
 	onClick: () => void
@@ -51,7 +52,7 @@ function ImageAttachmentItem({ attachment, imageCount, index, onClick }: ImageAt
 }
 
 interface AttachmentItemProps {
-	attachment: typeof Attachment.Model.Type
+	attachment: Attachment.Type
 }
 
 function AttachmentItem({ attachment }: AttachmentItemProps) {
@@ -198,7 +199,7 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 							images={viewerImages}
 							initialIndex={selectedImageIndex}
 							author={message.author}
-							createdAt={message.createdAt.getTime()}
+							createdAt={toEpochMs(message.createdAt)}
 						/>
 					)
 				})()}

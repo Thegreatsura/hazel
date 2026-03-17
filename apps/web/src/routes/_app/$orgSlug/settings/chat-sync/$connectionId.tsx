@@ -1,9 +1,11 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"
 import { useMemo, useState } from "react"
+import { toDate } from "~/lib/utils"
 import { AddChannelLinkModal } from "~/components/chat-sync/add-channel-link-modal"
 import IconCirclePause from "~/components/icons/icon-circle-pause"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
@@ -181,16 +183,16 @@ function ChatSyncConnectionDetailPage() {
 
 	// Find the current connection from the list
 	const connection = useMemo(() => {
-		if (!Result.isSuccess(connectionsResult)) return null
-		const data = Result.value(connectionsResult)
+		if (!AsyncResult.isSuccess(connectionsResult)) return null
+		const data = AsyncResult.value(connectionsResult)
 		if (Option.isNone(data)) return null
 		return data.value.data.find((c) => c.id === connectionId) ?? null
 	}, [connectionsResult, connectionId])
 
 	// Get channel links
 	const channelLinks = useMemo(() => {
-		if (!Result.isSuccess(channelLinksResult)) return []
-		const data = Result.value(channelLinksResult)
+		if (!AsyncResult.isSuccess(channelLinksResult)) return []
+		const data = AsyncResult.value(channelLinksResult)
 		if (Option.isNone(data)) return []
 		return data.value.data
 	}, [channelLinksResult])
@@ -285,7 +287,7 @@ function ChatSyncConnectionDetailPage() {
 	}
 
 	// Loading state
-	if (Result.isInitial(connectionsResult)) {
+	if (AsyncResult.isInitial(connectionsResult)) {
 		return (
 			<div className="flex items-center justify-center py-24">
 				<div className="flex items-center gap-3 text-muted-fg">
@@ -453,7 +455,7 @@ function ChatSyncConnectionDetailPage() {
 											</p>
 											<p className="text-muted-fg text-xs">
 												{connection.lastSyncedAt
-													? `Last synced ${new Date(
+													? `Last synced ${toDate(
 															connection.lastSyncedAt,
 														).toLocaleDateString(undefined, {
 															month: "short",
@@ -494,7 +496,7 @@ function ChatSyncConnectionDetailPage() {
 							</Button>
 						</div>
 
-						{Result.isInitial(channelLinksResult) ? (
+						{AsyncResult.isInitial(channelLinksResult) ? (
 							<div className="flex items-center justify-center p-8">
 								<div className="flex items-center gap-3 text-muted-fg">
 									<div className="size-5 animate-spin rounded-full border-2 border-border border-t-primary" />

@@ -1,16 +1,19 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { UserId, WorkOSUserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
-export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.usersTable, User.Model, {
-			idColumn: "id",
-			name: "User",
-		})
+export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.usersTable,
+			{ insert: User.Insert, update: User.Update },
+			{
+				idColumn: "id",
+				name: "User",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByExternalId = (externalId: string, tx?: TxFn) =>
@@ -24,7 +27,7 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 							.limit(1),
 					),
 				)(externalId, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
 			findByExternalId(workosUserId, tx)
@@ -47,7 +50,7 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 					execute((client) =>
 						client
 							.insert(schema.usersTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: schema.usersTable.externalId,
 								set: {
@@ -119,4 +122,6 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 			bulkUpsertByExternalId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

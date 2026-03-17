@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { ChannelMemberPolicy } from "./channel-member-policy.ts"
 import {
 	makeActor,
@@ -10,17 +10,18 @@ import {
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000811" as ChannelId
-const CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000812" as ChannelMemberId
-const MISSING_CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000819" as ChannelMemberId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000813" as UserId
-const OWNER_USER_ID = "00000000-0000-0000-0000-000000000814" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000811" as ChannelId
+const CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000812" as ChannelMemberId
+const MISSING_CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000819" as ChannelMemberId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000813" as UserId
+const OWNER_USER_ID = "00000000-0000-4000-8000-000000000814" as UserId
 
 interface ChannelMemberEntry {
 	userId: UserId
@@ -36,31 +37,40 @@ const makeChannelMemberRepoLayer = (
 	channelMembers: Record<string, ChannelMemberEntry>,
 	membershipsByChannelAndUser: Record<string, ChannelMemberEntry> = {},
 ) =>
-	Layer.succeed(ChannelMemberRepo, {
-		with: <A, E, R>(id: ChannelMemberId, f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>) => {
-			const member = channelMembers[id]
-			if (!member) {
-				return Effect.fail(makeEntityNotFound("ChannelMember"))
-			}
-			return f(member)
-		},
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			const entry = membershipsByChannelAndUser[key]
-			return Effect.succeed(entry ? Option.some(entry) : Option.none())
-		},
-	} as unknown as ChannelMemberRepo)
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			with: <A, E, R>(
+				id: ChannelMemberId,
+				f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>,
+			) => {
+				const member = channelMembers[id]
+				if (!member) {
+					return Effect.fail(makeEntityNotFound("ChannelMember"))
+				}
+				return f(member)
+			},
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				const entry = membershipsByChannelAndUser[key]
+				return Effect.succeed(entry ? Option.some(entry) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelEntry>) =>
-	Layer.succeed(ChannelRepo, {
-		with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	} as unknown as ChannelRepo)
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 const makePolicyLayer = (opts: {
 	members: Record<string, Role>
@@ -68,7 +78,7 @@ const makePolicyLayer = (opts: {
 	channelMembers?: Record<string, ChannelMemberEntry>
 	membershipsByChannelAndUser?: Record<string, ChannelMemberEntry>
 }) =>
-	ChannelMemberPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(ChannelMemberPolicy, ChannelMemberPolicy.make).pipe(
 		Layer.provide(
 			makeChannelMemberRepoLayer(opts.channelMembers ?? {}, opts.membershipsByChannelAndUser ?? {}),
 		),
@@ -88,8 +98,12 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("isOwner denies different user", async () => {
@@ -102,10 +116,14 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -123,11 +141,19 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const adminResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, admin)
-		const ownerResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, owner)
+		const adminResult = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			admin,
+		)
+		const ownerResult = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			owner,
+		)
 
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isRight(ownerResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
 	})
 
 	it("canCreate allows member for public channel", async () => {
@@ -141,8 +167,12 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies member for private channel", async () => {
@@ -156,10 +186,14 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -177,8 +211,12 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canRead allows org admin even without channel membership", async () => {
@@ -193,8 +231,12 @@ describe("ChannelMemberPolicy", () => {
 			// No channel membership for admin
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			admin,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canRead denies non-admin non-channel-member", async () => {
@@ -209,10 +251,14 @@ describe("ChannelMemberPolicy", () => {
 			// No channel membership
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -231,11 +277,11 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin but NOT org owner", async () => {
@@ -257,22 +303,22 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)
 
 		// Admin is allowed
-		expect(Either.isRight(adminResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
 		// Owner is NOT allowed (canUpdate checks role === "admin", not isAdminOrOwner)
-		expect(Either.isLeft(ownerResult)).toBe(true)
-		if (Either.isLeft(ownerResult)) {
-			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
+		expect(Result.isFailure(ownerResult)).toBe(true)
+		if (Result.isFailure(ownerResult)) {
+			expect(UnauthorizedError.is(ownerResult.failure)).toBe(true)
 		}
 	})
 
@@ -291,11 +337,11 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin but NOT org owner", async () => {
@@ -317,22 +363,22 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)
 
 		// Admin is allowed
-		expect(Either.isRight(adminResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
 		// Owner is NOT allowed (canDelete checks role === "admin", not isAdminOrOwner)
-		expect(Either.isLeft(ownerResult)).toBe(true)
-		if (Either.isLeft(ownerResult)) {
-			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
+		expect(Result.isFailure(ownerResult)).toBe(true)
+		if (Result.isFailure(ownerResult)) {
+			expect(UnauthorizedError.is(ownerResult.failure)).toBe(true)
 		}
 	})
 })

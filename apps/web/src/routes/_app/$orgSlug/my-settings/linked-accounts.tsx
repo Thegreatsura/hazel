@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Exit } from "effect"
@@ -68,8 +68,8 @@ function LinkedAccountsSettings() {
 		if (!user?.organizationId) return
 		setIsConnectingDiscord(true)
 		const result = await getOAuthUrlMutation({
-			path: { orgId: user.organizationId, provider: "discord" },
-			urlParams: { level: "user" },
+			params: { orgId: user.organizationId, provider: "discord" },
+			query: { level: "user" },
 		})
 
 		if (Exit.isSuccess(result)) {
@@ -85,8 +85,8 @@ function LinkedAccountsSettings() {
 		if (!user?.organizationId) return
 		setIsDisconnectingDiscord(true)
 		const result = await disconnectMutation({
-			path: { orgId: user.organizationId, provider: "discord" },
-			urlParams: { level: "user" },
+			params: { orgId: user.organizationId, provider: "discord" },
+			query: { level: "user" },
 		})
 
 		if (Exit.isSuccess(result)) {

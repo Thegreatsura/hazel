@@ -6,7 +6,7 @@ import type {
 	UtilsRecord,
 } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
-import { Effect, Exit, type ManagedRuntime } from "effect"
+import { Cause, Effect, Exit, type ManagedRuntime } from "effect"
 import { DeleteError, InsertError, MissingTxIdError, UpdateError } from "./errors"
 import type { EffectDeleteHandler, EffectInsertHandler, EffectUpdateHandler } from "./types"
 
@@ -32,7 +32,7 @@ export function convertInsertHandler<
 
 	return async (params: InsertMutationFnParams<T, TKey, TUtils>) => {
 		const effect = handler(params).pipe(
-			Effect.catchAll((error: E | unknown) =>
+			Effect.catch((error: E | unknown) =>
 				Effect.fail(
 					new InsertError({
 						message: `Insert operation failed`,
@@ -52,8 +52,9 @@ export function convertInsertHandler<
 		// Handle the Exit type
 		if (Exit.isFailure(exit)) {
 			const cause = exit.cause
-			if (cause._tag === "Fail") {
-				throw cause.error
+			const failReason = cause.reasons.find(Cause.isFailReason)
+			if (failReason) {
+				throw failReason.error
 			}
 			throw new InsertError({
 				message: `Insert operation failed unexpectedly`,
@@ -97,7 +98,7 @@ export function convertUpdateHandler<
 
 	return async (params: UpdateMutationFnParams<T, TKey, TUtils>) => {
 		const effect = handler(params).pipe(
-			Effect.catchAll((error: E | unknown) =>
+			Effect.catch((error: E | unknown) =>
 				Effect.fail(
 					new UpdateError({
 						message: `Update operation failed`,
@@ -117,8 +118,9 @@ export function convertUpdateHandler<
 		// Handle the Exit type
 		if (Exit.isFailure(exit)) {
 			const cause = exit.cause
-			if (cause._tag === "Fail") {
-				throw cause.error
+			const failReason = cause.reasons.find(Cause.isFailReason)
+			if (failReason) {
+				throw failReason.error
 			}
 			throw new UpdateError({
 				message: `Update operation failed unexpectedly`,
@@ -162,7 +164,7 @@ export function convertDeleteHandler<
 
 	return async (params: DeleteMutationFnParams<T, TKey, TUtils>) => {
 		const effect = handler(params).pipe(
-			Effect.catchAll((error: E | unknown) =>
+			Effect.catch((error: E | unknown) =>
 				Effect.fail(
 					new DeleteError({
 						message: `Delete operation failed`,
@@ -182,8 +184,9 @@ export function convertDeleteHandler<
 		// Handle the Exit type
 		if (Exit.isFailure(exit)) {
 			const cause = exit.cause
-			if (cause._tag === "Fail") {
-				throw cause.error
+			const failReason = cause.reasons.find(Cause.isFailReason)
+			if (failReason) {
+				throw failReason.error
 			}
 			throw new DeleteError({
 				message: `Delete operation failed unexpectedly`,

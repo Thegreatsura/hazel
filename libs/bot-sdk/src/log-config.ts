@@ -4,7 +4,7 @@
  * Provides configurable log levels and formats for bot logging.
  */
 
-import { Layer, Logger, LogLevel } from "effect"
+import { Effect, Layer, Logger, LogLevel, References } from "effect"
 
 /**
  * Log output format options
@@ -69,7 +69,7 @@ export interface BotLogConfig {
  * Default log configuration
  */
 export const defaultLogConfig: BotLogConfig = {
-	level: LogLevel.Info,
+	level: "Info",
 	format: "pretty",
 }
 
@@ -77,7 +77,7 @@ export const defaultLogConfig: BotLogConfig = {
  * Production log configuration
  */
 export const productionLogConfig: BotLogConfig = {
-	level: LogLevel.Info,
+	level: "Info",
 	format: "structured",
 }
 
@@ -85,7 +85,7 @@ export const productionLogConfig: BotLogConfig = {
  * Debug log configuration (all DEBUG output)
  */
 export const debugLogConfig: BotLogConfig = {
-	level: LogLevel.Debug,
+	level: "Debug",
 	format: "pretty",
 }
 
@@ -93,9 +93,9 @@ export const debugLogConfig: BotLogConfig = {
  * Create a logger layer from log configuration
  */
 export const createLoggerLayer = (config: BotLogConfig): Layer.Layer<never> => {
-	const formatLayer = config.format === "structured" ? Logger.structured : Logger.pretty
+	const logger = config.format === "structured" ? Logger.consoleStructured : Logger.consolePretty()
 
-	return Layer.mergeAll(formatLayer, Logger.minimumLogLevel(config.level))
+	return Layer.mergeAll(Logger.layer([logger]), Layer.succeed(References.MinimumLogLevel, config.level))
 }
 
 /**
@@ -104,22 +104,23 @@ export const createLoggerLayer = (config: BotLogConfig): Layer.Layer<never> => {
 export const logLevelFromString = (level: string): LogLevel.LogLevel => {
 	switch (level.toLowerCase()) {
 		case "all":
-			return LogLevel.All
+			return "All"
 		case "trace":
-			return LogLevel.Trace
+			return "Trace"
 		case "debug":
-			return LogLevel.Debug
+			return "Debug"
 		case "info":
-			return LogLevel.Info
+			return "Info"
 		case "warning":
-			return LogLevel.Warning
+		case "warn":
+			return "Warn"
 		case "error":
-			return LogLevel.Error
+			return "Error"
 		case "fatal":
-			return LogLevel.Fatal
+			return "Fatal"
 		case "none":
-			return LogLevel.None
+			return "None"
 		default:
-			return LogLevel.Info
+			return "Info"
 	}
 }

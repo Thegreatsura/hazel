@@ -9,8 +9,9 @@ import {
 	ReactionDeletedPayloadSchema,
 } from "@hazel/backend-core/repositories"
 import { Database } from "@hazel/db"
-import { Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
+import { DatabaseLive } from "./database"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
 const OUTBOX_BATCH_SIZE = 100
@@ -24,12 +25,10 @@ const OUTBOX_DISPATCHER_LOCK_KEY = 1_046_277_921
 const computeRetryDelayMs = (attempt: number): number =>
 	Math.min(5_000 * 3 ** Math.max(0, attempt - 1), 300_000)
 
-export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatcher>()(
+export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDispatcher>()(
 	"MessageOutboxDispatcher",
 	{
-		accessors: true,
-		dependencies: [EnvVars.Default, MessageOutboxRepo.Default, MessageSideEffectService.Default],
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const envVars = yield* EnvVars
 			const database = yield* Database.Database
 			const outboxRepo = yield* MessageOutboxRepo
@@ -113,14 +112,14 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 
 				yield* Effect.gen(function* () {
 					for (const event of batch) {
-						const result = yield* processEvent(event).pipe(Effect.either)
-						if (result._tag === "Right") {
+						const result = yield* processEvent(event).pipe(Effect.result)
+						if (result._tag === "Success") {
 							yield* outboxRepo.markProcessed(event.id)
 							continue
 						}
 
 						const nextAttempt = event.attemptCount + 1
-						const errorMessage = String(result.left)
+						const errorMessage = String(result.failure)
 
 						if (nextAttempt >= OUTBOX_FAILURE_LIMIT) {
 							yield* outboxRepo.markFailed(event.id, {
@@ -157,7 +156,7 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 						}
 					}).pipe(
 						Effect.provideService(Database.Database, database),
-						Effect.catchAll((error) =>
+						Effect.catch((error) =>
 							Effect.gen(function* () {
 								yield* Effect.logError("Message outbox batch failed", {
 									workerId,
@@ -171,21 +170,21 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 				)
 			})
 
-			const campaignForLeadership = (): Effect.Effect<void, never, never> =>
+			const campaignForLeadership = (): Effect.Effect<void, never, unknown> =>
 				Effect.gen(function* () {
 					const reservedResult = yield* Effect.tryPromise({
 						try: (): Promise<PoolClient> => pool.connect(),
 						catch: (cause) => new Error(String(cause)),
-					}).pipe(Effect.either)
+					}).pipe(Effect.result)
 
-					if (reservedResult._tag === "Left") {
+					if (reservedResult._tag === "Failure") {
 						yield* Effect.logError("Failed to reserve outbox advisory lock connection", {
-							error: String(reservedResult.left),
+							error: String(reservedResult.failure),
 						})
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
 						return yield* campaignForLeadership()
 					}
-					const reserved = reservedResult.right
+					const reserved = reservedResult.success
 
 					const lockResult = yield* Effect.tryPromise({
 						try: () =>
@@ -193,18 +192,18 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 								OUTBOX_DISPATCHER_LOCK_KEY,
 							]),
 						catch: (cause) => new Error(String(cause)),
-					}).pipe(Effect.either)
+					}).pipe(Effect.result)
 
-					if (lockResult._tag === "Left") {
+					if (lockResult._tag === "Failure") {
 						yield* Effect.logError("Failed to acquire outbox advisory lock", {
-							error: String(lockResult.left),
+							error: String(lockResult.failure),
 						})
 						yield* Effect.sync(() => reserved.release())
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
 						return yield* campaignForLeadership()
 					}
 
-					const lockRows = lockResult.right as { rows: Array<{ locked: boolean }> }
+					const lockRows = lockResult.success as { rows: Array<{ locked: boolean }> }
 					if (!lockRows.rows[0]?.locked) {
 						yield* Effect.sync(() => reserved.release())
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
@@ -217,7 +216,7 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 
 					yield* runLeaderLoop.pipe(
 						Effect.ensuring(releaseReservedConnection(reserved)),
-						Effect.catchAllCause((cause) =>
+						Effect.catchCause((cause) =>
 							Effect.logError("Message outbox dispatcher leader loop stopped", {
 								workerId,
 								cause: String(cause),
@@ -236,4 +235,11 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
+		Layer.provide(EnvVars.layer),
+		Layer.provide(MessageOutboxRepo.layer),
+		Layer.provide(MessageSideEffectService.layer),
+	)
+}

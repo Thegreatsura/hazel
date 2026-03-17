@@ -1,16 +1,19 @@
-import { and, Database, eq, inArray, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, lt, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommandRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.botCommandsTable, BotCommand.Model, {
-			idColumn: "id",
-			name: "BotCommand",
-		})
+export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCommandRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
+			schema.botCommandsTable,
+			{ insert: BotCommand.Insert, update: BotCommand.Update },
+			{
+				idColumn: "id",
+				name: "BotCommand",
+			},
+		)
 		const db = yield* Database.Database
 
 		// Find all commands for a bot
@@ -77,7 +80,7 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 							.limit(1),
 					),
 				)({ botId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Upsert command (for bot sync)
 		const upsert = (
@@ -159,4 +162,6 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			deleteStaleCommands,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

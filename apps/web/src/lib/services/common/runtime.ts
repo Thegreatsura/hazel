@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Layer, ManagedRuntime } from "effect"
 import { ApiClient } from "./api-client"
 import { HazelRpcClient } from "./rpc-atom-client"
@@ -15,7 +15,7 @@ import { TracerLive } from "./telemetry"
  *
  * All RPC clients share the same WebSocket connection via RpcProtocolLive.
  */
-export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.layer, TracerLive)
+export const runtimeLayer = Layer.mergeAll(ApiClient.layer, HazelRpcClient.layer, TracerLive)
 
 /**
  * Managed runtime for imperative Effect execution
@@ -28,4 +28,4 @@ export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.lay
  *
  * Used by collections.ts and other imperative code that calls runtime.runPromise().
  */
-export const runtime = ManagedRuntime.make(runtimeLayer, Atom.defaultMemoMap)
+export const runtime = ManagedRuntime.make(runtimeLayer, { memoMap: Atom.defaultMemoMap })

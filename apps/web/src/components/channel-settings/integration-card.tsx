@@ -1,8 +1,9 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { formatDistanceToNow } from "date-fns"
 import { useState } from "react"
 import { toast } from "sonner"
+import { toDate } from "~/lib/utils"
 import {
 	createChannelWebhookMutation,
 	deleteChannelWebhookMutation,
@@ -266,7 +267,7 @@ export function IntegrationCard({ provider, channelId, webhook, onWebhookChange 
 						{webhook.lastUsedAt && (
 							<p className="text-muted-fg text-xs">
 								Last alert{" "}
-								{formatDistanceToNow(new Date(webhook.lastUsedAt), { addSuffix: true })}
+								{formatDistanceToNow(toDate(webhook.lastUsedAt), { addSuffix: true })}
 							</p>
 						)}
 					</div>

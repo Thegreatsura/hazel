@@ -163,9 +163,9 @@ export const remapGuestMountInsertConflict = ({
 }
 
 function remapPermissionError<A, E, R>(
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R> {
-	return Effect.catchIf(effect, PermissionError.is, (err) =>
+	return Effect.catchIf(make, PermissionError.is, (err) =>
 		Effect.fail(
 			new UnauthorizedError({
 				message: err.message,
@@ -202,8 +202,8 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 				return
 			}
 
-			const hostAttempt = yield* requireAdminOrOwner(hostOrganizationId).pipe(Effect.either)
-			if (hostAttempt._tag === "Right") return
+			const hostAttempt = yield* requireAdminOrOwner(hostOrganizationId).pipe(Effect.result)
+			if (hostAttempt._tag === "Success") return
 
 			yield* requireAdminOrOwner(targetOrganizationId)
 		})

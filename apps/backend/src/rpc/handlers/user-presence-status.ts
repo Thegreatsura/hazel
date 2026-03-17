@@ -1,7 +1,7 @@
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { UserPresenceStatusRpcs } from "@hazel/domain/rpc"
+import { UserPresenceStatusResponse, UserPresenceStatusRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPresenceStatusPolicy } from "../../policies/user-presence-status-policy"
@@ -9,6 +9,8 @@ import { UserPresenceStatusPolicy } from "../../policies/user-presence-status-po
 export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const userPresenceStatusPolicy = yield* UserPresenceStatusPolicy
+		const userPresenceStatusRepo = yield* UserPresenceStatusRepo
 
 		return {
 			"userPresenceStatus.update": (payload) =>
@@ -17,13 +19,13 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* UserPresenceStatusPolicy.canRead()
-							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id)
+							yield* userPresenceStatusPolicy.canRead()
+							const existingOption = yield* userPresenceStatusRepo.findByUserId(user.id)
 
 							const existing = Option.getOrNull(existingOption)
 
 							const now = new Date()
-							const updatedStatus = yield* UserPresenceStatusRepo.upsertByUserId({
+							const updatedStatus = yield* userPresenceStatusRepo.upsertByUserId({
 								userId: user.id,
 								status: (payload.status ?? existing?.status ?? "online") as
 									| "online"
@@ -57,10 +59,10 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserPresenceStatusResponse({
 								data: updatedStatus!,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),
@@ -71,13 +73,13 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* UserPresenceStatusPolicy.canUpdate()
-							const result = yield* UserPresenceStatusRepo.updateHeartbeat(user.id)
+							yield* userPresenceStatusPolicy.canUpdate()
+							const result = yield* userPresenceStatusRepo.updateHeartbeat(user.id)
 
 							// If no record exists, create one with online status
 							if (Option.isNone(result)) {
 								const now = new Date()
-								yield* UserPresenceStatusRepo.upsertByUserId({
+								yield* userPresenceStatusRepo.upsertByUserId({
 									userId: user.id,
 									status: "online",
 									customMessage: null,
@@ -103,14 +105,14 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* UserPresenceStatusPolicy.canRead()
-							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id)
+							yield* userPresenceStatusPolicy.canRead()
+							const existingOption = yield* userPresenceStatusRepo.findByUserId(user.id)
 
 							const existing = Option.getOrNull(existingOption)
 
 							const now = new Date()
-							yield* UserPresenceStatusPolicy.canCreate()
-							const updatedStatus = yield* UserPresenceStatusRepo.upsertByUserId({
+							yield* userPresenceStatusPolicy.canCreate()
+							const updatedStatus = yield* userPresenceStatusRepo.upsertByUserId({
 								userId: user.id,
 								status: existing?.status ?? "online",
 								customMessage: null,
@@ -124,10 +126,10 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserPresenceStatusResponse({
 								data: updatedStatus!,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),

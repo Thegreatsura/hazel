@@ -1,18 +1,18 @@
 import { Discord } from "@hazel/integrations"
-import { Config, Effect, Option, Redacted, Schema, Schedule } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema, Schedule } from "effect"
 import {
 	type ChatSyncOutboundAttachment,
 	formatMessageContentWithAttachments,
 } from "./chat-sync-attachment-content"
 
-export class ChatSyncProviderNotSupportedError extends Schema.TaggedError<ChatSyncProviderNotSupportedError>()(
+export class ChatSyncProviderNotSupportedError extends Schema.TaggedErrorClass<ChatSyncProviderNotSupportedError>()(
 	"ChatSyncProviderNotSupportedError",
 	{
 		provider: Schema.String,
 	},
 ) {}
 
-export class ChatSyncProviderConfigurationError extends Schema.TaggedError<ChatSyncProviderConfigurationError>()(
+export class ChatSyncProviderConfigurationError extends Schema.TaggedErrorClass<ChatSyncProviderConfigurationError>()(
 	"ChatSyncProviderConfigurationError",
 	{
 		provider: Schema.String,
@@ -20,7 +20,7 @@ export class ChatSyncProviderConfigurationError extends Schema.TaggedError<ChatS
 	},
 ) {}
 
-export class ChatSyncProviderApiError extends Schema.TaggedError<ChatSyncProviderApiError>()(
+export class ChatSyncProviderApiError extends Schema.TaggedErrorClass<ChatSyncProviderApiError>()(
 	"ChatSyncProviderApiError",
 	{
 		provider: Schema.String,
@@ -75,7 +75,7 @@ const DISCORD_MAX_MESSAGE_LENGTH = 2000
 const DISCORD_SNOWFLAKE_MIN_LENGTH = 17
 const DISCORD_SNOWFLAKE_MAX_LENGTH = 30
 const DISCORD_THREAD_NAME_MAX_LENGTH = 100
-const DISCORD_SYNC_RETRY_SCHEDULE = Schedule.intersect(
+const DISCORD_SYNC_RETRY_SCHEDULE = Schedule.both(
 	Schedule.exponential("250 millis").pipe(Schedule.jittered),
 	Schedule.recurs(3),
 )
@@ -85,16 +85,17 @@ const isDiscordSnowflake = (value: string): boolean =>
 	value.length >= DISCORD_SNOWFLAKE_MIN_LENGTH &&
 	value.length <= DISCORD_SNOWFLAKE_MAX_LENGTH
 
-export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderRegistry>()(
+export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProviderRegistry>()(
 	"ChatSyncProviderRegistry",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const discordApiClient = yield* Discord.DiscordApiClient
 
+			// Read config once at service initialization to avoid ConfigError leaking into adapter methods
+			const discordBotTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
+
 			const getDiscordToken = Effect.fn("ChatSyncProviderRegistry.getDiscordToken")(function* () {
-				const discordBotToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
-				if (Option.isNone(discordBotToken)) {
+				if (Option.isNone(discordBotTokenOption)) {
 					return yield* Effect.fail(
 						new ChatSyncProviderConfigurationError({
 							provider: "discord",
@@ -102,7 +103,7 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						}),
 					)
 				}
-				return Redacted.value(discordBotToken.value)
+				return Redacted.value(discordBotTokenOption.value)
 			})
 
 			const getStatusCode = (error: unknown): number | undefined => {
@@ -423,7 +424,7 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 			} as const satisfies Record<string, ChatSyncProviderAdapter>
 
 			const getAdapter = Effect.fn("ChatSyncProviderRegistry.getAdapter")(function* (provider: string) {
-				const adapter = Option.fromNullable(adapters[provider as keyof typeof adapters])
+				const adapter = Option.fromNullishOr(adapters[provider as keyof typeof adapters])
 				return yield* Option.match(adapter, {
 					onNone: () =>
 						Effect.fail(
@@ -437,6 +438,7 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 
 			return { getAdapter }
 		}),
-		dependencies: [Discord.DiscordApiClient.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(Discord.DiscordApiClient.layer))
+}

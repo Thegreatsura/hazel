@@ -1,13 +1,13 @@
 import { Schema } from "effect"
 
-export class StreamIdleTimeoutError extends Schema.TaggedError<StreamIdleTimeoutError>()(
+export class StreamIdleTimeoutError extends Schema.TaggedErrorClass<StreamIdleTimeoutError>()(
 	"StreamIdleTimeoutError",
 	{
 		message: Schema.String,
 	},
 ) {}
 
-export class DegenerateOutputError extends Schema.TaggedError<DegenerateOutputError>()(
+export class DegenerateOutputError extends Schema.TaggedErrorClass<DegenerateOutputError>()(
 	"DegenerateOutputError",
 	{
 		message: Schema.String,
@@ -16,13 +16,16 @@ export class DegenerateOutputError extends Schema.TaggedError<DegenerateOutputEr
 	},
 ) {}
 
-export class IterationTimeoutError extends Schema.TaggedError<IterationTimeoutError>()(
+export class IterationTimeoutError extends Schema.TaggedErrorClass<IterationTimeoutError>()(
 	"IterationTimeoutError",
 	{
 		message: Schema.String,
 	},
 ) {}
 
-export class SessionTimeoutError extends Schema.TaggedError<SessionTimeoutError>()("SessionTimeoutError", {
-	message: Schema.String,
-}) {}
+export class SessionTimeoutError extends Schema.TaggedErrorClass<SessionTimeoutError>()(
+	"SessionTimeoutError",
+	{
+		message: Schema.String,
+	},
+) {}

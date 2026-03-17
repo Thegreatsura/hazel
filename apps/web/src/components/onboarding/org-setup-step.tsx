@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { type } from "arktype"
 import { Exit } from "effect"
 import { createOrganizationMutation } from "~/atoms/organization-atoms"
@@ -75,9 +75,9 @@ export function OrgSetupStep({
 				},
 			})
 			exitToast(exit)
-				.onErrorTag("OrganizationSlugAlreadyExistsError", (error) => ({
+				.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({
 					title: "Slug already taken",
-					description: `The slug "${error.slug}" is already in use. Please choose a different one.`,
+					description: "That workspace URL is already in use. Please choose a different one.",
 					isRetryable: false,
 				}))
 				.run()

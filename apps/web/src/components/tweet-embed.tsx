@@ -1,4 +1,5 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { User } from "@hazel/domain/models"
 import { useState } from "react"
 import { type EnrichedTweet, enrichTweet } from "react-tweet"
@@ -231,14 +232,14 @@ function TweetMetrics({ tweet }: { tweet: EnrichedTweet }) {
 
 interface TweetEmbedProps {
 	id: string
-	author?: typeof User.Model.Type
+	author?: User.Type
 	messageCreatedAt?: number
 }
 
 export function TweetEmbed({ id, author, messageCreatedAt }: TweetEmbedProps) {
-	const tweetResult = useAtomValue(LinkPreviewClient.query("tweet", "get", { urlParams: { id } }))
-	const tweet = Result.getOrElse(tweetResult, () => null)
-	const isLoading = Result.isInitial(tweetResult)
+	const tweetResult = useAtomValue(LinkPreviewClient.query("tweet", "get", { payload: { id } }))
+	const tweet = AsyncResult.getOrElse(tweetResult, () => null)
+	const isLoading = AsyncResult.isInitial(tweetResult)
 
 	const [isModalOpen, setIsModalOpen] = useState(false)
 	const [selectedImageIndex, setSelectedImageIndex] = useState(0)

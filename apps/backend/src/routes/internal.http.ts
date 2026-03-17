@@ -1,6 +1,8 @@
-import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest } from "effect/unstable/http"
 import { BotRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, UnauthorizedError } from "@hazel/domain"
+import { ValidateBotTokenResponse } from "@hazel/domain/http"
 import { Config, Effect, Option } from "effect"
 import { HazelApi } from "../api"
 
@@ -21,10 +23,10 @@ export const HttpInternalLive = HttpApiBuilder.group(HazelApi, "internal", (hand
 			const request = yield* HttpServerRequest.HttpServerRequest
 
 			// Optionally verify internal secret for server-to-server auth
-			const internalSecret = yield* Config.string("INTERNAL_SECRET").pipe(
-				Effect.option,
-				Effect.map(Option.getOrUndefined),
+			const internalSecretOption = yield* Effect.orDie(
+				Config.string("INTERNAL_SECRET").pipe(Config.option).asEffect(),
 			)
+			const internalSecret = Option.getOrUndefined(internalSecretOption)
 
 			if (internalSecret) {
 				const providedSecret = request.headers["x-internal-secret"]
@@ -78,12 +80,12 @@ export const HttpInternalLive = HttpApiBuilder.group(HazelApi, "internal", (hand
 			const bot = botOption.value
 
 			// Return the bot identity for actor authentication
-			return {
+			return new ValidateBotTokenResponse({
 				userId: bot.userId,
 				botId: bot.id,
 				organizationId: null, // Bot's org is determined by where it's installed, not stored on the bot itself
 				scopes: bot.scopes,
-			}
+			})
 		}),
 	),
 )

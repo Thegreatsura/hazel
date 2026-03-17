@@ -65,10 +65,10 @@ export interface StreamSession {
 	): Effect.Effect<void, ActorOperationError>
 
 	/** Mark the stream as completed */
-	complete(finalData?: Record<string, unknown>): Effect.Effect<void, ActorOperationError>
+	complete(finalData?: Record<string, unknown>): Effect.Effect<void, ActorOperationError, unknown>
 
 	/** Mark the stream as failed */
-	fail(error: string): Effect.Effect<void, ActorOperationError>
+	fail(error: string): Effect.Effect<void, ActorOperationError, unknown>
 }
 
 /**
@@ -131,7 +131,7 @@ export const ToolCallChunk = Schema.Struct({
 	type: Schema.Literal("tool_call"),
 	id: Schema.String,
 	name: Schema.String,
-	input: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	input: Schema.Record(Schema.String, Schema.Unknown),
 })
 export type ToolCallChunk = Schema.Schema.Type<typeof ToolCallChunk>
 
@@ -168,7 +168,7 @@ export type ToolResultChunk = Schema.Schema.Type<typeof ToolResultChunk>
  * }
  * ```
  */
-export const AIContentChunk = Schema.Union(TextChunk, ThinkingChunk, ToolCallChunk, ToolResultChunk)
+export const AIContentChunk = Schema.Union([TextChunk, ThinkingChunk, ToolCallChunk, ToolResultChunk])
 export type AIContentChunk = Schema.Schema.Type<typeof AIContentChunk>
 
 /**

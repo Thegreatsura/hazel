@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
@@ -26,7 +26,7 @@ import { exitToast } from "~/lib/toast-exit"
 import { AddGitHubSubscriptionModal } from "./add-github-subscription-modal"
 import { EditGitHubSubscriptionModal } from "./edit-github-subscription-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface GitHubSubscriptionsSectionProps {
 	organizationId: OrganizationId

@@ -1,8 +1,9 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
+import { toDate } from "~/lib/utils"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { listOrganizationWebhooksMutation, type WebhookData } from "~/atoms/channel-webhook-atoms"
@@ -17,7 +18,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { ConfigureOpenStatusModal } from "./configure-openstatus-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface OpenStatusIntegrationContentProps {
 	organizationId: OrganizationId
@@ -286,7 +287,7 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 										</div>
 										<p className="text-muted-fg text-xs">
 											{webhook.lastUsedAt
-												? `Last alert ${formatDistanceToNow(new Date(webhook.lastUsedAt), { addSuffix: true })}`
+												? `Last alert ${formatDistanceToNow(toDate(webhook.lastUsedAt), { addSuffix: true })}`
 												: "No alerts received yet"}
 										</p>
 									</div>

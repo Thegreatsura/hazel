@@ -6,7 +6,7 @@
 
 import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { TokenNotFoundError, TokenStoreError, TauriNotAvailableError } from "@hazel/domain/errors"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 type StoreInstance = Awaited<ReturnType<TauriStoreApi["load"]>>
 
@@ -48,9 +48,8 @@ const getStore = Effect.gen(function* () {
 	})
 })
 
-export class TokenStorage extends Effect.Service<TokenStorage>()("TokenStorage", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class TokenStorage extends ServiceMap.Service<TokenStorage>()("TokenStorage", {
+	make: Effect.gen(function* () {
 		return {
 			/**
 			 * Store all auth tokens in Tauri store
@@ -104,7 +103,7 @@ export class TokenStorage extends Effect.Service<TokenStorage>()("TokenStorage",
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -121,7 +120,7 @@ export class TokenStorage extends Effect.Service<TokenStorage>()("TokenStorage",
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -138,7 +137,7 @@ export class TokenStorage extends Effect.Service<TokenStorage>()("TokenStorage",
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(expiresAt)
+				return Option.fromNullishOr(expiresAt)
 			}),
 
 			/**
@@ -233,6 +232,8 @@ export class TokenStorage extends Effect.Service<TokenStorage>()("TokenStorage",
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	/**
 	 * Mock token data for testing
 	 */

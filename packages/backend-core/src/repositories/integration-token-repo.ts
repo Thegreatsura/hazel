@@ -1,15 +1,14 @@
-import { Database, eq, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { Database, eq, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class IntegrationTokenRepo extends ServiceMap.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.integrationTokensTable,
-			IntegrationToken.Model,
+			{ insert: IntegrationToken.Insert, update: IntegrationToken.Update },
 			{
 				idColumn: "id",
 				name: "IntegrationToken",
@@ -29,7 +28,7 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 							.limit(1),
 					),
 				)({ connectionId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Update token (for refresh)
 		const updateToken = (
@@ -95,4 +94,6 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 			deleteByConnectionId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

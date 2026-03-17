@@ -1,16 +1,15 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId } from "@hazel/schema"
 import { ConnectConversation } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ConnectConversationRepo extends Effect.Service<ConnectConversationRepo>()(
+export class ConnectConversationRepo extends ServiceMap.Service<ConnectConversationRepo>()(
 	"ConnectConversationRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.connectConversationsTable,
-				ConnectConversation.Model,
+				{ insert: ConnectConversation.Insert, update: ConnectConversation.Update },
 				{
 					idColumn: "id",
 					name: "ConnectConversation",
@@ -34,7 +33,7 @@ export class ConnectConversationRepo extends Effect.Service<ConnectConversationR
 								.limit(1),
 						),
 					)(hostChannelId, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			return {
 				...baseRepo,
@@ -42,4 +41,6 @@ export class ConnectConversationRepo extends Effect.Service<ConnectConversationR
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

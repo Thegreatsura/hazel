@@ -1,4 +1,5 @@
-import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { normalizeHotkey, validateHotkey, type Hotkey } from "@tanstack/react-hotkeys"
 import { Schema } from "effect"
 import { useCallback } from "react"
@@ -11,10 +12,7 @@ import {
 } from "~/lib/hotkeys/hotkey-registry"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
-const HotkeyOverridesSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.String,
-})
+const HotkeyOverridesSchema = Schema.Record(Schema.String, Schema.String)
 
 type HotkeyOverrides = typeof HotkeyOverridesSchema.Type
 
@@ -35,7 +33,7 @@ export interface ResolvedHotkeyDefinition extends AppHotkeyDefinition {
 export const hotkeyOverridesAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-hotkey-overrides",
-	schema: HotkeyOverridesSchema,
+	schema: Schema.toCodecIso(HotkeyOverridesSchema),
 	defaultValue: () => ({}) as HotkeyOverrides,
 }).pipe(Atom.keepAlive)
 

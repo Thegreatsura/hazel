@@ -1,14 +1,12 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
-import { Schema } from "effect"
+import { Schema, ServiceMap } from "effect"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type { ParseError } from "effect/ParseResult"
 import * as Redacted from "effect/Redacted"
-import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import postgres from "postgres"
 import * as schema from "../schema"
@@ -31,19 +29,18 @@ export interface TransactionService {
 	readonly execute: TxFn
 }
 
-export class TransactionContext extends Effect.Tag("TransactionContext")<
-	TransactionContext,
-	TransactionService
->() {}
+export class TransactionContext extends ServiceMap.Service<TransactionContext, TransactionService>()(
+	"TransactionContext",
+) {}
 
-const DatabaseErrorType = Schema.Literal(
+const DatabaseErrorType = Schema.Literals([
 	"unique_violation",
 	"foreign_key_violation",
 	"connection_error",
 	"query_error",
-)
+])
 
-export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
+export class DatabaseError extends Schema.TaggedErrorClass<DatabaseError>()("DatabaseError", {
 	type: DatabaseErrorType,
 	cause: Schema.Unknown,
 }) {
@@ -72,7 +69,7 @@ const matchPgError = (error: unknown) => {
 	return null
 }
 
-export class DatabaseConnectionLostError extends Schema.TaggedError<DatabaseConnectionLostError>()(
+export class DatabaseConnectionLostError extends Schema.TaggedErrorClass<DatabaseConnectionLostError>()(
 	"DatabaseConnectionLostError",
 	{
 		cause: Schema.Unknown,
@@ -108,8 +105,8 @@ const makeService = (config: Config) =>
 
 		yield* Effect.tryPromise(() => sql`SELECT 1`).pipe(
 			Effect.retry(
-				Schedule.jitteredWith(Schedule.spaced("1.25 seconds"), { min: 0.5, max: 1.5 }).pipe(
-					Schedule.intersect(Schedule.recurs(10)),
+				Schedule.jittered(Schedule.spaced("1.25 seconds")).pipe(
+					Schedule.both(Schedule.recurs(10)),
 					Schedule.tapOutput(([output]) =>
 						Effect.logWarning(
 							`[Database client]: Connection to the database failed. Retrying (attempt ${output}).`,
@@ -137,10 +134,10 @@ const makeService = (config: Config) =>
 		)
 
 		const transaction = Effect.fn("Database.transaction")(<T, E, R>(effect: Effect.Effect<T, E, R>) =>
-			Effect.runtime<R>().pipe(
-				Effect.map((runtime) => Runtime.runPromiseExit(runtime)),
+			Effect.services<R>().pipe(
+				Effect.map((services) => Effect.runPromiseExitWith(services)),
 				Effect.flatMap((runPromiseExit) =>
-					Effect.async<T, DatabaseError | E, R>((resume) => {
+					Effect.callback<T, DatabaseError | E, R>((resume) => {
 						db.transaction(async (tx: TransactionClient) => {
 							const txWrapper: TxFn = (fn: (client: TransactionClient) => Promise<any>) =>
 								Effect.tryPromise({
@@ -175,13 +172,13 @@ const makeService = (config: Config) =>
 			),
 		)
 
-		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, R>(
+		const makeQueryWithSchema = <InputSchema extends Schema.Top, A, E, R>(
 			inputSchema: InputSchema,
 			queryFn: (
 				execute: <T>(
 					fn: (client: Client | TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-				validatedInput: Schema.Schema.Type<InputSchema>,
+				validatedInput: InputSchema["Type"],
 				options?: { spanPrefix?: string },
 			) => Effect.Effect<A, E, never>,
 		) => {
@@ -190,9 +187,9 @@ const makeService = (config: Config) =>
 				tx?: <T>(
 					fn: (client: TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-			): Effect.Effect<A, E | DatabaseError | ParseError, R> => {
+			): Effect.Effect<A, E | DatabaseError | Schema.SchemaError, R> => {
 				return Effect.gen(function* () {
-					const validatedInput = yield* Schema.decode(inputSchema)(rawData)
+					const validatedInput = yield* Schema.decodeUnknownEffect(inputSchema)(rawData)
 
 					if (tx) {
 						return yield* queryFn(tx, validatedInput)
@@ -208,7 +205,7 @@ const makeService = (config: Config) =>
 					Effect.withSpan("queryWithSchema", {
 						attributes: { "input.schema": inputSchema.ast.toString() },
 					}),
-				)
+				) as Effect.Effect<A, E | DatabaseError | Schema.SchemaError, R>
 			}
 		}
 
@@ -257,8 +254,8 @@ const makeService = (config: Config) =>
 		} as const
 	})
 
-type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
+type Shape = Effect.Success<ReturnType<typeof makeService>>
 
-export class Database extends Effect.Tag("Database")<Database, Shape>() {}
+export class Database extends ServiceMap.Service<Database, Shape>()("Database") {}
 
-export const layer = (config: Config) => Layer.scoped(Database, makeService(config))
+export const layer = (config: Config) => Layer.effect(Database, makeService(config))

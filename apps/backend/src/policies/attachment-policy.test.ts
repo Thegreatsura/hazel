@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { AttachmentRepo, ChannelMemberRepo, ChannelRepo, MessageRepo } from "@hazel/backend-core"
 import type { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { AttachmentPolicy } from "./attachment-policy.ts"
 import {
 	makeActor,
@@ -9,76 +9,92 @@ import {
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const ATTACHMENT_ID = "00000000-0000-0000-0000-000000000831" as AttachmentId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000832" as MessageId
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000833" as ChannelId
-const OTHER_USER_ID = "00000000-0000-0000-0000-000000000834" as UserId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000835" as UserId
-const MESSAGE_AUTHOR_ID = "00000000-0000-0000-0000-000000000836" as UserId
+const ATTACHMENT_ID = "00000000-0000-4000-8000-000000000831" as AttachmentId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000832" as MessageId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000833" as ChannelId
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000834" as UserId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000835" as UserId
+const MESSAGE_AUTHOR_ID = "00000000-0000-4000-8000-000000000836" as UserId
 
 const makeAttachmentRepoLayer = (
 	attachments: Record<string, { uploadedBy: UserId; messageId: MessageId | null }>,
 ) =>
-	Layer.succeed(AttachmentRepo, {
-		with: <A, E, R>(
-			id: AttachmentId,
-			f: (attachment: { uploadedBy: UserId; messageId: MessageId | null }) => Effect.Effect<A, E, R>,
-		) => {
-			const attachment = attachments[id]
-			if (!attachment) {
-				return Effect.fail(makeEntityNotFound("Attachment"))
-			}
-			return f(attachment)
-		},
-	} as unknown as AttachmentRepo)
+	Layer.succeed(
+		AttachmentRepo,
+		serviceShape<typeof AttachmentRepo>({
+			with: <A, E, R>(
+				id: AttachmentId,
+				f: (attachment: {
+					uploadedBy: UserId
+					messageId: MessageId | null
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const attachment = attachments[id]
+				if (!attachment) {
+					return Effect.fail(makeEntityNotFound("Attachment"))
+				}
+				return f(attachment)
+			},
+		}),
+	)
 
 const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, {
-		with: <A, E, R>(
-			id: MessageId,
-			f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
-		) => {
-			const message = messages[id]
-			if (!message) {
-				return Effect.fail(makeEntityNotFound("Message"))
-			}
-			return f(message)
-		},
-	} as unknown as MessageRepo)
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			with: <A, E, R>(
+				id: MessageId,
+				f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
+			) => {
+				const message = messages[id]
+				if (!message) {
+					return Effect.fail(makeEntityNotFound("Message"))
+				}
+				return f(message)
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (
 	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
-	Layer.succeed(ChannelRepo, {
-		with: <A, E, R>(
-			id: ChannelId,
-			f: (channel: {
-				organizationId: OrganizationId
-				type: string
-				id: ChannelId
-			}) => Effect.Effect<A, E, R>,
-		) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	} as unknown as ChannelRepo)
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			with: <A, E, R>(
+				id: ChannelId,
+				f: (channel: {
+					organizationId: OrganizationId
+					type: string
+					id: ChannelId
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 const makeChannelMemberRepoLayer = (memberships: Record<string, boolean>) =>
-	Layer.succeed(ChannelMemberRepo, {
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			return Effect.succeed(memberships[key] ? Option.some({ channelId, userId }) : Option.none())
-		},
-	} as unknown as ChannelMemberRepo)
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				return Effect.succeed(memberships[key] ? Option.some({ channelId, userId }) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (opts: {
 	members?: Record<string, Role>
@@ -87,7 +103,7 @@ const makePolicyLayer = (opts: {
 	channels?: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>
 	channelMemberships?: Record<string, boolean>
 }) =>
-	AttachmentPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(AttachmentPolicy, AttachmentPolicy.make).pipe(
 		Layer.provide(makeAttachmentRepoLayer(opts.attachments ?? {})),
 		Layer.provide(makeMessageRepoLayer(opts.messages ?? {})),
 		Layer.provide(makeChannelRepoLayer(opts.channels ?? {})),
@@ -101,8 +117,12 @@ describe("AttachmentPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({})
 
-		const result = await runWithActorEither(AttachmentPolicy.canCreate(), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canCreate()),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows uploader", async () => {
@@ -113,8 +133,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canUpdate(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canUpdate(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-uploader", async () => {
@@ -125,8 +149,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canUpdate(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canUpdate(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete without messageId allows uploader", async () => {
@@ -137,8 +165,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete without messageId denies other user", async () => {
@@ -149,8 +181,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows uploader", async () => {
@@ -167,8 +203,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows message author", async () => {
@@ -185,8 +225,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows org admin", async () => {
@@ -206,8 +250,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId denies random user", async () => {
@@ -227,8 +275,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canView without messageId allows uploader", async () => {
@@ -239,8 +291,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView without messageId denies other user", async () => {
@@ -251,8 +307,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canView with public channel allows org member", async () => {
@@ -272,8 +332,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel allows admin", async () => {
@@ -293,8 +357,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel allows channel member", async () => {
@@ -314,8 +382,12 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel denies non-member non-admin", async () => {
@@ -335,7 +407,11 @@ describe("AttachmentPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		const result = await runWithActorEither(
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
+			layer,
+			actor,
+		)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

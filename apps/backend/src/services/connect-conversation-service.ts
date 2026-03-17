@@ -8,25 +8,15 @@ import {
 } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
+import { DatabaseLive } from "./database"
 import { OrgResolver } from "./org-resolver"
 
-export class ConnectConversationService extends Effect.Service<ConnectConversationService>()(
+export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
 	"ConnectConversationService",
 	{
-		accessors: true,
-		dependencies: [
-			ChannelRepo.Default,
-			ConnectParticipantRepo.Default,
-			ConnectConversationRepo.Default,
-			ConnectConversationChannelRepo.Default,
-			MessageRepo.Default,
-			MessageReactionRepo.Default,
-			ChannelAccessSyncService.Default,
-			OrgResolver.Default,
-		],
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const channelRepo = yield* ChannelRepo
 			const connectParticipantRepo = yield* ConnectParticipantRepo
 			const connectConversationRepo = yield* ConnectConversationRepo
@@ -72,7 +62,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 				)
 
 			const ensureChannelConversation = Effect.fn(
-				"ConnectConversationService.ensureChannelConversation",
+				"connectConversationService.ensureChannelConversation",
 			)(function* (channelId: ChannelId, createdBy: UserId) {
 				const existingMount = yield* connectConversationChannelRepo.findByChannelId(channelId)
 				if (Option.isSome(existingMount)) {
@@ -139,7 +129,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			})
 
 			const getConversationIdForChannel = Effect.fn(
-				"ConnectConversationService.getConversationIdForChannel",
+				"connectConversationService.getConversationIdForChannel",
 			)(function* (channelId: ChannelId) {
 				const mount = yield* connectConversationChannelRepo.findByChannelId(channelId)
 				if (Option.isSome(mount)) {
@@ -169,8 +159,8 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 					for (const mount of mounts) {
 						const attempt = yield* orgResolver
 							.fromChannelWithAccess(mount.channelId, scope, "ConnectConversation", "read")
-							.pipe(Effect.either)
-						if (attempt._tag === "Right") {
+							.pipe(Effect.result)
+						if (attempt._tag === "Success") {
 							return true
 						}
 					}
@@ -179,7 +169,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			)
 
 			const addParticipantToConversation = Effect.fn(
-				"ConnectConversationService.addParticipantToConversation",
+				"connectConversationService.addParticipantToConversation",
 			)(function* (
 				conversationId: ConnectConversationId,
 				userId: UserId,
@@ -194,7 +184,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			})
 
 			const addParticipantsToConversation = Effect.fn(
-				"ConnectConversationService.addParticipantsToConversation",
+				"connectConversationService.addParticipantsToConversation",
 			)(function* (
 				conversationId: ConnectConversationId,
 				participants: ReadonlyArray<{
@@ -222,7 +212,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			})
 
 			const removeParticipantFromConversation = Effect.fn(
-				"ConnectConversationService.removeParticipantFromConversation",
+				"connectConversationService.removeParticipantFromConversation",
 			)(function* (conversationId: ConnectConversationId, userId: UserId) {
 				const participants = yield* connectParticipantRepo.listByConversation(conversationId)
 				const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
@@ -332,4 +322,16 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			} as const
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ConnectParticipantRepo.layer),
+		Layer.provide(ConnectConversationRepo.layer),
+		Layer.provide(ConnectConversationChannelRepo.layer),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(MessageReactionRepo.layer),
+		Layer.provide(ChannelAccessSyncService.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

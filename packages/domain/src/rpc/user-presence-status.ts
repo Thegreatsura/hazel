@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { UserPresenceStatusId } from "@hazel/schema"
@@ -15,7 +15,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class UserPresenceStatusResponse extends Schema.Class<UserPresenceStatusResponse>(
 	"UserPresenceStatusResponse",
 )({
-	data: UserPresenceStatus.Model.json,
+	data: UserPresenceStatus.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -23,7 +23,7 @@ export class UserPresenceStatusResponse extends Schema.Class<UserPresenceStatusR
  * Error thrown when a user presence status is not found.
  * Used in update operations.
  */
-export class UserPresenceStatusNotFoundError extends Schema.TaggedError<UserPresenceStatusNotFoundError>()(
+export class UserPresenceStatusNotFoundError extends Schema.TaggedErrorClass<UserPresenceStatusNotFoundError>()(
 	"UserPresenceStatusNotFoundError",
 	{
 		statusId: UserPresenceStatusId,
@@ -63,17 +63,15 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	 */
 	Rpc.make("userPresenceStatus.update", {
 		payload: Schema.Struct({
-			status: Schema.optional(UserPresenceStatus.Model.json.fields.status),
+			status: Schema.optional(UserPresenceStatus.Schema.fields.status),
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
 			statusEmoji: Schema.optional(Schema.NullOr(Schema.String)),
 			statusExpiresAt: Schema.optional(Schema.NullOr(JsonDate)),
-			activeChannelId: Schema.optional(
-				Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId),
-			),
+			activeChannelId: Schema.optional(Schema.NullOr(UserPresenceStatus.Schema.fields.activeChannelId)),
 			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),
 		success: UserPresenceStatusResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),
@@ -94,7 +92,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		success: Schema.Struct({
 			lastSeenAt: JsonDate,
 		}),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),
@@ -112,7 +110,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	Rpc.make("userPresenceStatus.clearStatus", {
 		payload: Schema.Struct({}),
 		success: UserPresenceStatusResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),

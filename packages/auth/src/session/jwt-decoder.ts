@@ -1,6 +1,5 @@
 import { InvalidJwtPayloadError, JwtPayload } from "@hazel/domain"
 import { Effect, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import { decodeJwt } from "jose"
 
 /**
@@ -10,12 +9,12 @@ export const decodeSessionJwt = (accessToken: string): Effect.Effect<JwtPayload,
 	return Effect.gen(function* () {
 		const rawPayload = decodeJwt(accessToken)
 
-		const payload = yield* Schema.decodeUnknown(JwtPayload)(rawPayload).pipe(
+		const payload = yield* Schema.decodeUnknownEffect(JwtPayload)(rawPayload).pipe(
 			Effect.mapError(
 				(error) =>
 					new InvalidJwtPayloadError({
 						message: "Invalid JWT payload from WorkOS",
-						detail: TreeFormatter.formatErrorSync(error),
+						detail: String(error),
 					}),
 			),
 		)

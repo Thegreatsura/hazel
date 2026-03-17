@@ -1,8 +1,9 @@
-import { ClusterWorkflowEngine } from "@effect/cluster"
-import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
+import { ClusterWorkflowEngine } from "effect/unstable/cluster"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpMiddleware, HttpRouter, HttpServer } from "effect/unstable/http"
 import { BunClusterSocket, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { PgClient } from "@effect/sql-pg"
-import { WorkflowProxyServer } from "@effect/workflow"
+import { WorkflowProxyServer } from "effect/unstable/workflow"
 import {
 	InvitationRepo,
 	OrganizationMemberRepo,
@@ -67,12 +68,12 @@ const AllWorkflows = Layer.mergeAll(
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps
-const WorkOSSyncLive = WorkOSSync.Default.pipe(
-	Layer.provide(WorkOSClient.Default),
-	Layer.provide(UserRepo.Default),
-	Layer.provide(OrganizationRepo.Default),
-	Layer.provide(OrganizationMemberRepo.Default),
-	Layer.provide(InvitationRepo.Default),
+const WorkOSSyncLive = WorkOSSync.layer.pipe(
+	Layer.provide(WorkOSClient.layer),
+	Layer.provide(UserRepo.layer),
+	Layer.provide(OrganizationRepo.layer),
+	Layer.provide(OrganizationMemberRepo.layer),
+	Layer.provide(InvitationRepo.layer),
 	Layer.provide(DatabaseLayer),
 )
 
@@ -87,23 +88,26 @@ const AllCronJobs = Layer.mergeAll(
 ).pipe(Layer.provide(WorkflowEngineLayer))
 
 // Workflow API implementation
-const WorkflowApiLive = HttpApiBuilder.api(Cluster.WorkflowApi).pipe(
+const WorkflowApiLive = HttpApiBuilder.layer(Cluster.WorkflowApi).pipe(
 	Layer.provide(WorkflowProxyServer.layerHttpApi(Cluster.WorkflowApi, "workflows", Cluster.workflows)),
 	Layer.provide(HealthLive),
-	HttpServer.withLogAddress,
 )
 
-// Main server layer with CORS enabled
-const ServerLayer = HttpApiBuilder.serve(
-	HttpMiddleware.cors({
-		allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
-		credentials: true,
-	}),
-).pipe(
-	Layer.provide(WorkflowApiLive),
+// All routes with CORS
+const AllRoutes = Layer.mergeAll(WorkflowApiLive).pipe(
+	Layer.provide(
+		HttpRouter.cors({
+			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
+			credentials: true,
+		}),
+	),
+)
+
+// Main server layer
+const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	Layer.provide(AllWorkflows),
 	Layer.provide(AllCronJobs),
-	Layer.provide(Logger.pretty),
+	Layer.provide(Logger.layer([Logger.consolePretty()])),
 	Layer.provide(
 		BunHttpServer.layerConfig(
 			Config.all({
@@ -115,6 +119,6 @@ const ServerLayer = HttpApiBuilder.serve(
 	),
 )
 
-Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer), Layer.provide(TracerLive))).pipe(
+ServerLayer.pipe(Layer.provide(WorkflowEngineLayer), Layer.provide(TracerLive), Layer.launch).pipe(
 	BunRuntime.runMain,
 )

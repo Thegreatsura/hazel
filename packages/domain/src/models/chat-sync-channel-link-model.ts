@@ -1,66 +1,61 @@
 import { ChannelId, ExternalChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncDirection = Schema.Literal("both", "hazel_to_external", "external_to_hazel")
-export type ChatSyncDirection = Schema.Schema.Type<typeof ChatSyncDirection>
+export const ChatSyncDirection = S.Literals(["both", "hazel_to_external", "external_to_hazel"])
+export type ChatSyncDirection = S.Schema.Type<typeof ChatSyncDirection>
 
-export const ChatSyncOutboundIdentityStrategy = Schema.Literal("webhook", "fallback_bot")
-export type ChatSyncOutboundIdentityStrategy = Schema.Schema.Type<typeof ChatSyncOutboundIdentityStrategy>
+export const ChatSyncOutboundIdentityStrategy = S.Literals(["webhook", "fallback_bot"])
+export type ChatSyncOutboundIdentityStrategy = S.Schema.Type<typeof ChatSyncOutboundIdentityStrategy>
 
-export const DiscordWebhookOutboundIdentityConfig = Schema.Struct({
-	kind: Schema.Literal("discord.webhook"),
-	webhookId: Schema.NonEmptyTrimmedString,
-	webhookToken: Schema.NonEmptyTrimmedString,
-	defaultAvatarUrl: Schema.optional(Schema.NonEmptyTrimmedString),
+export const DiscordWebhookOutboundIdentityConfig = S.Struct({
+	kind: S.Literal("discord.webhook"),
+	webhookId: S.NonEmptyString,
+	webhookToken: S.NonEmptyString,
+	defaultAvatarUrl: S.optional(S.NonEmptyString),
 })
-export type DiscordWebhookOutboundIdentityConfig = Schema.Schema.Type<
-	typeof DiscordWebhookOutboundIdentityConfig
->
+export type DiscordWebhookOutboundIdentityConfig = S.Schema.Type<typeof DiscordWebhookOutboundIdentityConfig>
 
-export const SlackWebhookOutboundIdentityConfig = Schema.Struct({
-	kind: Schema.Literal("slack.webhook"),
-	webhookUrl: Schema.NonEmptyTrimmedString,
-	defaultIconUrl: Schema.optional(Schema.NonEmptyTrimmedString),
+export const SlackWebhookOutboundIdentityConfig = S.Struct({
+	kind: S.Literal("slack.webhook"),
+	webhookUrl: S.NonEmptyString,
+	defaultIconUrl: S.optional(S.NonEmptyString),
 })
-export type SlackWebhookOutboundIdentityConfig = Schema.Schema.Type<typeof SlackWebhookOutboundIdentityConfig>
+export type SlackWebhookOutboundIdentityConfig = S.Schema.Type<typeof SlackWebhookOutboundIdentityConfig>
 
-export const ProviderOutboundConfig = Schema.Union(
+export const ProviderOutboundConfig = S.Union([
 	DiscordWebhookOutboundIdentityConfig,
 	SlackWebhookOutboundIdentityConfig,
-	Schema.Struct({
-		kind: Schema.NonEmptyTrimmedString,
+	S.Struct({
+		kind: S.NonEmptyString,
 	}),
-)
-export type ProviderOutboundConfig = Schema.Schema.Type<typeof ProviderOutboundConfig>
+])
+export type ProviderOutboundConfig = S.Schema.Type<typeof ProviderOutboundConfig>
 
-export const OutboundIdentityProviders = Schema.Record({
-	key: Schema.String,
-	value: ProviderOutboundConfig,
-})
+export const OutboundIdentityProviders = S.Record(S.String, ProviderOutboundConfig)
 
-export const OutboundIdentitySettings = Schema.Struct({
-	enabled: Schema.Boolean,
+export const OutboundIdentitySettings = S.Struct({
+	enabled: S.Boolean,
 	strategy: ChatSyncOutboundIdentityStrategy,
 	providers: OutboundIdentityProviders,
 })
-export type OutboundIdentitySettings = Schema.Schema.Type<typeof OutboundIdentitySettings>
+export type OutboundIdentitySettings = S.Schema.Type<typeof OutboundIdentitySettings>
 
-export class Model extends M.Class<Model>("ChatSyncChannelLink")({
+class Model extends M.Class<Model>("ChatSyncChannelLink")({
 	id: M.Generated(SyncChannelLinkId),
 	syncConnectionId: SyncConnectionId,
 	hazelChannelId: ChannelId,
 	externalChannelId: ExternalChannelId,
-	externalChannelName: Schema.NullOr(Schema.String),
+	externalChannelName: S.NullOr(S.String),
 	direction: ChatSyncDirection,
-	isActive: Schema.Boolean,
-	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
-	lastSyncedAt: Schema.NullOr(JsonDate),
+	isActive: S.Boolean,
+	settings: S.NullOr(S.Record(S.String, S.Unknown)),
+	lastSyncedAt: S.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),
-	updatedAt: M.Generated(Schema.NullOr(JsonDate)),
-	deletedAt: M.GeneratedByApp(Schema.NullOr(JsonDate)),
+	updatedAt: M.Generated(S.NullOr(JsonDate)),
+	deletedAt: M.GeneratedByApp(S.NullOr(JsonDate)),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

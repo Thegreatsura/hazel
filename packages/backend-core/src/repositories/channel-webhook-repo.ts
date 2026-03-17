@@ -1,15 +1,14 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { ChannelWebhook } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class ChannelWebhookRepo extends ServiceMap.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.channelWebhooksTable,
-			ChannelWebhook.Model,
+			{ insert: ChannelWebhook.Insert, update: ChannelWebhook.Update },
 			{
 				idColumn: "id",
 				name: "ChannelWebhook",
@@ -50,7 +49,7 @@ export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("Ch
 							.limit(1),
 					),
 				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Update last used timestamp
 		const updateLastUsed = (id: ChannelWebhookId, tx?: TxFn) =>
@@ -121,4 +120,6 @@ export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("Ch
 			findByOrganization,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

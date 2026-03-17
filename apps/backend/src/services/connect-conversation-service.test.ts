@@ -16,20 +16,21 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Layer, Option, ServiceMap } from "effect"
+import { serviceShape } from "../test/effect-helpers"
 import { ChannelAccessSyncService } from "./channel-access-sync"
 import { ConnectConversationService } from "./connect-conversation-service"
 import { OrgResolver } from "./org-resolver"
 
-const HOST_ORG_ID = "00000000-0000-0000-0000-000000000101" as OrganizationId
-const GUEST_ORG_ID = "00000000-0000-0000-0000-000000000102" as OrganizationId
-const OTHER_GUEST_ORG_ID = "00000000-0000-0000-0000-000000000103" as OrganizationId
-const CONVERSATION_ID = "00000000-0000-0000-0000-000000000201" as ConnectConversationId
-const HOST_CHANNEL_ID = "00000000-0000-0000-0000-000000000301" as ChannelId
-const GUEST_CHANNEL_ID = "00000000-0000-0000-0000-000000000302" as ChannelId
-const OTHER_GUEST_CHANNEL_ID = "00000000-0000-0000-0000-000000000303" as ChannelId
-const HOST_USER_ID = "00000000-0000-0000-0000-000000000401" as UserId
-const GUEST_USER_ID = "00000000-0000-0000-0000-000000000402" as UserId
+const HOST_ORG_ID = "00000000-0000-4000-8000-000000000101" as OrganizationId
+const GUEST_ORG_ID = "00000000-0000-4000-8000-000000000102" as OrganizationId
+const OTHER_GUEST_ORG_ID = "00000000-0000-4000-8000-000000000103" as OrganizationId
+const CONVERSATION_ID = "00000000-0000-4000-8000-000000000201" as ConnectConversationId
+const HOST_CHANNEL_ID = "00000000-0000-4000-8000-000000000301" as ChannelId
+const GUEST_CHANNEL_ID = "00000000-0000-4000-8000-000000000302" as ChannelId
+const OTHER_GUEST_CHANNEL_ID = "00000000-0000-4000-8000-000000000303" as ChannelId
+const HOST_USER_ID = "00000000-0000-4000-8000-000000000401" as UserId
+const GUEST_USER_ID = "00000000-0000-4000-8000-000000000402" as UserId
 
 type MutableConversation = {
 	id: ConnectConversationId
@@ -69,88 +70,119 @@ type MutableParticipant = {
 	deletedAt: Date | null
 }
 
+type ConnectConversationServiceShape = ServiceMap.Service.Shape<typeof ConnectConversationService>
+type ConnectParticipantUpsertInput = Parameters<
+	ServiceMap.Service.Shape<typeof ConnectParticipantRepo>["upsertByChannelAndUser"]
+>[0]
+
 const makeChannelRepoLayer = () =>
-	Layer.succeed(ChannelRepo, {
-		findById: () => Effect.succeed(Option.none()),
-	} as unknown as ChannelRepo)
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: () => Effect.succeed(Option.none()),
+		}),
+	)
 
 const makeMessageRepoLayer = () =>
-	Layer.succeed(MessageRepo, {
-		backfillConversationIdForChannel: () => Effect.succeed(undefined),
-	} as unknown as MessageRepo)
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			backfillConversationIdForChannel: () => Effect.succeed(undefined),
+		}),
+	)
 
 const makeMessageReactionRepoLayer = () =>
-	Layer.succeed(MessageReactionRepo, {
-		backfillConversationIdForChannel: () => Effect.succeed(undefined),
-	} as unknown as MessageReactionRepo)
+	Layer.succeed(
+		MessageReactionRepo,
+		serviceShape<typeof MessageReactionRepo>({
+			backfillConversationIdForChannel: () => Effect.succeed(undefined),
+		}),
+	)
 
 const makeOrgResolverLayer = () =>
-	Layer.succeed(OrgResolver, {
-		fromChannelWithAccess: () => Effect.succeed(undefined),
-	} as unknown as OrgResolver)
+	Layer.succeed(
+		OrgResolver,
+		serviceShape<typeof OrgResolver>({
+			fromChannelWithAccess: () => Effect.succeed(undefined),
+		}),
+	)
 
 const makeConversationRepoLayer = (conversation: MutableConversation) =>
-	Layer.succeed(ConnectConversationRepo, {
-		findById: (id: ConnectConversationId) =>
-			Effect.succeed(id === conversation.id ? Option.some(conversation) : Option.none()),
-		update: (patch: Partial<MutableConversation> & { id: ConnectConversationId }) =>
-			Effect.sync(() => {
-				Object.assign(conversation, patch)
-				return conversation
-			}),
-		insert: () => Effect.die("not implemented"),
-	} as unknown as ConnectConversationRepo)
+	Layer.succeed(
+		ConnectConversationRepo,
+		serviceShape<typeof ConnectConversationRepo>({
+			findById: (id: ConnectConversationId) =>
+				Effect.succeed(id === conversation.id ? Option.some(conversation) : Option.none()),
+			update: (patch: Partial<MutableConversation> & { id: ConnectConversationId }) =>
+				Effect.sync(() => {
+					Object.assign(conversation, patch)
+					return conversation
+				}),
+			insert: () => Effect.die("not implemented"),
+		}),
+	)
 
 const makeMountRepoLayer = (mounts: MutableMount[]) =>
-	Layer.succeed(ConnectConversationChannelRepo, {
-		findByChannelId: (channelId: ChannelId) =>
-			Effect.succeed(
-				Option.fromNullable(
-					mounts.find((mount) => mount.channelId === channelId && mount.deletedAt === null),
+	Layer.succeed(
+		ConnectConversationChannelRepo,
+		serviceShape<typeof ConnectConversationChannelRepo>({
+			findByChannelId: (channelId: ChannelId) =>
+				Effect.succeed(
+					Option.fromNullishOr(
+						mounts.find((mount) => mount.channelId === channelId && mount.deletedAt === null),
+					),
 				),
-			),
-		findByConversationId: (conversationId: ConnectConversationId) =>
-			Effect.succeed(
-				mounts.filter((mount) => mount.conversationId === conversationId && mount.deletedAt === null),
-			),
-		update: (patch: Partial<MutableMount> & { id: ConnectConversationChannelId }) =>
-			Effect.sync(() => {
-				const mount = mounts.find((candidate) => candidate.id === patch.id)
-				if (!mount) throw new Error(`Missing mount ${patch.id}`)
-				Object.assign(mount, patch)
-				return mount
-			}),
-		insert: () => Effect.die("not implemented"),
-	} as unknown as ConnectConversationChannelRepo)
+			findByConversationId: (conversationId: ConnectConversationId) =>
+				Effect.succeed(
+					mounts.filter(
+						(mount) => mount.conversationId === conversationId && mount.deletedAt === null,
+					),
+				),
+			update: (patch: Partial<MutableMount> & { id: ConnectConversationChannelId }) =>
+				Effect.sync(() => {
+					const mount = mounts.find((candidate) => candidate.id === patch.id)
+					if (!mount) throw new Error(`Missing mount ${patch.id}`)
+					Object.assign(mount, patch)
+					return mount
+				}),
+			insert: () => Effect.die("not implemented"),
+		}),
+	)
 
 const makeParticipantRepoLayer = (participants: MutableParticipant[]) =>
-	Layer.succeed(ConnectParticipantRepo, {
-		listByConversation: (conversationId: ConnectConversationId) =>
-			Effect.succeed(
-				participants.filter(
-					(participant) =>
-						participant.conversationId === conversationId && participant.deletedAt === null,
+	Layer.succeed(
+		ConnectParticipantRepo,
+		serviceShape<typeof ConnectParticipantRepo>({
+			listByConversation: (conversationId: ConnectConversationId) =>
+				Effect.succeed(
+					participants.filter(
+						(participant) =>
+							participant.conversationId === conversationId && participant.deletedAt === null,
+					),
 				),
-			),
-		update: (patch: Partial<MutableParticipant> & { id: ConnectParticipantId }) =>
-			Effect.sync(() => {
-				const participant = participants.find((candidate) => candidate.id === patch.id)
-				if (!participant) throw new Error(`Missing participant ${patch.id}`)
-				Object.assign(participant, patch)
-				return participant
-			}),
-		findByChannelAndUser: () => Effect.succeed(Option.none()),
-		insert: () => Effect.die("not implemented"),
-		upsertByChannelAndUser: () => Effect.die("not implemented"),
-	} as unknown as ConnectParticipantRepo)
+			update: (patch: Partial<MutableParticipant> & { id: ConnectParticipantId }) =>
+				Effect.sync(() => {
+					const participant = participants.find((candidate) => candidate.id === patch.id)
+					if (!participant) throw new Error(`Missing participant ${patch.id}`)
+					Object.assign(participant, patch)
+					return participant
+				}),
+			findByChannelAndUser: () => Effect.succeed(Option.none()),
+			insert: () => Effect.die("not implemented"),
+			upsertByChannelAndUser: () => Effect.die("not implemented"),
+		}),
+	)
 
 const makeChannelAccessSyncLayer = (syncedChannels: ChannelId[]) =>
-	Layer.succeed(ChannelAccessSyncService, {
-		syncChannel: (channelId: ChannelId) =>
-			Effect.sync(() => {
-				syncedChannels.push(channelId)
-			}),
-	} as unknown as ChannelAccessSyncService)
+	Layer.succeed(
+		ChannelAccessSyncService,
+		serviceShape<typeof ChannelAccessSyncService>({
+			syncChannel: (channelId: ChannelId) =>
+				Effect.sync(() => {
+					syncedChannels.push(channelId)
+				}),
+		}),
+	)
 
 const makeServiceLayer = (params: {
 	conversation: MutableConversation
@@ -158,7 +190,7 @@ const makeServiceLayer = (params: {
 	participants: MutableParticipant[]
 	syncedChannels: ChannelId[]
 }) =>
-	ConnectConversationService.DefaultWithoutDependencies.pipe(
+	Layer.effect(ConnectConversationService, ConnectConversationService.make).pipe(
 		Layer.provide(makeChannelRepoLayer()),
 		Layer.provide(makeConversationRepoLayer(params.conversation)),
 		Layer.provide(makeMountRepoLayer(params.mounts)),
@@ -169,11 +201,8 @@ const makeServiceLayer = (params: {
 		Layer.provide(makeOrgResolverLayer()),
 	)
 
-const useService = <A, E, R>(fn: (service: ConnectConversationService) => Effect.Effect<A, E, R>) =>
-	Effect.gen(function* () {
-		const service = yield* ConnectConversationService
-		return yield* fn(service)
-	})
+const useService = <A, E, R>(fn: (service: ConnectConversationServiceShape) => Effect.Effect<A, E, R>) =>
+	ConnectConversationService.use(fn)
 
 describe("ConnectConversationService", () => {
 	it("returns the existing mount when conversation creation races on unique constraints", async () => {
@@ -190,7 +219,7 @@ describe("ConnectConversationService", () => {
 			deletedAt: null,
 		}
 		const existingMount: MutableMount = {
-			id: "00000000-0000-0000-0000-000000000411" as ConnectConversationChannelId,
+			id: "00000000-0000-4000-8000-000000000411" as ConnectConversationChannelId,
 			conversationId: CONVERSATION_ID,
 			organizationId: HOST_ORG_ID,
 			channelId: HOST_CHANNEL_ID,
@@ -204,69 +233,84 @@ describe("ConnectConversationService", () => {
 		const backfills: Array<{ kind: "message" | "reaction"; conversationId: ConnectConversationId }> = []
 		let findByChannelCalls = 0
 
-		const layer = ConnectConversationService.DefaultWithoutDependencies.pipe(
+		const layer = Layer.effect(ConnectConversationService, ConnectConversationService.make).pipe(
 			Layer.provide(
-				Layer.succeed(ChannelRepo, {
-					findById: () =>
-						Effect.succeed(
-							Option.some({
-								id: HOST_CHANNEL_ID,
-								organizationId: HOST_ORG_ID,
-							}),
-						),
-				} as unknown as ChannelRepo),
+				Layer.succeed(
+					ChannelRepo,
+					serviceShape<typeof ChannelRepo>({
+						findById: () =>
+							Effect.succeed(
+								Option.some({
+									id: HOST_CHANNEL_ID,
+									organizationId: HOST_ORG_ID,
+								}),
+							),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(ConnectConversationRepo, {
-					insert: () =>
-						Effect.fail(
-							new Database.DatabaseError({
-								type: "unique_violation",
-								cause: { constraint_name: "connect_conversations_host_channel_unique" },
-							}),
-						),
-					findByHostChannel: () => Effect.succeed(Option.some(existingConversation)),
-				} as unknown as ConnectConversationRepo),
+				Layer.succeed(
+					ConnectConversationRepo,
+					serviceShape<typeof ConnectConversationRepo>({
+						insert: () =>
+							Effect.fail(
+								new Database.DatabaseError({
+									type: "unique_violation",
+									cause: { constraint_name: "connect_conversations_host_channel_unique" },
+								}),
+							),
+						findByHostChannel: () => Effect.succeed(Option.some(existingConversation)),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(ConnectConversationChannelRepo, {
-					findByChannelId: () =>
-						Effect.sync(() => {
-							findByChannelCalls += 1
-							return findByChannelCalls === 1 ? Option.none() : Option.some(existingMount)
-						}),
-					insert: () =>
-						Effect.fail(
-							new Database.DatabaseError({
-								type: "unique_violation",
-								cause: { constraint_name: "connect_conv_channels_channel_unique" },
+				Layer.succeed(
+					ConnectConversationChannelRepo,
+					serviceShape<typeof ConnectConversationChannelRepo>({
+						findByChannelId: () =>
+							Effect.sync(() => {
+								findByChannelCalls += 1
+								return findByChannelCalls === 1 ? Option.none() : Option.some(existingMount)
 							}),
-						),
-					findByConversationId: () => Effect.succeed([existingMount]),
-				} as unknown as ConnectConversationChannelRepo),
+						insert: () =>
+							Effect.fail(
+								new Database.DatabaseError({
+									type: "unique_violation",
+									cause: { constraint_name: "connect_conv_channels_channel_unique" },
+								}),
+							),
+						findByConversationId: () => Effect.succeed([existingMount]),
+					}),
+				),
 			),
 			Layer.provide(makeParticipantRepoLayer([])),
 			Layer.provide(
-				Layer.succeed(MessageRepo, {
-					backfillConversationIdForChannel: (
-						_channelId: ChannelId,
-						conversationId: ConnectConversationId,
-					) =>
-						Effect.sync(() => {
-							backfills.push({ kind: "message", conversationId })
-						}),
-				} as unknown as MessageRepo),
+				Layer.succeed(
+					MessageRepo,
+					serviceShape<typeof MessageRepo>({
+						backfillConversationIdForChannel: (
+							_channelId: ChannelId,
+							conversationId: ConnectConversationId,
+						) =>
+							Effect.sync(() => {
+								backfills.push({ kind: "message", conversationId })
+							}),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(MessageReactionRepo, {
-					backfillConversationIdForChannel: (
-						_channelId: ChannelId,
-						conversationId: ConnectConversationId,
-					) =>
-						Effect.sync(() => {
-							backfills.push({ kind: "reaction", conversationId })
-						}),
-				} as unknown as MessageReactionRepo),
+				Layer.succeed(
+					MessageReactionRepo,
+					serviceShape<typeof MessageReactionRepo>({
+						backfillConversationIdForChannel: (
+							_channelId: ChannelId,
+							conversationId: ConnectConversationId,
+						) =>
+							Effect.sync(() => {
+								backfills.push({ kind: "reaction", conversationId })
+							}),
+					}),
+				),
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
@@ -290,82 +334,97 @@ describe("ConnectConversationService", () => {
 		const now = new Date("2026-03-13T12:00:00.000Z")
 		const transactionChecks: boolean[] = []
 
-		const layer = ConnectConversationService.DefaultWithoutDependencies.pipe(
+		const layer = Layer.effect(ConnectConversationService, ConnectConversationService.make).pipe(
 			Layer.provide(
-				Layer.succeed(ChannelRepo, {
-					findById: () =>
-						Effect.succeed(
-							Option.some({
-								id: HOST_CHANNEL_ID,
-								organizationId: HOST_ORG_ID,
-							}),
-						),
-				} as unknown as ChannelRepo),
+				Layer.succeed(
+					ChannelRepo,
+					serviceShape<typeof ChannelRepo>({
+						findById: () =>
+							Effect.succeed(
+								Option.some({
+									id: HOST_CHANNEL_ID,
+									organizationId: HOST_ORG_ID,
+								}),
+							),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(ConnectConversationRepo, {
-					insert: () =>
-						Effect.succeed([
-							{
-								id: CONVERSATION_ID,
-								hostOrganizationId: HOST_ORG_ID,
-								hostChannelId: HOST_CHANNEL_ID,
-								status: "active",
-								settings: null,
-								createdBy: HOST_USER_ID,
-								createdAt: now,
-								updatedAt: now,
-								deletedAt: null,
-							},
-						]),
-				} as unknown as ConnectConversationRepo),
+				Layer.succeed(
+					ConnectConversationRepo,
+					serviceShape<typeof ConnectConversationRepo>({
+						insert: () =>
+							Effect.succeed([
+								{
+									id: CONVERSATION_ID,
+									hostOrganizationId: HOST_ORG_ID,
+									hostChannelId: HOST_CHANNEL_ID,
+									status: "active",
+									settings: null,
+									createdBy: HOST_USER_ID,
+									createdAt: now,
+									updatedAt: now,
+									deletedAt: null,
+								},
+							]),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(ConnectConversationChannelRepo, {
-					findByChannelId: () => Effect.succeed(Option.none()),
-					insert: () =>
-						Effect.succeed([
-							{
-								id: "00000000-0000-0000-0000-000000000412" as ConnectConversationChannelId,
-								conversationId: CONVERSATION_ID,
-								organizationId: HOST_ORG_ID,
-								channelId: HOST_CHANNEL_ID,
-								role: "host",
-								allowGuestMemberAdds: false,
-								isActive: true,
-								createdAt: now,
-								updatedAt: now,
-								deletedAt: null,
-							},
-						]),
-				} as unknown as ConnectConversationChannelRepo),
+				Layer.succeed(
+					ConnectConversationChannelRepo,
+					serviceShape<typeof ConnectConversationChannelRepo>({
+						findByChannelId: () => Effect.succeed(Option.none()),
+						insert: () =>
+							Effect.succeed([
+								{
+									id: "00000000-0000-4000-8000-000000000412" as ConnectConversationChannelId,
+									conversationId: CONVERSATION_ID,
+									organizationId: HOST_ORG_ID,
+									channelId: HOST_CHANNEL_ID,
+									role: "host",
+									allowGuestMemberAdds: false,
+									isActive: true,
+									createdAt: now,
+									updatedAt: now,
+									deletedAt: null,
+								},
+							]),
+					}),
+				),
 			),
 			Layer.provide(makeParticipantRepoLayer([])),
 			Layer.provide(
-				Layer.succeed(MessageRepo, {
-					backfillConversationIdForChannel: () =>
-						Effect.serviceOption(Database.TransactionContext).pipe(
-							Effect.tap((maybeTx) =>
-								Effect.sync(() => {
-									transactionChecks.push(Option.isSome(maybeTx))
-								}),
+				Layer.succeed(
+					MessageRepo,
+					serviceShape<typeof MessageRepo>({
+						backfillConversationIdForChannel: () =>
+							Effect.serviceOption(Database.TransactionContext).pipe(
+								Effect.tap((maybeTx) =>
+									Effect.sync(() => {
+										transactionChecks.push(Option.isSome(maybeTx))
+									}),
+								),
+								Effect.as(undefined),
 							),
-							Effect.as(undefined),
-						),
-				} as unknown as MessageRepo),
+					}),
+				),
 			),
 			Layer.provide(
-				Layer.succeed(MessageReactionRepo, {
-					backfillConversationIdForChannel: () =>
-						Effect.serviceOption(Database.TransactionContext).pipe(
-							Effect.tap((maybeTx) =>
-								Effect.sync(() => {
-									transactionChecks.push(Option.isSome(maybeTx))
-								}),
+				Layer.succeed(
+					MessageReactionRepo,
+					serviceShape<typeof MessageReactionRepo>({
+						backfillConversationIdForChannel: () =>
+							Effect.serviceOption(Database.TransactionContext).pipe(
+								Effect.tap((maybeTx) =>
+									Effect.sync(() => {
+										transactionChecks.push(Option.isSome(maybeTx))
+									}),
+								),
+								Effect.as(undefined),
 							),
-							Effect.as(undefined),
-						),
-				} as unknown as MessageReactionRepo),
+					}),
+				),
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
@@ -395,7 +454,7 @@ describe("ConnectConversationService", () => {
 		let mountFetchCount = 0
 		const mounts: MutableMount[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000921" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000921" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: HOST_ORG_ID,
 				channelId: HOST_CHANNEL_ID,
@@ -407,7 +466,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000922" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000922" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: GUEST_ORG_ID,
 				channelId: GUEST_CHANNEL_ID,
@@ -420,26 +479,34 @@ describe("ConnectConversationService", () => {
 			},
 		]
 
-		const layer = ConnectConversationService.DefaultWithoutDependencies.pipe(
+		const layer = Layer.effect(ConnectConversationService, ConnectConversationService.make).pipe(
 			Layer.provide(makeChannelRepoLayer()),
-			Layer.provide(Layer.succeed(ConnectConversationRepo, {} as unknown as ConnectConversationRepo)),
 			Layer.provide(
-				Layer.succeed(ConnectConversationChannelRepo, {
-					findByConversationId: () =>
-						Effect.sync(() => {
-							mountFetchCount += 1
-							return mounts
-						}),
-				} as unknown as ConnectConversationChannelRepo),
+				Layer.succeed(ConnectConversationRepo, serviceShape<typeof ConnectConversationRepo>({})),
 			),
 			Layer.provide(
-				Layer.succeed(ConnectParticipantRepo, {
-					upsertByChannelAndUser: (row: any) =>
-						Effect.sync(() => {
-							upserts.push(row)
-							return row
-						}),
-				} as unknown as ConnectParticipantRepo),
+				Layer.succeed(
+					ConnectConversationChannelRepo,
+					serviceShape<typeof ConnectConversationChannelRepo>({
+						findByConversationId: () =>
+							Effect.sync(() => {
+								mountFetchCount += 1
+								return mounts
+							}),
+					}),
+				),
+			),
+			Layer.provide(
+				Layer.succeed(
+					ConnectParticipantRepo,
+					serviceShape<typeof ConnectParticipantRepo>({
+						upsertByChannelAndUser: (row: ConnectParticipantUpsertInput) =>
+							Effect.sync(() => {
+								upserts.push(row)
+								return row
+							}),
+					}),
+				),
 			),
 			Layer.provide(makeMessageRepoLayer()),
 			Layer.provide(makeMessageReactionRepoLayer()),
@@ -508,7 +575,7 @@ describe("ConnectConversationService", () => {
 		}
 		const mounts: MutableMount[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000501" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000501" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: HOST_ORG_ID,
 				channelId: HOST_CHANNEL_ID,
@@ -520,7 +587,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000502" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000502" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: GUEST_ORG_ID,
 				channelId: GUEST_CHANNEL_ID,
@@ -534,7 +601,7 @@ describe("ConnectConversationService", () => {
 		]
 		const participants: MutableParticipant[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000601" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000000601" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: HOST_CHANNEL_ID,
 				userId: GUEST_USER_ID,
@@ -546,7 +613,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000602" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000000602" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: GUEST_CHANNEL_ID,
 				userId: GUEST_USER_ID,
@@ -588,7 +655,7 @@ describe("ConnectConversationService", () => {
 		}
 		const mounts: MutableMount[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000701" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000701" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: HOST_ORG_ID,
 				channelId: HOST_CHANNEL_ID,
@@ -600,7 +667,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000702" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000702" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: GUEST_ORG_ID,
 				channelId: GUEST_CHANNEL_ID,
@@ -612,7 +679,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000703" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000703" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: OTHER_GUEST_ORG_ID,
 				channelId: OTHER_GUEST_CHANNEL_ID,
@@ -626,7 +693,7 @@ describe("ConnectConversationService", () => {
 		]
 		const participants: MutableParticipant[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000801" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000000801" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: HOST_CHANNEL_ID,
 				userId: GUEST_USER_ID,
@@ -638,7 +705,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000802" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000000802" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: OTHER_GUEST_CHANNEL_ID,
 				userId: HOST_USER_ID,
@@ -684,7 +751,7 @@ describe("ConnectConversationService", () => {
 		}
 		const mounts: MutableMount[] = [
 			{
-				id: "00000000-0000-0000-0000-000000000901" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000901" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: HOST_ORG_ID,
 				channelId: HOST_CHANNEL_ID,
@@ -696,7 +763,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000000902" as ConnectConversationChannelId,
+				id: "00000000-0000-4000-8000-000000000902" as ConnectConversationChannelId,
 				conversationId: CONVERSATION_ID,
 				organizationId: GUEST_ORG_ID,
 				channelId: GUEST_CHANNEL_ID,
@@ -710,7 +777,7 @@ describe("ConnectConversationService", () => {
 		]
 		const participants: MutableParticipant[] = [
 			{
-				id: "00000000-0000-0000-0000-000000001001" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000001001" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: HOST_CHANNEL_ID,
 				userId: HOST_USER_ID,
@@ -722,7 +789,7 @@ describe("ConnectConversationService", () => {
 				deletedAt: null,
 			},
 			{
-				id: "00000000-0000-0000-0000-000000001002" as ConnectParticipantId,
+				id: "00000000-0000-4000-8000-000000001002" as ConnectParticipantId,
 				conversationId: CONVERSATION_ID,
 				channelId: GUEST_CHANNEL_ID,
 				userId: GUEST_USER_ID,

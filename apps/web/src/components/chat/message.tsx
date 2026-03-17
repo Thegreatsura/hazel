@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { MessageId, OrganizationId } from "@hazel/schema"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"
@@ -14,7 +15,7 @@ import { Badge } from "~/components/ui/badge"
 import { useChatStable } from "~/hooks/use-chat"
 import { useUserStatus } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
-import { cn } from "~/lib/utils"
+import { cn, toDate, toEpochMs } from "~/lib/utils"
 import { useChatAuthorIdentity, type ChatAuthorIdentity } from "./author-identity"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
@@ -247,7 +248,7 @@ function MessageAvatar() {
 
 	return (
 		<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
-			{format(message.createdAt, "HH:mm")}
+			{format(toDate(message.createdAt), "HH:mm")}
 		</div>
 	)
 }
@@ -260,9 +261,9 @@ const MessageHeader = memo(function MessageHeader() {
 	const user = message.author
 	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserStatus(message.authorId)
 	const isDiscordSyncedResult = useAtomValue(isDiscordSyncedMessageAtomFamily(message.id))
-	const isDiscordSynced = Result.getOrElse(isDiscordSyncedResult, () => []).length > 0
+	const isDiscordSynced = AsyncResult.getOrElse(isDiscordSyncedResult, () => []).length > 0
 
-	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
+	const isEdited = message.updatedAt && toEpochMs(message.updatedAt) > toEpochMs(message.createdAt)
 
 	if (!showAvatar || !user) return null
 
@@ -288,7 +289,7 @@ const MessageHeader = memo(function MessageHeader() {
 				<Badge intent="secondary">Synced from Discord</Badge>
 			) : null}
 			<span className="text-muted-fg text-xs">
-				{format(message.createdAt, "HH:mm")}
+				{format(toDate(message.createdAt), "HH:mm")}
 				{isEdited && " (edited)"}
 			</span>
 			{isPinned && (

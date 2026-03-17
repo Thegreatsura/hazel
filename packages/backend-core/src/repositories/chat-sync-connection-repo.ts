@@ -1,17 +1,16 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncConnection } from "@hazel/domain/models"
 import type { IntegrationConnectionId, OrganizationId, SyncConnectionId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
-export class ChatSyncConnectionRepo extends Effect.Service<ChatSyncConnectionRepo>()(
+export class ChatSyncConnectionRepo extends ServiceMap.Service<ChatSyncConnectionRepo>()(
 	"ChatSyncConnectionRepo",
 	{
-		accessors: true,
-		effect: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+		make: Effect.gen(function* () {
+			const baseRepo = yield* Repository.makeRepository(
 				schema.chatSyncConnectionsTable,
-				ChatSyncConnection.Model,
+				{ insert: ChatSyncConnection.Insert, update: ChatSyncConnection.Update },
 				{
 					idColumn: "id",
 					name: "ChatSyncConnection",
@@ -71,7 +70,7 @@ export class ChatSyncConnectionRepo extends Effect.Service<ChatSyncConnectionRep
 									.limit(1),
 							),
 					)({ organizationId, provider, externalWorkspaceId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const findActiveByProvider = (provider: string, tx?: TxFn) =>
 				db.makeQuery((execute, data: { provider: string }) =>
@@ -111,7 +110,7 @@ export class ChatSyncConnectionRepo extends Effect.Service<ChatSyncConnectionRep
 								.limit(1),
 						),
 					)({ integrationConnectionId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const updateStatus = (
 				id: SyncConnectionId,
@@ -182,4 +181,6 @@ export class ChatSyncConnectionRepo extends Effect.Service<ChatSyncConnectionRep
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

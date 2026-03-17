@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { cn } from "~/lib/utils"
@@ -220,13 +221,13 @@ export function GitHubPREmbed({ url, orgId }: GitHubPREmbedProps) {
 
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchGitHubPR", {
-			path: { orgId },
-			urlParams: { url },
+			params: { orgId },
+			query: { url },
 			timeToLive: "3 minutes",
 		}),
 	)
 
-	return Result.builder(resourceResult)
+	return AsyncResult.builder(resourceResult)
 		.onInitial(() => <Embed.Skeleton accentColor={theme.color} />)
 		.onErrorTag("IntegrationNotConnectedForPreviewError", () => (
 			<Embed.ConnectPrompt

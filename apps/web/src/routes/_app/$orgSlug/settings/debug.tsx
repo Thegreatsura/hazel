@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { type Notification } from "@hazel/domain/models"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { createFileRoute, redirect } from "@tanstack/react-router"
@@ -101,7 +101,7 @@ function DebugSettings() {
 
 	const handleSyntheticNotification = () => {
 		const now = new Date()
-		const syntheticNotification: typeof Notification.Model.Type = {
+		const syntheticNotification: Notification.Type = {
 			id: `synthetic-${Date.now()}` as any,
 			memberId: `synthetic-member-${Date.now()}` as any,
 			targetedResourceId: null,

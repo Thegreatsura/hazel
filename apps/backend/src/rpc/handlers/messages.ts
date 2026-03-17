@@ -1,7 +1,7 @@
 import { AttachmentRepo, MessageOutboxRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { MessageRpcs } from "@hazel/domain/rpc"
+import { MessageResponse, MessageRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
@@ -30,6 +30,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 		const botGateway = yield* BotGatewayService
 		const outboxRepo = yield* MessageOutboxRepo
 		const connectConversationService = yield* ConnectConversationService
+		const messagePolicy = yield* MessagePolicy
+		const messageRepo = yield* MessageRepo
+		const attachmentPolicy = yield* AttachmentPolicy
+		const attachmentRepo = yield* AttachmentRepo
 
 		return {
 			"message.create": ({ attachmentIds, ...messageData }) =>
@@ -42,24 +46,26 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canCreate(messageData.channelId)
+								yield* messagePolicy.canCreate(messageData.channelId)
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(
 										messageData.channelId,
 									)
-								const createdMessage = yield* MessageRepo.insert({
-									...messageData,
-									conversationId,
-									authorId: user.id,
-									deletedAt: null,
-								}).pipe(Effect.map((res) => res[0]!))
+								const createdMessage = yield* messageRepo
+									.insert({
+										...messageData,
+										conversationId,
+										authorId: user.id,
+										deletedAt: null,
+									})
+									.pipe(Effect.map((res) => res[0]!))
 
 								// Update attachments with messageId if provided
 								if (attachmentIds && attachmentIds.length > 0) {
 									yield* Effect.forEach(attachmentIds, (attachmentId) =>
 										Effect.gen(function* () {
-											yield* AttachmentPolicy.canUpdate(attachmentId)
-											yield* AttachmentRepo.update({
+											yield* attachmentPolicy.canUpdate(attachmentId)
+											yield* attachmentRepo.update({
 												id: attachmentId,
 												messageId: createdMessage.id,
 											})
@@ -82,10 +88,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const txid = yield* generateTransactionId()
 
-								return {
+								return new MessageResponse({
 									data: createdMessage,
 									transactionId: txid,
-								}
+								})
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "create"))
@@ -112,8 +118,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canUpdate(id)
-								const updatedMessage = yield* MessageRepo.update({
+								yield* messagePolicy.canUpdate(id)
+								const updatedMessage = yield* messageRepo.update({
 									id,
 									...payload,
 								})
@@ -129,10 +135,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const txid = yield* generateTransactionId()
 
-								return {
+								return new MessageResponse({
 									data: updatedMessage,
 									transactionId: txid,
-								}
+								})
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "update"))
@@ -152,9 +158,9 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 			"message.delete": ({ id }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
-					const existingMessage = yield* MessageRepo.findById(id).pipe(
-						withRemapDbErrors("Message", "select"),
-					)
+					const existingMessage = yield* messageRepo
+						.findById(id)
+						.pipe(withRemapDbErrors("Message", "select"))
 
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
@@ -162,8 +168,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canDelete(id)
-								yield* MessageRepo.deleteById(id)
+								yield* messagePolicy.canDelete(id)
+								yield* messageRepo.deleteById(id)
 
 								if (Option.isSome(existingMessage)) {
 									yield* outboxRepo.insert({

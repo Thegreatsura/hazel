@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
@@ -26,6 +26,6 @@ const RecentChannelsSchema = Schema.Array(RecentChannelSchema)
 export const recentChannelsAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "recentChannels",
-	schema: RecentChannelsSchema,
+	schema: Schema.toCodecIso(RecentChannelsSchema),
 	defaultValue: () => [] as RecentChannel[],
 }).pipe(Atom.keepAlive)

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { BotRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { BotId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer } from "effect"
+import { Effect, Result, Layer, ServiceMap } from "effect"
 import { BotPolicy } from "./bot-policy.ts"
 import {
 	makeActor,
@@ -15,8 +15,8 @@ import {
 
 type Role = "admin" | "member" | "owner"
 
-const BOT_ID = "00000000-0000-0000-0000-000000000401" as BotId
-const MISSING_BOT_ID = "00000000-0000-0000-0000-000000000499" as BotId
+const BOT_ID = "00000000-0000-4000-8000-000000000401" as BotId
+const MISSING_BOT_ID = "00000000-0000-4000-8000-000000000499" as BotId
 
 const makeBotRepoLayer = (bots: Record<string, { createdBy: UserId }>) =>
 	Layer.succeed(BotRepo, {
@@ -27,10 +27,10 @@ const makeBotRepoLayer = (bots: Record<string, { createdBy: UserId }>) =>
 			}
 			return f(bot)
 		},
-	} as unknown as BotRepo)
+	} as ServiceMap.Service.Shape<typeof BotRepo>)
 
 const makePolicyLayer = (members: Record<string, Role>, bots: Record<string, { createdBy: UserId }>) =>
-	BotPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(BotPolicy, BotPolicy.make).pipe(
 		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeBotRepoLayer(bots)),
 	)
@@ -45,20 +45,28 @@ describe("BotPolicy", () => {
 			{},
 		)
 
-		const allowed = await runWithActorEither(BotPolicy.canCreate(TEST_ORG_ID), layer, actor)
-		const denied = await runWithActorEither(BotPolicy.canCreate(TEST_ALT_ORG_ID), layer, actor)
+		const allowed = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
+		const denied = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canCreate(TEST_ALT_ORG_ID)),
+			layer,
+			actor,
+		)
 
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(denied)).toBe(true)
+		expect(Result.isSuccess(allowed)).toBe(true)
+		expect(Result.isFailure(denied)).toBe(true)
 	})
 
 	it("canRead allows creator or org admin", async () => {
 		const creator = makeActor()
 		const admin = makeActor({
-			id: "00000000-0000-0000-0000-000000000402" as UserId,
+			id: "00000000-0000-4000-8000-000000000402" as UserId,
 		})
 		const outsider = makeActor({
-			id: "00000000-0000-0000-0000-000000000403" as UserId,
+			id: "00000000-0000-4000-8000-000000000403" as UserId,
 			organizationId: TEST_ORG_ID,
 		})
 
@@ -72,42 +80,62 @@ describe("BotPolicy", () => {
 			},
 		)
 
-		const creatorAllowed = await runWithActorEither(BotPolicy.canRead(BOT_ID), layer, creator)
+		const creatorAllowed = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canRead(BOT_ID)),
+			layer,
+			creator,
+		)
 		const adminAllowed = await runWithActorEither(
-			BotPolicy.canRead(BOT_ID),
+			BotPolicy.use((policy) => policy.canRead(BOT_ID)),
 			layer,
 			makeActor({ ...admin, organizationId: TEST_ORG_ID }),
 		)
-		const outsiderDenied = await runWithActorEither(BotPolicy.canRead(BOT_ID), layer, outsider)
+		const outsiderDenied = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canRead(BOT_ID)),
+			layer,
+			outsider,
+		)
 
-		expect(Either.isRight(creatorAllowed)).toBe(true)
-		expect(Either.isRight(adminAllowed)).toBe(true)
-		expect(Either.isLeft(outsiderDenied)).toBe(true)
+		expect(Result.isSuccess(creatorAllowed)).toBe(true)
+		expect(Result.isSuccess(adminAllowed)).toBe(true)
+		expect(Result.isFailure(outsiderDenied)).toBe(true)
 	})
 
 	it("canUpdate/canDelete require creator and map missing bot to UnauthorizedError", async () => {
 		const creator = makeActor()
 		const otherUser = makeActor({
-			id: "00000000-0000-0000-0000-000000000404" as UserId,
+			id: "00000000-0000-4000-8000-000000000404" as UserId,
 		})
 		const layer = makePolicyLayer({}, { [BOT_ID]: { createdBy: creator.id } })
 
-		const updateCreator = await runWithActorEither(BotPolicy.canUpdate(BOT_ID), layer, creator)
-		const updateOther = await runWithActorEither(BotPolicy.canUpdate(BOT_ID), layer, otherUser)
-		const deleteMissing = await runWithActorEither(BotPolicy.canDelete(MISSING_BOT_ID), layer, creator)
+		const updateCreator = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canUpdate(BOT_ID)),
+			layer,
+			creator,
+		)
+		const updateOther = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canUpdate(BOT_ID)),
+			layer,
+			otherUser,
+		)
+		const deleteMissing = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canDelete(MISSING_BOT_ID)),
+			layer,
+			creator,
+		)
 
-		expect(Either.isRight(updateCreator)).toBe(true)
-		expect(Either.isLeft(updateOther)).toBe(true)
-		expect(Either.isLeft(deleteMissing)).toBe(true)
-		if (Either.isLeft(deleteMissing)) {
-			expect(UnauthorizedError.is(deleteMissing.left)).toBe(true)
+		expect(Result.isSuccess(updateCreator)).toBe(true)
+		expect(Result.isFailure(updateOther)).toBe(true)
+		expect(Result.isFailure(deleteMissing)).toBe(true)
+		if (Result.isFailure(deleteMissing)) {
+			expect(UnauthorizedError.is(deleteMissing.failure)).toBe(true)
 		}
 	})
 
 	it("canInstall and canUninstall require admin-or-owner", async () => {
 		const admin = makeActor()
 		const member = makeActor({
-			id: "00000000-0000-0000-0000-000000000405" as UserId,
+			id: "00000000-0000-4000-8000-000000000405" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -117,12 +145,24 @@ describe("BotPolicy", () => {
 			{},
 		)
 
-		const installAdmin = await runWithActorEither(BotPolicy.canInstall(TEST_ORG_ID), layer, admin)
-		const uninstallAdmin = await runWithActorEither(BotPolicy.canUninstall(TEST_ORG_ID), layer, admin)
-		const installMember = await runWithActorEither(BotPolicy.canInstall(TEST_ORG_ID), layer, member)
+		const installAdmin = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canInstall(TEST_ORG_ID)),
+			layer,
+			admin,
+		)
+		const uninstallAdmin = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canUninstall(TEST_ORG_ID)),
+			layer,
+			admin,
+		)
+		const installMember = await runWithActorEither(
+			BotPolicy.use((policy) => policy.canInstall(TEST_ORG_ID)),
+			layer,
+			member,
+		)
 
-		expect(Either.isRight(installAdmin)).toBe(true)
-		expect(Either.isRight(uninstallAdmin)).toBe(true)
-		expect(Either.isLeft(installMember)).toBe(true)
+		expect(Result.isSuccess(installAdmin)).toBe(true)
+		expect(Result.isSuccess(uninstallAdmin)).toBe(true)
+		expect(Result.isFailure(installMember)).toBe(true)
 	})
 })

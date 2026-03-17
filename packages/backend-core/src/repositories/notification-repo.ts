@@ -1,15 +1,14 @@
-import { and, Database, eq, inArray, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
-export class NotificationRepo extends Effect.Service<NotificationRepo>()("NotificationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+export class NotificationRepo extends ServiceMap.Service<NotificationRepo>()("NotificationRepo", {
+	make: Effect.gen(function* () {
+		const baseRepo = yield* Repository.makeRepository(
 			schema.notificationsTable,
-			Notification.Model,
+			{ insert: Notification.Insert, update: Notification.Update },
 			{
 				idColumn: "id",
 				name: "Notification",
@@ -78,4 +77,6 @@ export class NotificationRepo extends Effect.Service<NotificationRepo>()("Notifi
 			deleteByChannelId,
 		} as const
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
