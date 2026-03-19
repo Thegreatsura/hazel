@@ -97,7 +97,7 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.update", {
 		payload: Schema.Struct({
 			id: MessageId,
-		}).pipe(Schema.fieldsAssign((Message.Patch as Schema.Struct<any>).fields)),
+		}).pipe(Schema.fieldsAssign(Message.Patch.fields)),
 		success: MessageResponse,
 		error: Schema.Union([
 			MessageNotFoundError,

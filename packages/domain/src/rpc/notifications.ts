@@ -62,8 +62,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.update", {
 		payload: Schema.Struct({
 			id: NotificationId,
-			...Notification.Patch.fields,
-		}),
+		}).pipe(Schema.fieldsAssign(Notification.PatchPartial.fields)),
 		success: NotificationResponse,
 		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),
 	})

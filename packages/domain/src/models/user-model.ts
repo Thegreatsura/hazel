@@ -29,17 +29,17 @@ export type UserSettings = S.Schema.Type<typeof UserSettingsSchema>
 
 class Model extends M.Class<Model>("User")({
 	id: M.Generated(UserId),
-	externalId: S.String,
-	email: S.String,
+	externalId: M.Sensitive(S.String),
+	email: M.Immutable(S.String),
 	firstName: S.String,
 	lastName: S.String,
 	avatarUrl: S.NullishOr(S.NonEmptyString),
-	userType: UserType,
+	userType: M.Immutable(UserType),
 	settings: S.NullOr(UserSettingsSchema),
-	isOnboarded: S.Boolean,
+	isOnboarded: M.GeneratedByApp(S.Boolean),
 	timezone: S.NullOr(S.String),
 	...baseFields,
 }) {}
 
-export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export const { Insert, Update, Schema, Create, Patch, PatchPartial } = M.expose(Model)
 export type Type = typeof Schema.Type

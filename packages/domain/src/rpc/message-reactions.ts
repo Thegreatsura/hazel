@@ -95,8 +95,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	Rpc.make("messageReaction.update", {
 		payload: Schema.Struct({
 			id: MessageReactionId,
-			...MessageReaction.Patch.fields,
-		}),
+		}).pipe(Schema.fieldsAssign(MessageReaction.PatchPartial.fields)),
 		success: MessageReactionResponse,
 		error: Schema.Union([MessageReactionNotFoundError, UnauthorizedError, InternalServerError]),
 	})

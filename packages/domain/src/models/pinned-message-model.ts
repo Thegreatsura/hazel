@@ -4,10 +4,10 @@ import { JsonDate } from "./utils"
 
 class Model extends M.Class<Model>("PinnedMessage")({
 	id: M.Generated(PinnedMessageId),
-	channelId: ChannelId,
-	messageId: MessageId,
-	pinnedBy: M.GeneratedByApp(UserId),
-	pinnedAt: JsonDate,
+	channelId: M.Immutable(ChannelId),
+	messageId: M.Immutable(MessageId),
+	pinnedBy: M.Immutable(UserId),
+	pinnedAt: M.Immutable(JsonDate),
 }) {}
 
 export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)

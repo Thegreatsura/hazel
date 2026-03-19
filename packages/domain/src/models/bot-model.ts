@@ -6,16 +6,16 @@ import { baseFields, JsonDate } from "./utils"
 
 class Model extends M.Class<Model>("Bot")({
 	id: M.Generated(BotId),
-	userId: UserId,
-	createdBy: UserId,
+	userId: M.Immutable(UserId),
+	createdBy: M.Immutable(UserId),
 	name: S.String,
 	description: S.NullOr(S.String),
 	webhookUrl: S.NullOr(S.String),
-	apiTokenHash: S.String,
+	apiTokenHash: M.Sensitive(S.String),
 	scopes: S.NullOr(S.Array(S.String)),
 	metadata: S.NullOr(S.Record(S.String, S.Unknown)),
 	isPublic: S.Boolean,
-	installCount: S.Number,
+	installCount: M.GeneratedByApp(S.Number),
 	// List of integration providers this bot is allowed to use (e.g., ["linear", "github"])
 	allowedIntegrations: S.NullOr(S.Array(IntegrationProvider)),
 	// Whether this bot can be @mentioned in messages

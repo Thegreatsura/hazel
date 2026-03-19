@@ -8,11 +8,11 @@ export type ConnectConversationStatus = S.Schema.Type<typeof ConnectConversation
 
 class Model extends M.Class<Model>("ConnectConversation")({
 	id: M.Generated(ConnectConversationId),
-	hostOrganizationId: OrganizationId,
-	hostChannelId: ChannelId,
-	status: ConnectConversationStatus,
+	hostOrganizationId: M.Immutable(OrganizationId),
+	hostChannelId: M.Immutable(ChannelId),
+	status: M.GeneratedByApp(ConnectConversationStatus),
 	settings: S.NullOr(S.Record(S.String, S.Unknown)),
-	createdBy: UserId,
+	createdBy: M.Immutable(UserId),
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(S.NullOr(JsonDate)),
 	deletedAt: M.GeneratedByApp(S.NullOr(JsonDate)),

@@ -1379,9 +1379,6 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				) =>
 					rpc["channel.update"]({
 						id: channel.id,
-						type: channel.type,
-						organizationId: channel.organizationId,
-						parentChannelId: channel.parentChannelId,
 						name: updates.name ?? channel.name,
 						...updates,
 					}).pipe(

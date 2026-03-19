@@ -6,6 +6,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
 import * as SchemaIssue from "effect/SchemaIssue"
+import * as Struct_ from "effect/Struct"
 
 const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve } = VariantSchema.make({
 	variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
@@ -114,6 +115,24 @@ export const GeneratedByApp = <S extends Schema.Top>(schema: S): GeneratedByApp<
 		insert: schema,
 		update: schema,
 		json: schema,
+	})
+
+export interface Immutable<S extends Schema.Top> extends VariantSchema.Field<{
+	readonly select: S
+	readonly insert: S
+	readonly update: S
+	readonly json: S
+	readonly jsonCreate: S
+}> {}
+
+/** A field that is immutable after creation — present in all variants except jsonUpdate. */
+export const Immutable = <S extends Schema.Top>(schema: S): Immutable<S> =>
+	Field({
+		select: schema,
+		insert: schema,
+		update: schema,
+		json: schema,
+		jsonCreate: schema,
 	})
 
 export interface Sensitive<S extends Schema.Top> extends VariantSchema.Field<{
@@ -333,6 +352,12 @@ export const UuidV4Insert = <const B extends string | symbol>(
 /** A boolean parsed from 0 or 1. */
 export const BooleanFromNumber: typeof Schema.BooleanFromBit = Schema.BooleanFromBit
 
+/** Maps a Struct's fields to optionalKey — for partial update payloads. */
+export type PartialStruct<S extends Schema.Top> =
+	S extends Schema.Struct<infer F>
+		? Schema.Struct<{ readonly [K in keyof F]: Schema.optionalKey<F[K] & Schema.Top> }>
+		: never
+
 export interface ExposedModel<
 	InsertSchema extends Schema.Top,
 	UpdateSchema extends Schema.Top,
@@ -345,6 +370,7 @@ export interface ExposedModel<
 	readonly Schema: JsonSchema
 	readonly Create: CreateSchema
 	readonly Patch: PatchSchema
+	readonly PatchPartial: PartialStruct<PatchSchema>
 }
 
 export interface ExposedModelWithRow<
@@ -368,13 +394,19 @@ export const expose = <
 >(
 	model: Model,
 	overrides: Partial<ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema>> = {},
-): ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> => ({
-	Insert: overrides.Insert ?? (model.insert as unknown as InsertSchema),
-	Update: overrides.Update ?? (model.update as unknown as UpdateSchema),
-	Schema: overrides.Schema ?? (model.json as unknown as JsonSchema),
-	Create: overrides.Create ?? (model.jsonCreate as unknown as CreateSchema),
-	Patch: overrides.Patch ?? (model.jsonUpdate as unknown as PatchSchema),
-})
+): ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> => {
+	const patch = overrides.Patch ?? (model.jsonUpdate as unknown as PatchSchema)
+	return {
+		Insert: overrides.Insert ?? (model.insert as unknown as InsertSchema),
+		Update: overrides.Update ?? (model.update as unknown as UpdateSchema),
+		Schema: overrides.Schema ?? (model.json as unknown as JsonSchema),
+		Create: overrides.Create ?? (model.jsonCreate as unknown as CreateSchema),
+		Patch: patch,
+		PatchPartial: (patch as unknown as Schema.Struct<any>).mapFields(
+			Struct_.map(Schema.optionalKey),
+		) as PartialStruct<PatchSchema>,
+	}
+}
 
 export const exposeWithRow = <
 	Model extends Any,

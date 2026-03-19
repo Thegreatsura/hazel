@@ -13,5 +13,5 @@ class Model extends M.Class<Model>("Organization")({
 	...baseFields,
 }) {}
 
-export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export const { Insert, Update, Schema, Create, Patch, PatchPartial } = M.expose(Model)
 export type Type = typeof Schema.Type

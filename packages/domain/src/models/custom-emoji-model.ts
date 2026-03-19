@@ -8,7 +8,7 @@ class Model extends M.Class<Model>("CustomEmoji")({
 	organizationId: OrganizationId,
 	name: S.String,
 	imageUrl: S.String,
-	createdBy: M.GeneratedByApp(UserId),
+	createdBy: M.Immutable(UserId),
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(S.NullOr(JsonDate)),
 	deletedAt: M.Generated(S.NullOr(JsonDate)),

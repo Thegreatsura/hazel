@@ -97,8 +97,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	Rpc.make("organizationMember.update", {
 		payload: Schema.Struct({
 			id: OrganizationMemberId,
-			...OrganizationMember.Patch.fields,
-		}),
+		}).pipe(Schema.fieldsAssign(OrganizationMember.PatchPartial.fields)),
 		success: OrganizationMemberResponse,
 		error: Schema.Union([OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})

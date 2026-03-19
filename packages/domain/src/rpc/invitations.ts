@@ -134,8 +134,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.update", {
 		payload: Schema.Struct({
 			id: InvitationId,
-			...Invitation.Patch.fields,
-		}),
+		}).pipe(Schema.fieldsAssign(Invitation.PatchPartial.fields)),
 		success: InvitationResponse,
 		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})

@@ -8,17 +8,17 @@ export type InvitationStatus = S.Schema.Type<typeof InvitationStatus>
 
 class Model extends M.Class<Model>("Invitation")({
 	id: M.Generated(InvitationId),
-	invitationUrl: S.String,
-	workosInvitationId: WorkOSInvitationId,
-	organizationId: OrganizationId,
-	email: S.String,
-	invitedBy: S.NullOr(UserId),
-	invitedAt: JsonDate,
-	expiresAt: JsonDate,
+	invitationUrl: M.Immutable(S.String),
+	workosInvitationId: M.Sensitive(WorkOSInvitationId),
+	organizationId: M.Immutable(OrganizationId),
+	email: M.Immutable(S.String),
+	invitedBy: M.Immutable(S.NullOr(UserId)),
+	invitedAt: M.Immutable(JsonDate),
+	expiresAt: M.Immutable(JsonDate),
 	status: InvitationStatus,
-	acceptedAt: S.NullOr(JsonDate),
-	acceptedBy: S.NullOr(UserId),
+	acceptedAt: M.GeneratedByApp(S.NullOr(JsonDate)),
+	acceptedBy: M.GeneratedByApp(S.NullOr(UserId)),
 }) {}
 
-export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export const { Insert, Update, Schema, Create, Patch, PatchPartial } = M.expose(Model)
 export type Type = typeof Schema.Type

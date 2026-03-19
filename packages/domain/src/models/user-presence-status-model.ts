@@ -8,15 +8,15 @@ export type UserPresenceStatusEnum = S.Schema.Type<typeof UserPresenceStatusEnum
 
 class Model extends M.Class<Model>("UserPresenceStatus")({
 	id: M.Generated(UserPresenceStatusId),
-	userId: UserId,
+	userId: M.Immutable(UserId),
 	status: UserPresenceStatusEnum,
 	customMessage: S.NullOr(S.String),
 	statusEmoji: S.NullOr(S.String),
 	statusExpiresAt: S.NullOr(JsonDate),
-	activeChannelId: S.NullOr(ChannelId),
+	activeChannelId: M.GeneratedByApp(S.NullOr(ChannelId)),
 	suppressNotifications: S.Boolean,
-	updatedAt: JsonDate,
-	lastSeenAt: JsonDate,
+	updatedAt: M.GeneratedByApp(JsonDate),
+	lastSeenAt: M.GeneratedByApp(JsonDate),
 }) {}
 
 export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)

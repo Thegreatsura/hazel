@@ -8,7 +8,7 @@ class Model extends M.Class<Model>("Message")({
 	id: M.Generated(MessageId),
 	channelId: ChannelId,
 	conversationId: M.GeneratedOptional(S.NullOr(ConnectConversationId)),
-	authorId: M.GeneratedByApp(UserId),
+	authorId: M.Immutable(UserId),
 	content: S.String,
 	embeds: S.NullOr(MessageEmbeds),
 	replyToMessageId: S.NullOr(MessageId),

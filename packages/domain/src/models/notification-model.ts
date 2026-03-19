@@ -5,14 +5,14 @@ import { JsonDate } from "./utils"
 
 class Model extends M.Class<Model>("Notification")({
 	id: M.Generated(NotificationId),
-	memberId: OrganizationMemberId,
-	targetedResourceId: S.NullOr(S.String.check(S.isUUID())),
-	targetedResourceType: S.NullOr(S.String),
-	resourceId: S.NullOr(S.String.check(S.isUUID())),
-	resourceType: S.NullOr(S.String),
+	memberId: M.Immutable(OrganizationMemberId),
+	targetedResourceId: M.Immutable(S.NullOr(S.String.check(S.isUUID()))),
+	targetedResourceType: M.Immutable(S.NullOr(S.String)),
+	resourceId: M.Immutable(S.NullOr(S.String.check(S.isUUID()))),
+	resourceType: M.Immutable(S.NullOr(S.String)),
 	createdAt: M.Generated(JsonDate),
 	readAt: S.NullOr(JsonDate),
 }) {}
 
-export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export const { Insert, Update, Schema, Create, Patch, PatchPartial } = M.expose(Model)
 export type Type = typeof Schema.Type

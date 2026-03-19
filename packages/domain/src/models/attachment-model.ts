@@ -14,7 +14,7 @@ class Model extends M.Class<Model>("Attachment")({
 	fileName: S.String,
 	fileSize: S.Number,
 	externalUrl: S.NullOr(S.String),
-	uploadedBy: M.GeneratedByApp(UserId),
+	uploadedBy: M.Immutable(UserId),
 	status: AttachmentStatus,
 	uploadedAt: JsonDate,
 	deletedAt: M.Generated(S.NullOr(JsonDate)),

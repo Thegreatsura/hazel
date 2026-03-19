@@ -70,7 +70,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.update", {
 		payload: Schema.Struct({
 			id: ChannelSectionId,
-		}).pipe(Schema.fieldsAssign((ChannelSection.Patch as Schema.Struct<any>).fields)),
+		}).pipe(Schema.fieldsAssign(ChannelSection.PatchPartial.fields)),
 		success: ChannelSectionResponse,
 		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})

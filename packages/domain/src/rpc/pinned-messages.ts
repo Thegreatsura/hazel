@@ -97,8 +97,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	Rpc.make("pinnedMessage.update", {
 		payload: Schema.Struct({
 			id: PinnedMessageId,
-			...PinnedMessage.Patch.fields,
-		}),
+		}).pipe(Schema.fieldsAssign(PinnedMessage.Patch.fields)),
 		success: PinnedMessageResponse,
 		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})

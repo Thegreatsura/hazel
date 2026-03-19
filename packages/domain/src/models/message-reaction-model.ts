@@ -5,10 +5,10 @@ import { JsonDate } from "./utils"
 
 class Model extends M.Class<Model>("MessageReaction")({
 	id: M.Generated(MessageReactionId),
-	messageId: MessageId,
-	channelId: ChannelId,
+	messageId: M.Immutable(MessageId),
+	channelId: M.Immutable(ChannelId),
 	conversationId: M.GeneratedOptional(S.NullOr(ConnectConversationId)),
-	userId: M.GeneratedByApp(UserId),
+	userId: M.Immutable(UserId),
 	emoji: S.String,
 	createdAt: M.Generated(JsonDate),
 }) {}
@@ -17,5 +17,5 @@ export const Insert = S.Struct({
 	...M.structFields(Model.insert),
 	conversationId: S.optional(S.NullOr(ConnectConversationId)),
 })
-export const { Update, Schema, Create, Patch } = M.expose(Model)
+export const { Update, Schema, Create, Patch, PatchPartial } = M.expose(Model)
 export type Type = typeof Schema.Type

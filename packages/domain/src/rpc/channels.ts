@@ -111,7 +111,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
-		}).pipe(Schema.fieldsAssign((Channel.Patch as Schema.Struct<any>).fields)),
+		}).pipe(Schema.fieldsAssign(Channel.PatchPartial.fields)),
 		success: ChannelResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
