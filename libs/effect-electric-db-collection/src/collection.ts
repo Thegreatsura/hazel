@@ -106,6 +106,17 @@ function createBackoffOnError(
 			return
 		}
 
+		// Check if this is a schema validation error - likely a stale cache after a deploy
+		const errorName = (error as Error)?.name || (error as { _tag?: string })?._tag
+		if (errorName === "SchemaValidationError") {
+			console.warn(`${prefix} Schema validation error, dispatching recovery event`)
+			if (typeof window !== "undefined") {
+				window.dispatchEvent(new CustomEvent("collection:schema-error"))
+			}
+			// Return undefined to stop syncing — the layout will handle recovery
+			return
+		}
+
 		// Check if max retries exceeded
 		if (retryCount > backoffConfig.maxRetries) {
 			console.error(

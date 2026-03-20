@@ -88,6 +88,20 @@ function RouteComponent() {
 		}
 	}, [user, error, isLoading, login, navigateToDesktopLogin])
 
+	// Handle schema validation errors from Electric collections after deploys.
+	// A stale cache can cause permanent decode failures — reload once to bust it.
+	const schemaReloadAttemptedRef = useRef(false)
+	useEffect(() => {
+		const handleSchemaError = () => {
+			if (schemaReloadAttemptedRef.current) return
+			schemaReloadAttemptedRef.current = true
+			console.warn("[layout] Collection schema error detected, reloading to bust stale cache")
+			window.location.reload()
+		}
+		window.addEventListener("collection:schema-error", handleSchemaError)
+		return () => window.removeEventListener("collection:schema-error", handleSchemaError)
+	}, [])
+
 	// Handle session expiry events from token refresh failures (web and desktop)
 	// Attempt refresh before redirecting (Bug B fix)
 	useEffect(() => {
