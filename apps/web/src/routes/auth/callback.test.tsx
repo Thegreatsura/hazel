@@ -23,12 +23,24 @@ const getMockNavigate = () =>
 		}
 	).__authCallbackNavigate
 
+const getMockRestartWebLogin = () =>
+	(
+		globalThis as typeof globalThis & {
+			__authCallbackRestartWebLogin: ReturnType<typeof vi.fn>
+		}
+	).__authCallbackRestartWebLogin
+
 vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (config: Record<string, unknown>) => ({
 		...config,
 		useSearch: () => getMockSearch(),
 	}),
 	useNavigate: () => getMockNavigate(),
+}))
+
+vi.mock("~/lib/auth", () => ({
+	restartWebLogin: (...args: unknown[]) =>
+		(getMockRestartWebLogin() as unknown as (...args: unknown[]) => unknown)(...args),
 }))
 
 import { resetCallbackState, setWebCallbackExecutorForTest } from "~/atoms/web-callback-atoms"
@@ -46,6 +58,7 @@ describe("/auth/callback", () => {
 					error_description?: string
 				}
 				__authCallbackNavigate: ReturnType<typeof vi.fn>
+				__authCallbackRestartWebLogin: ReturnType<typeof vi.fn>
 			}
 		).__authCallbackSearch = {
 			code: "test-auth-code",
@@ -56,6 +69,9 @@ describe("/auth/callback", () => {
 		;(
 			globalThis as typeof globalThis & { __authCallbackNavigate: ReturnType<typeof vi.fn> }
 		).__authCallbackNavigate = vi.fn()
+		;(
+			globalThis as typeof globalThis & { __authCallbackRestartWebLogin: ReturnType<typeof vi.fn> }
+		).__authCallbackRestartWebLogin = vi.fn()
 		resetCallbackState()
 		setWebCallbackExecutorForTest(null)
 	})
@@ -140,6 +156,7 @@ describe("/auth/callback", () => {
 		await waitFor(() => {
 			expect(screen.queryByRole("button", { name: "Try Again" })).toBeNull()
 		})
+		expect(screen.getByRole("button", { name: "Start Over" })).toBeTruthy()
 	})
 
 	it("surfaces typed state-mismatch failures with the simplified message", async () => {
@@ -166,6 +183,34 @@ describe("/auth/callback", () => {
 
 		await waitFor(() => {
 			expect(screen.queryByRole("button", { name: "Try Again" })).toBeNull()
+		})
+	})
+
+	it("starts over through unified recovery instead of navigating back to login", async () => {
+		const executor = vi.fn(async () => ({
+			success: false as const,
+			error: new OAuthCodeExpiredError({
+				message: "Authorization code expired or already used",
+			}),
+		}))
+		setWebCallbackExecutorForTest(executor)
+
+		render(
+			<StrictMode>
+				<RegistryContext.Provider value={appRegistry}>
+					<WebCallbackPage />
+				</RegistryContext.Provider>
+			</StrictMode>,
+		)
+
+		expect(await screen.findByText("Authentication Failed")).toBeTruthy()
+
+		fireEvent.click(screen.getByRole("button", { name: "Start Over" }))
+
+		expect(getMockRestartWebLogin()).toHaveBeenCalledWith({ returnTo: "/" })
+		expect(getMockNavigate()).not.toHaveBeenCalledWith({
+			to: "/auth/login",
+			replace: true,
 		})
 	})
 })

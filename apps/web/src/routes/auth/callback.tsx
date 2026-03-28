@@ -10,7 +10,6 @@ import { Schema } from "effect"
 import { useEffect } from "react"
 import {
 	getWebCallbackAttemptKey,
-	resetCallbackState,
 	retryWebCallback,
 	startWebCallback,
 	webCallbackStatusAtom,
@@ -18,6 +17,8 @@ import {
 import { Logo } from "~/components/logo"
 import { Button } from "~/components/ui/button"
 import { Loader } from "~/components/ui/loader"
+import { getWebCallbackReturnTo } from "~/lib/auth-flow"
+import { restartWebLogin } from "~/lib/auth"
 
 // Schema for auth state - can be string (raw JSON) or already parsed object
 const AuthStateSchema = Schema.Struct({
@@ -42,6 +43,7 @@ export function WebCallbackPage() {
 	const navigate = useNavigate()
 	const status = useAtomValue(webCallbackStatusAtom)
 	const callbackAttemptKey = getWebCallbackAttemptKey(search)
+	const returnTo = getWebCallbackReturnTo(search.state)
 
 	useEffect(() => {
 		void startWebCallback(search)
@@ -62,9 +64,8 @@ export function WebCallbackPage() {
 		void retryWebCallback(search)
 	}
 
-	function handleBackToLogin() {
-		resetCallbackState()
-		navigate({ to: "/auth/login", replace: true })
+	function handleStartOver() {
+		void restartWebLogin({ returnTo })
 	}
 
 	return (
@@ -140,8 +141,8 @@ export function WebCallbackPage() {
 										Try Again
 									</Button>
 								)}
-								<Button intent="secondary" onPress={handleBackToLogin}>
-									Back to Login
+								<Button intent="secondary" onPress={handleStartOver}>
+									Start Over
 								</Button>
 							</div>
 						</div>

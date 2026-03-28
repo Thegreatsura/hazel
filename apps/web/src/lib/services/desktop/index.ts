@@ -9,4 +9,3 @@
 
 export * from "./token-storage"
 export * from "./token-exchange"
-export * from "./tauri-auth"

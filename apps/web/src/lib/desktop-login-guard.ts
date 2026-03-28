@@ -1,34 +1,44 @@
+import { Effect } from "effect"
 import { clearDesktopTokens, getDesktopAccessToken } from "~/atoms/desktop-auth"
 import { forceRefresh } from "~/lib/auth-token"
 import { isTauri } from "~/lib/tauri"
 
 const MIN_TOKEN_LENGTH = 10
 
-export const shouldRedirectFromDesktopLogin = async (): Promise<boolean> => {
-	if (!isTauri()) return false
+const hasUsableToken = (token: string | null): boolean =>
+	Boolean(token && token.trim().length > MIN_TOKEN_LENGTH)
 
-	try {
-		const token = await getDesktopAccessToken()
-		if (!token || token.trim().length <= MIN_TOKEN_LENGTH) {
+export const shouldRedirectFromDesktopLogin = async (): Promise<boolean> =>
+	await Effect.gen(function* () {
+		if (!isTauri()) {
 			return false
 		}
 
-		const refreshed = await forceRefresh()
+		const token = yield* Effect.promise(() => getDesktopAccessToken())
+		if (!hasUsableToken(token)) {
+			return false
+		}
+
+		const refreshed = yield* Effect.promise(() => forceRefresh())
 		if (!refreshed) {
-			await clearDesktopTokens()
+			yield* Effect.promise(() => clearDesktopTokens())
 			return false
 		}
 
-		const validatedToken = await getDesktopAccessToken()
-		if (validatedToken && validatedToken.trim().length > MIN_TOKEN_LENGTH) {
+		const validatedToken = yield* Effect.promise(() => getDesktopAccessToken())
+		if (hasUsableToken(validatedToken)) {
 			return true
 		}
 
-		await clearDesktopTokens()
+		yield* Effect.promise(() => clearDesktopTokens())
 		return false
-	} catch (error) {
-		console.error("[desktop-login] Session validation failed:", error)
-		await clearDesktopTokens()
-		return false
-	}
-}
+	}).pipe(
+		Effect.catch((error) =>
+			Effect.gen(function* () {
+				yield* Effect.logError("[desktop-login] Session validation failed", error)
+				yield* Effect.promise(() => clearDesktopTokens())
+				return false
+			}),
+		),
+		Effect.runPromise,
+	)

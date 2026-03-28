@@ -23,7 +23,8 @@ import {
 } from "@hazel/domain/http"
 import { Duration, Effect, Layer, Schema, ServiceMap } from "effect"
 
-const DEFAULT_TIMEOUT = Duration.seconds(60)
+const CALLBACK_TIMEOUT = Duration.seconds(60)
+const REFRESH_TIMEOUT = Duration.seconds(10)
 const createAttemptId = (scope: "callback" | "refresh"): string => `${scope}_${crypto.randomUUID()}`
 
 const makeAttemptHeaders = (attemptId?: string) =>
@@ -135,7 +136,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 						payload: new TokenRequest({ code, state }),
 					})
 					.pipe(
-						Effect.timeout(DEFAULT_TIMEOUT),
+						Effect.timeout(CALLBACK_TIMEOUT),
 						Effect.catchTag("TimeoutError", () =>
 							Effect.fail(
 								new TokenExchangeError({
@@ -163,11 +164,11 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 						payload: new RefreshTokenRequest({ refreshToken }),
 					})
 					.pipe(
-						Effect.timeout(DEFAULT_TIMEOUT),
+						Effect.timeout(REFRESH_TIMEOUT),
 						Effect.catchTag("TimeoutError", () =>
 							Effect.fail(
 								new TokenExchangeError({
-									message: "Token refresh timed out",
+									message: "Token refresh timed out after 10 seconds",
 								}),
 							),
 						),

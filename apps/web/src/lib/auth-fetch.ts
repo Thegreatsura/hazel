@@ -17,6 +17,7 @@ import { isTauri } from "./tauri"
 
 const DesktopTokenStorageLive = TokenStorage.layer
 const WebTokenStorageLive = WebTokenStorage.layer
+const SESSION_EXPIRED_EVENT = "auth:session-expired"
 
 /**
  * Clear tokens from appropriate storage (desktop or web)
@@ -37,6 +38,16 @@ const clearTokens = async (): Promise<void> => {
 			Effect.withSpan("clearTokens"),
 		),
 	)
+}
+
+const dispatchSessionExpired = (): void => {
+	window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+}
+
+const expireSession = async (message: string): Promise<void> => {
+	console.error(message)
+	await clearTokens()
+	dispatchSessionExpired()
 }
 
 /**
@@ -92,13 +103,7 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 
 					// If retry also fails with 401, clear tokens and dispatch session expired
 					if (retryResponse.status === 401) {
-						console.error("[auth-fetch] Retry failed with 401, clearing tokens")
-						try {
-							await clearTokens()
-						} catch (error) {
-							console.error("[auth-fetch] Failed to clear tokens:", error)
-						}
-						window.dispatchEvent(new CustomEvent("auth:session-expired"))
+						await expireSession("[auth-fetch] Retry failed with 401, clearing tokens")
 					}
 
 					return retryResponse
@@ -106,13 +111,7 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 			}
 
 			// Refresh failed or no new token available, clear tokens and dispatch session expired
-			console.error("[auth-fetch] Token refresh failed, clearing tokens")
-			try {
-				await clearTokens()
-			} catch (error) {
-				console.error("[auth-fetch] Failed to clear tokens:", error)
-			}
-			window.dispatchEvent(new CustomEvent("auth:session-expired"))
+			await expireSession("[auth-fetch] Token refresh failed, clearing tokens")
 		}
 
 		return response
@@ -130,6 +129,6 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 	}
 
 	// Refresh failed or no refresh token — trigger login redirect
-	window.dispatchEvent(new CustomEvent("auth:session-expired"))
+	dispatchSessionExpired()
 	return new Response(null, { status: 401 })
 }

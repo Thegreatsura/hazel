@@ -1,14 +1,9 @@
 import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import {
-	desktopInitAtom,
-	desktopLoginAtom,
-	desktopLogoutAtom,
-	desktopTokenSchedulerAtom,
-} from "~/atoms/desktop-auth"
+import { desktopInitAtom, desktopLogoutAtom, desktopTokenSchedulerAtom } from "~/atoms/desktop-auth"
 import { webInitAtom, webLogoutAtom, webTokenSchedulerAtom } from "~/atoms/web-auth"
-import { router } from "~/main"
+import { normalizeAuthReturnTo, recoverSession, startLogin } from "~/lib/auth-flow"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
 
@@ -22,25 +17,7 @@ interface LogoutOptions {
 	redirectTo?: string
 }
 
-/**
- * Check if a pathname is a public route
- * Public routes: /auth/*, /join/*
- */
-const isPublicPath = (pathname: string) => pathname.startsWith("/auth") || pathname.startsWith("/join")
-
-/**
- * Atom that tracks whether the current route is a public route
- * (i.e., starts with /auth or /join)
- */
-const isPublicRouteAtom = Atom.make((get) => {
-	const unsubscribe = router.subscribe("onResolved", (event) => {
-		get.setSelf(isPublicPath(event.toLocation.pathname))
-	})
-
-	get.addFinalizer(unsubscribe)
-
-	return isPublicPath(router.state.location.pathname)
-}).pipe(Atom.keepAlive)
+export const restartWebLogin = (options?: LoginOptions) => recoverSession("web", options)
 
 /**
  * Query atom that fetches the current user from the API
@@ -79,30 +56,18 @@ export function useAuth() {
 	useAtomValue(webInitAtom)
 	useAtomValue(webTokenSchedulerAtom)
 
-	// Desktop auth action atoms
-	const desktopLogin = useAtomSet(desktopLoginAtom)
 	const desktopLogout = useAtomSet(desktopLogoutAtom)
 
 	// Web auth action atoms
 	const webLogout = useAtomSet(webLogoutAtom)
 
 	const login = (options?: LoginOptions) => {
-		let returnTo = options?.returnTo || location.pathname + location.search + location.hash
+		const returnTo = normalizeAuthReturnTo(
+			options?.returnTo || location.pathname + location.search + location.hash,
+		)
 
-		// Ensure returnTo is a relative path (defense in depth)
-		// If a full URL was passed, extract just the path portion
-		if (returnTo.startsWith("http://") || returnTo.startsWith("https://")) {
-			try {
-				const url = new URL(returnTo)
-				returnTo = url.pathname + url.search + url.hash
-			} catch {
-				returnTo = "/"
-			}
-		}
-
-		// Desktop auth flow - uses atom-based OAuth flow
 		if (isTauri()) {
-			desktopLogin({
+			void startLogin("desktop", {
 				returnTo,
 				organizationId: options?.organizationId,
 				invitationToken: options?.invitationToken,
@@ -110,31 +75,19 @@ export function useAuth() {
 			return
 		}
 
-		// Web auth flow - redirect to backend login endpoint
-		// This endpoint redirects to WorkOS, then to /auth/callback,
-		// which redirects to frontend /auth/callback with code/state params
-		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
-		loginUrl.searchParams.set("returnTo", returnTo)
-
-		if (options?.organizationId) {
-			loginUrl.searchParams.set("organizationId", options.organizationId)
-		}
-		if (options?.invitationToken) {
-			loginUrl.searchParams.set("invitationToken", options.invitationToken)
-		}
-
-		window.location.href = loginUrl.toString()
+		void startLogin("web", {
+			returnTo,
+			organizationId: options?.organizationId,
+			invitationToken: options?.invitationToken,
+		})
 	}
 
 	const logout = async (options?: LogoutOptions) => {
-		// Desktop logout - uses atom-based cleanup
 		if (isTauri()) {
 			desktopLogout(options)
 			return
 		}
 
-		// Web logout - clear localStorage tokens and redirect
-		// No need to call backend since we're using JWT (no server-side session)
 		webLogout(options)
 	}
 
