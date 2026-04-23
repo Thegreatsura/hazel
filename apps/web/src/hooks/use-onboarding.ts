@@ -1,9 +1,9 @@
+import { useOrganization as useClerkOrganization } from "@clerk/react"
 import { useAtom, useAtomSet } from "@effect/atom-react"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { usePostHog } from "posthog-js/react"
 import { useCallback, useEffect, useMemo, useRef } from "react"
-import { createInvitationMutation } from "~/atoms/invitation-atoms"
 import {
 	computeStepNumber,
 	computeTotalSteps,
@@ -52,7 +52,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		mode: "promiseExit",
 	})
 	const finalizeOnboarding = useAtomSet(finalizeOnboardingMutation, { mode: "promiseExit" })
-	const createInvitation = useAtomSet(createInvitationMutation, { mode: "promiseExit" })
+	const { organization: clerkOrganization } = useClerkOrganization()
 
 	// Track if we've initialized with the options
 	const hasInitialized = useRef(false)
@@ -191,31 +191,15 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		[createStepHandler],
 	)
 
-	// Async org setup handler
+	// Org setup handler — the step uses Clerk's <CreateOrganization/> so by the
+	// time we land here, the org already exists in both Clerk and (via webhook)
+	// our DB. Just record it and advance.
 	const handleOrgSetupContinue = useCallback(
 		async (data: { name: string; slug: string; organizationId: string }) => {
 			setState((prev) => ({ ...prev, isProcessing: true, error: undefined }))
 
 			try {
-				// If organizationId is passed, org was just created by OrgSetupStep with slug already set
-				// Only call setOrganizationSlug if we have a pre-existing org that needs its slug updated
-				let effectiveOrgId: OrganizationId | undefined
-
-				if (data.organizationId) {
-					// Org was just created by OrgSetupStep - slug is already set, no API call needed
-					effectiveOrgId = data.organizationId as OrganizationId
-				} else if (state.initialOrgId) {
-					// Pre-existing org needs slug update
-					effectiveOrgId = state.initialOrgId
-					const result = await setOrganizationSlug({
-						payload: { id: effectiveOrgId, slug: data.slug },
-					})
-					if (!Exit.isSuccess(result)) {
-						throw new Error("Failed to set organization slug")
-					}
-				} else {
-					throw new Error("No organization ID available")
-				}
+				const effectiveOrgId = data.organizationId as OrganizationId
 
 				setState((prev) => {
 					trackStepCompleted(prev.currentStep, prev.userType)
@@ -331,11 +315,10 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		setState((prev) => ({ ...prev, isProcessing: true, error: undefined }))
 
 		try {
-			if (!ctx.orgId) {
-				throw new Error("Organization ID is required")
-			}
-
-			// Critical: finalize onboarding first
+			// Critical: finalize onboarding first (sets isOnboarded=true on the user).
+			// We no longer require an org at this point — Clerk handles org creation
+			// during sign-up separately; the rest of the app can nudge the user to
+			// create one later if needed.
 			const finalizeResult = await finalizeOnboarding({
 				payload: void 0,
 				reactivityKeys: ["currentUser"],
@@ -354,16 +337,13 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				})
 			}
 
-			// Non-critical: send invitations
-			if (ctx.emails.length > 0) {
-				await createInvitation({
-					payload: {
-						organizationId: ctx.orgId,
-						invites: ctx.emails.map((email) => ({ email, role: "member" as const })),
-					},
-				}).catch(() => {
-					// Silently ignore invitation failures
-				})
+			// Non-critical: send invitations via Clerk (only if we have an active Clerk org).
+			if (clerkOrganization && ctx.emails.length > 0) {
+				await Promise.allSettled(
+					ctx.emails.map((email) =>
+						clerkOrganization.inviteMember({ emailAddress: email, role: "org:member" }),
+					),
+				)
 			}
 
 			// Track onboarding completion
@@ -385,7 +365,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				error: error instanceof Error ? error.message : "Failed to complete onboarding",
 			}))
 		}
-	}, [finalizeOnboarding, updateMemberMetadata, createInvitation, setState, posthog])
+	}, [finalizeOnboarding, updateMemberMetadata, clerkOrganization, setState, posthog])
 
 	// Auto-trigger finalization when reaching that step
 	const finalizationTriggered = useRef(false)

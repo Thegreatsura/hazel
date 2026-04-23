@@ -1,3 +1,4 @@
+import { CreateOrganization } from "@clerk/react"
 import type { OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
@@ -5,7 +6,8 @@ import { Loader } from "~/components/loader"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
-import { useAuth } from "~/lib/auth"
+import { restartWebLogin, useAuth } from "~/lib/auth"
+import { getOrganizationRoute } from "~/utils/organization-navigation"
 
 export const Route = createFileRoute("/_app/select-organization/")({
 	component: RouteComponent,
@@ -14,7 +16,7 @@ export const Route = createFileRoute("/_app/select-organization/")({
 function RouteComponent() {
 	const navigate = useNavigate()
 
-	const { user, isLoading: isAuthLoading, login } = useAuth()
+	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const {
 		data: userOrganizations,
@@ -40,29 +42,45 @@ function RouteComponent() {
 	}
 
 	if (!user) {
-		return <Navigate to="/auth/login" search={{ returnTo: "/select-organization" }} />
+		// Kick off Clerk's hosted sign-in; `restartWebLogin` handles the return URL.
+		restartWebLogin({ returnTo: "/select-organization" })
+		return <Loader />
 	}
 
 	if (userOrganizations && userOrganizations.length === 1) {
-		// If user already has org context in session, redirect directly
-		if (user?.organizationId) {
-			return <Navigate to="/" />
-		}
-		// Otherwise, get org-scoped session first
 		const singleOrg = userOrganizations[0]
 		if (singleOrg) {
-			login({ organizationId: singleOrg.org.id, returnTo: "/" })
-			return <Loader />
+			const route = getOrganizationRoute(singleOrg.org)
+			return <Navigate to={route.to} search={route.search} />
 		}
 	}
 
-	// If user has no organizations, redirect to onboarding
+	// No organizations → let the user create one via Clerk's hosted component.
+	// (Previously redirected to /onboarding, which looped when the user was
+	// already onboarded: onboarding → / → select-organization → /onboarding → …)
 	if (!userOrganizations || userOrganizations.length === 0) {
-		return <Navigate to="/onboarding" />
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-bg p-4">
+				<div className="flex w-full max-w-lg flex-col items-center gap-6">
+					<div className="text-center">
+						<h1 className="font-semibold text-2xl">Create your workspace</h1>
+						<p className="mt-2 text-muted-fg text-sm">
+							Get started by creating or joining an organization.
+						</p>
+					</div>
+					<CreateOrganization
+						routing="hash"
+						skipInvitationScreen
+						afterCreateOrganizationUrl="/"
+					/>
+				</div>
+			</div>
+		)
 	}
 
-	const handleSelectOrganization = (organizationId: OrganizationId) => {
-		login({ organizationId, returnTo: "/" })
+	const handleSelectOrganization = (org: { id: OrganizationId; slug: string | null }) => {
+		const route = getOrganizationRoute(org)
+		navigate({ to: route.to, search: route.search })
 	}
 
 	const getOrgInitials = (name: string) => {
@@ -86,7 +104,7 @@ function RouteComponent() {
 						<button
 							key={org.id}
 							type="button"
-							onClick={() => handleSelectOrganization(org.id)}
+							onClick={() => handleSelectOrganization(org)}
 							className="flex w-full items-center gap-4 rounded-xl border border-border bg-bg p-4 text-left transition-all hover:border-primary hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
 						>
 							<Avatar

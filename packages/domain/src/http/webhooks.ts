@@ -3,14 +3,6 @@ import { Schema } from "effect"
 import { InternalServerError, WorkflowInitializationError } from "../errors"
 import { RequiredScopes } from "../scopes/required-scopes"
 
-// WorkOS Webhook Types
-export class WorkOSWebhookPayload extends Schema.Class<WorkOSWebhookPayload>("WorkOSWebhookPayload")({
-	event: Schema.String,
-	data: Schema.Unknown,
-	id: Schema.String,
-	created_at: Schema.String,
-}) {}
-
 export class WebhookResponse extends Schema.Class<WebhookResponse>("WebhookResponse")({
 	success: Schema.Boolean,
 	message: Schema.optional(Schema.String),
@@ -44,16 +36,16 @@ export class InvalidGitHubWebhookSignature extends Schema.TaggedErrorClass<Inval
 
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
 	.add(
-		HttpApiEndpoint.post("workos", "/workos", {
+		HttpApiEndpoint.post("clerk", "/clerk", {
 			payload: Schema.Unknown,
 			success: WebhookResponse,
 			error: [InvalidWebhookSignature, InternalServerError],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
-					title: "WorkOS Webhook",
-					description: "Receive and process WorkOS webhook events",
-					summary: "Process WorkOS webhook events",
+					title: "Clerk Webhook",
+					description: "Receive and process Clerk webhook events (Svix-signed)",
+					summary: "Process Clerk webhook events",
 				}),
 			)
 			.annotate(RequiredScopes, []),

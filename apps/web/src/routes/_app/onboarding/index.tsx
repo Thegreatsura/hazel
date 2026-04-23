@@ -1,12 +1,11 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect } from "react"
 import type { OnboardingStep } from "~/atoms/onboarding-atoms"
 import { InviteTeamStep } from "~/components/onboarding/invite-team-step"
 import { OnboardingLayout } from "~/components/onboarding/onboarding-layout"
-import { OrgSetupStep } from "~/components/onboarding/org-setup-step"
 import { ProfileInfoStep } from "~/components/onboarding/profile-info-step"
 import { RoleStep } from "~/components/onboarding/role-step"
 import { ThemeSelectionStep } from "~/components/onboarding/theme-selection-step"
@@ -32,6 +31,13 @@ function RouteComponent() {
 	const { user } = useAuth()
 	const navigate = Route.useNavigate()
 	const { step: urlStep } = Route.useSearch()
+
+	// Reverse guard: if the user somehow lands here after finishing, just bounce
+	// to the app root. Prevents a "completed → onboarding → /" loop when the
+	// post-finalize redirect lands here before the app root settles.
+	if (user?.isOnboarded) {
+		return <Navigate to="/" />
+	}
 
 	// Fetch user's organizations to determine if they're creating or joining
 	const { data: userOrganizations } = useLiveQuery(
@@ -75,17 +81,16 @@ function RouteComponent() {
 		onStepChange: handleStepChange,
 	})
 
-	// Auto-redirect when onboarding is completed (handles race conditions and direct URL access)
+	// Auto-redirect when onboarding is completed. We force a full page reload
+	// so the cached user.me query doesn't come back stale (with isOnboarded=false)
+	// — which would bounce the user right back here via /_app/index.tsx's
+	// isOnboarded guard.
 	useEffect(() => {
 		if (onboarding.currentStep === "completed") {
 			const slug = onboarding.data.orgSlug || organization?.slug
-			if (slug) {
-				navigate({ to: "/$orgSlug", params: { orgSlug: slug } })
-			} else {
-				navigate({ to: "/" })
-			}
+			window.location.assign(slug ? `/${slug}` : "/")
 		}
-	}, [onboarding.currentStep, onboarding.data.orgSlug, organization?.slug, navigate])
+	}, [onboarding.currentStep, onboarding.data.orgSlug, organization?.slug])
 
 	// Animation variants based on direction with blur effect
 	const variants = {
@@ -181,26 +186,6 @@ function RouteComponent() {
 						<ThemeSelectionStep
 							onBack={onboarding.goBack}
 							onContinue={onboarding.handleThemeContinue}
-						/>
-					</motion.div>
-				)}
-
-				{onboarding.currentStep === "organizationSetup" && (
-					<motion.div
-						key="organizationSetup"
-						custom={onboarding.direction}
-						variants={variants}
-						initial="enter"
-						animate="center"
-						exit="exit"
-						transition={{ duration: 0.3, ease: "easeInOut" }}
-					>
-						<OrgSetupStep
-							onBack={onboarding.goBack}
-							onContinue={onboarding.handleOrgSetupContinue}
-							defaultName={onboarding.initialOrganization?.name}
-							defaultSlug={onboarding.initialOrganization?.slug || ""}
-							error={onboarding.error}
 						/>
 					</motion.div>
 				)}

@@ -19,7 +19,6 @@ export { ConnectParticipantRepo } from "./repositories/connect-participant-repo"
 export { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
 export { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
 export { IntegrationTokenRepo } from "./repositories/integration-token-repo"
-export { InvitationRepo } from "./repositories/invitation-repo"
 export { MessageReactionRepo } from "./repositories/message-reaction-repo"
 export {
 	MessageCreatedPayloadSchema,
@@ -46,5 +45,4 @@ export { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo
 export { UserRepo } from "./repositories/user-repo"
 
 // Services
-export { WorkOSClient, WorkOSApiError } from "./services/workos"
-export { type FullSyncResult, type SyncResult, WorkOSSync, WorkOSSyncError } from "./services/workos-sync"
+export { ClerkSync } from "./services/clerk-sync"

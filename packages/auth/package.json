@@ -11,11 +11,11 @@
 		"./errors": "./src/errors.ts"
 	},
 	"dependencies": {
+		"@clerk/backend": "^3.3.0",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"@workos-inc/node": "^7.77.0",
 		"effect": "catalog:effect",
 		"jose": "^6.1.3"
 	},

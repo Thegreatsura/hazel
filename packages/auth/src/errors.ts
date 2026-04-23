@@ -19,9 +19,7 @@ export class UserLookupCacheError extends Schema.TaggedErrorClass<UserLookupCach
 	},
 ) {}
 
-/**
- * Error thrown when fetching organization from WorkOS fails
- */
+/** Error thrown when fetching an organization from the identity provider fails. */
 export class OrganizationFetchError extends Schema.TaggedErrorClass<OrganizationFetchError>()(
 	"OrganizationFetchError",
 	{
@@ -32,6 +30,7 @@ export class OrganizationFetchError extends Schema.TaggedErrorClass<Organization
 
 // Re-export session errors from domain package for convenience
 export {
+	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
@@ -39,5 +38,4 @@ export {
 	SessionLoadError,
 	SessionNotProvidedError,
 	SessionRefreshError,
-	WorkOSUserFetchError,
 } from "@hazel/domain"

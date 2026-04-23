@@ -23,7 +23,6 @@ import {
 	GitHubSubscriptionRepo,
 	IntegrationConnectionRepo,
 	IntegrationTokenRepo,
-	InvitationRepo,
 	MessageReactionRepo,
 	MessageOutboxRepo,
 	MessageRepo,
@@ -35,9 +34,9 @@ import {
 	TypingIndicatorRepo,
 	UserPresenceStatusRepo,
 	UserRepo,
-	WorkOSClient,
-	WorkOSSync,
+	ClerkSync,
 } from "@hazel/backend-core"
+import { ClerkClient } from "@hazel/auth"
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
@@ -54,7 +53,6 @@ import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { RssSubscriptionPolicy } from "./policies/rss-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
-import { InvitationPolicy } from "./policies/invitation-policy"
 import { MessagePolicy } from "./policies/message-policy"
 import { MessageReactionPolicy } from "./policies/message-reaction-policy"
 import { NotificationPolicy } from "./policies/notification-policy"
@@ -80,17 +78,14 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
-import { AuthRedemptionStore } from "./services/auth-redemption-store"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { ConnectConversationService } from "./services/connect-conversation-service"
 import { OrgResolver } from "./services/org-resolver"
-import { WorkOSAuth } from "./services/workos-auth"
-import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
 export { HazelApi }
 
 // Export RPC groups for frontend consumption
-export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
+export { AuthMiddleware, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
 const HealthRouter = HttpRouter.use((router) => router.add("GET", "/health", HttpServerResponse.text("OK")))
 
@@ -139,7 +134,6 @@ const RepoLive = Layer.mergeAll(
 	UserRepo.layer,
 	OrganizationRepo.layer,
 	OrganizationMemberRepo.layer,
-	InvitationRepo.layer,
 	PinnedMessageRepo.layer,
 	AttachmentRepo.layer,
 	NotificationRepo.layer,
@@ -164,7 +158,6 @@ const PolicyLive = Layer.mergeAll(
 	ChannelPolicy.layer,
 	ChannelSectionPolicy.layer,
 	MessagePolicy.layer,
-	InvitationPolicy.layer,
 	OrganizationMemberPolicy.layer,
 	ChannelMemberPolicy.layer,
 	MessageReactionPolicy.layer,
@@ -189,11 +182,8 @@ const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.layer,
-	WorkOSAuth.layer,
-	AuthRedemptionStore.layer,
-	WorkOSClient.layer,
-	WorkOSSync.layer,
-	WorkOSWebhookVerifier.layer,
+	ClerkClient.layer,
+	ClerkSync.layer,
 	DatabaseLive,
 	S3.Default,
 	Redis.Default,
@@ -233,7 +223,6 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 		AuthorizationLive.pipe(
 			// SessionManager.layer includes BackendAuth and UserRepo via dependencies
 			Layer.provideMerge(SessionManager.layer),
-			Layer.provideMerge(WorkOSAuth.layer),
 			Layer.provideMerge(PersistenceLive),
 			Layer.provideMerge(Redis.Default),
 			Layer.provideMerge(DatabaseLive),

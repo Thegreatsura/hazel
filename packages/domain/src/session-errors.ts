@@ -73,10 +73,10 @@ export class SessionRefreshError extends Schema.TaggedErrorClass<SessionRefreshE
 	{ httpApiStatus: 401 },
 ) {}
 
-export class WorkOSUserFetchError extends Schema.TaggedErrorClass<WorkOSUserFetchError>(
-	"WorkOSUserFetchError",
+export class ClerkUserFetchError extends Schema.TaggedErrorClass<ClerkUserFetchError>(
+	"ClerkUserFetchError",
 )(
-	"WorkOSUserFetchError",
+	"ClerkUserFetchError",
 	{
 		message: Schema.String,
 		detail: Schema.String,

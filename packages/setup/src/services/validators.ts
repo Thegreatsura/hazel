@@ -1,5 +1,5 @@
+import { createClerkClient } from "@clerk/backend"
 import { ServiceMap, Data, Effect, Layer } from "effect"
-import { WorkOS } from "@workos-inc/node"
 import { SQL } from "bun"
 
 export class ValidationError extends Data.TaggedError("ValidationError")<{
@@ -9,17 +9,17 @@ export class ValidationError extends Data.TaggedError("ValidationError")<{
 
 export class CredentialValidator extends ServiceMap.Service<CredentialValidator>()("CredentialValidator", {
 	make: Effect.succeed({
-		validateWorkOS: (apiKey: string, _clientId: string) =>
+		validateClerk: (secretKey: string, publishableKey: string) =>
 			Effect.tryPromise({
 				try: async () => {
-					const workos = new WorkOS(apiKey)
-					// Test API call - list organizations (limited to 1)
-					await workos.organizations.listOrganizations({ limit: 1 })
+					const clerk = createClerkClient({ secretKey, publishableKey })
+					// Cheap auth-check call: list users with limit=1.
+					await clerk.users.getUserList({ limit: 1 })
 					return { valid: true as const }
 				},
 				catch: (error) =>
 					new ValidationError({
-						service: "WorkOS",
+						service: "Clerk",
 						message: error instanceof Error ? error.message : String(error),
 					}),
 			}),

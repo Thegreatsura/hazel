@@ -17,13 +17,13 @@
 		"test:watch": "vitest src/**/*.test.ts",
 		"test:policies": "vitest run src/lib/policy-utils.test.ts src/policies/*.test.ts",
 		"setup": "bun run scripts/setup.ts",
-		"sync:workos": "bun run src/scripts/sync-workos.ts",
 		"reset": "bun run scripts/reset-all.ts",
 		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
 		"reset:force": "bun run scripts/reset-all.ts --force",
 		"rebuild-channel-access": "bun run scripts/rebuild-channel-access.ts"
 	},
 	"dependencies": {
+		"@clerk/backend": "^3.3.0",
 		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/platform-node": "catalog:effect",
@@ -35,7 +35,6 @@
 		"@hazel/effect-bun": "workspace:*",
 		"@hazel/integrations": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"@workos-inc/node": "^7.77.0",
 		"dfx": "^1.0.10",
 		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect",

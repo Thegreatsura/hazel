@@ -13,10 +13,6 @@ import { Route as DevLayoutRouteImport } from './routes/_dev/layout'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as JoinSlugRouteImport } from './routes/join/$slug'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
-import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
-import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DevUiLayoutRouteImport } from './routes/_dev/ui/layout'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
 import { Route as DevEmbedsIndexRouteImport } from './routes/dev/embeds/index'
@@ -41,7 +37,6 @@ import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
 import { Route as AppOrgSlugSettingsCustomEmojisRouteImport } from './routes/_app/$orgSlug/settings/custom-emojis'
 import { Route as AppOrgSlugSettingsConnectInvitesRouteImport } from './routes/_app/$orgSlug/settings/connect-invites'
-import { Route as AppOrgSlugSettingsAuthenticationRouteImport } from './routes/_app/$orgSlug/settings/authentication'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugNotificationsThreadsRouteImport } from './routes/_app/$orgSlug/notifications/threads'
 import { Route as AppOrgSlugNotificationsGeneralRouteImport } from './routes/_app/$orgSlug/notifications/general'
@@ -85,26 +80,6 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const JoinSlugRoute = JoinSlugRouteImport.update({
   id: '/join/$slug',
   path: '/join/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthDesktopLoginRoute = AuthDesktopLoginRouteImport.update({
-  id: '/auth/desktop-login',
-  path: '/auth/desktop-login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthDesktopCallbackRoute = AuthDesktopCallbackRouteImport.update({
-  id: '/auth/desktop-callback',
-  path: '/auth/desktop-callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevUiLayoutRoute = DevUiLayoutRouteImport.update({
@@ -235,12 +210,6 @@ const AppOrgSlugSettingsConnectInvitesRoute =
   AppOrgSlugSettingsConnectInvitesRouteImport.update({
     id: '/connect-invites',
     path: '/connect-invites',
-    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
-  } as any)
-const AppOrgSlugSettingsAuthenticationRoute =
-  AppOrgSlugSettingsAuthenticationRouteImport.update({
-    id: '/authentication',
-    path: '/authentication',
     getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
   } as any)
 const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
@@ -401,10 +370,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
-  '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
@@ -430,7 +395,6 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -459,10 +423,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
-  '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/ui/agent-steps': typeof DevUiAgentStepsRoute
@@ -482,7 +442,6 @@ export interface FileRoutesByTo {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -513,10 +472,6 @@ export interface FileRoutesById {
   '/_dev': typeof DevLayoutRouteWithChildren
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/_dev/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
-  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
-  '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
@@ -543,7 +498,6 @@ export interface FileRoutesById {
   '/_app/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/_app/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/_app/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/_app/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/_app/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -575,10 +529,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$orgSlug'
     | '/ui'
-    | '/auth/callback'
-    | '/auth/desktop-callback'
-    | '/auth/desktop-login'
-    | '/auth/login'
     | '/join/$slug'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
@@ -604,7 +554,6 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
@@ -633,10 +582,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ui'
-    | '/auth/callback'
-    | '/auth/desktop-callback'
-    | '/auth/desktop-login'
-    | '/auth/login'
     | '/join/$slug'
     | '/onboarding/setup-organization'
     | '/ui/agent-steps'
@@ -656,7 +601,6 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
@@ -686,10 +630,6 @@ export interface FileRouteTypes {
     | '/_dev'
     | '/_app/$orgSlug'
     | '/_dev/ui'
-    | '/auth/callback'
-    | '/auth/desktop-callback'
-    | '/auth/desktop-login'
-    | '/auth/login'
     | '/join/$slug'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
@@ -716,7 +656,6 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/notifications/general'
     | '/_app/$orgSlug/notifications/threads'
     | '/_app/$orgSlug/profile/$userId'
-    | '/_app/$orgSlug/settings/authentication'
     | '/_app/$orgSlug/settings/connect-invites'
     | '/_app/$orgSlug/settings/custom-emojis'
     | '/_app/$orgSlug/settings/debug'
@@ -746,10 +685,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
   DevLayoutRoute: typeof DevLayoutRouteWithChildren
-  AuthCallbackRoute: typeof AuthCallbackRoute
-  AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
-  AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
-  AuthLoginRoute: typeof AuthLoginRoute
   JoinSlugRoute: typeof JoinSlugRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
@@ -786,34 +721,6 @@ declare module '@tanstack/react-router' {
       path: '/join/$slug'
       fullPath: '/join/$slug'
       preLoaderRoute: typeof JoinSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/desktop-login': {
-      id: '/auth/desktop-login'
-      path: '/auth/desktop-login'
-      fullPath: '/auth/desktop-login'
-      preLoaderRoute: typeof AuthDesktopLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/desktop-callback': {
-      id: '/auth/desktop-callback'
-      path: '/auth/desktop-callback'
-      fullPath: '/auth/desktop-callback'
-      preLoaderRoute: typeof AuthDesktopCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dev/ui': {
@@ -982,13 +889,6 @@ declare module '@tanstack/react-router' {
       path: '/connect-invites'
       fullPath: '/$orgSlug/settings/connect-invites'
       preLoaderRoute: typeof AppOrgSlugSettingsConnectInvitesRouteImport
-      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
-    }
-    '/_app/$orgSlug/settings/authentication': {
-      id: '/_app/$orgSlug/settings/authentication'
-      path: '/authentication'
-      fullPath: '/$orgSlug/settings/authentication'
-      preLoaderRoute: typeof AppOrgSlugSettingsAuthenticationRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
     '/_app/$orgSlug/profile/$userId': {
@@ -1267,7 +1167,6 @@ const AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren =
 interface AppOrgSlugSettingsLayoutRouteChildren {
   AppOrgSlugSettingsChatSyncLayoutRoute: typeof AppOrgSlugSettingsChatSyncLayoutRouteWithChildren
   AppOrgSlugSettingsIntegrationsLayoutRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
-  AppOrgSlugSettingsAuthenticationRoute: typeof AppOrgSlugSettingsAuthenticationRoute
   AppOrgSlugSettingsConnectInvitesRoute: typeof AppOrgSlugSettingsConnectInvitesRoute
   AppOrgSlugSettingsCustomEmojisRoute: typeof AppOrgSlugSettingsCustomEmojisRoute
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
@@ -1282,8 +1181,6 @@ const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildr
       AppOrgSlugSettingsChatSyncLayoutRouteWithChildren,
     AppOrgSlugSettingsIntegrationsLayoutRoute:
       AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren,
-    AppOrgSlugSettingsAuthenticationRoute:
-      AppOrgSlugSettingsAuthenticationRoute,
     AppOrgSlugSettingsConnectInvitesRoute:
       AppOrgSlugSettingsConnectInvitesRoute,
     AppOrgSlugSettingsCustomEmojisRoute: AppOrgSlugSettingsCustomEmojisRoute,
@@ -1411,10 +1308,6 @@ const DevLayoutRouteWithChildren = DevLayoutRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
   DevLayoutRoute: DevLayoutRouteWithChildren,
-  AuthCallbackRoute: AuthCallbackRoute,
-  AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
-  AuthDesktopLoginRoute: AuthDesktopLoginRoute,
-  AuthLoginRoute: AuthLoginRoute,
   JoinSlugRoute: JoinSlugRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,
