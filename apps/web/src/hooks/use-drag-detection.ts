@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 
 /**
  * Hook to detect when files are being dragged anywhere on the page.
@@ -7,7 +8,7 @@ import { useEffect, useState } from "react"
 export function useDragDetection() {
 	const [isDraggingOnPage, setIsDraggingOnPage] = useState(false)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		// Counter to track nested dragenter/dragleave events
 		let dragCounter = 0
 
@@ -47,7 +48,7 @@ export function useDragDetection() {
 			document.removeEventListener("drop", handleDrop)
 			document.removeEventListener("dragend", handleDragEnd)
 		}
-	}, [])
+	})
 
 	return { isDraggingOnPage }
 }

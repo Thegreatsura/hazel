@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import type { HeadingProps, TextProps } from "react-aria-components"
 import { Heading, Button as PrimitiveButton, Dialog as PrimitiveDialog } from "react-aria-components"
 import { twMerge } from "tailwind-merge"
 import IconClose from "~/components/icons/icon-close"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { cx } from "~/lib/primitive"
 import { Button, type ButtonProps } from "./button"
 
@@ -32,7 +33,7 @@ interface DialogHeaderProps extends Omit<React.ComponentProps<"div">, "title"> {
 const DialogHeader = ({ className, ...props }: DialogHeaderProps) => {
 	const headerRef = useRef<HTMLHeadingElement>(null)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		const header = headerRef.current
 		if (!header) {
 			return
@@ -49,7 +50,7 @@ const DialogHeader = ({ className, ...props }: DialogHeaderProps) => {
 
 		observer.observe(header)
 		return () => observer.unobserve(header)
-	}, [])
+	})
 
 	return (
 		<div
@@ -112,7 +113,7 @@ interface DialogFooterProps extends React.ComponentProps<"div"> {}
 const DialogFooter = ({ className, ...props }: DialogFooterProps) => {
 	const footerRef = useRef<HTMLDivElement>(null)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		const footer = footerRef.current
 
 		if (!footer) {
@@ -132,7 +133,7 @@ const DialogFooter = ({ className, ...props }: DialogFooterProps) => {
 		return () => {
 			observer.unobserve(footer)
 		}
-	}, [])
+	})
 	return (
 		<div
 			ref={footerRef}
