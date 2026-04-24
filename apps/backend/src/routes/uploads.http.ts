@@ -3,7 +3,11 @@ import { AttachmentRepo, BotRepo, OrganizationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import {
+	ALLOWED_AVATAR_TYPES,
+	ALLOWED_EMOJI_TYPES,
 	BotNotFoundForUploadError,
+	MAX_AVATAR_SIZE,
+	MAX_EMOJI_SIZE,
 	OrganizationNotFoundForUploadError,
 	PresignUploadResponse,
 	UploadError,
@@ -50,6 +54,19 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ User Avatar Upload ============
 					Match.when({ type: "user-avatar" }, (req) =>
 						Effect.gen(function* () {
+							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "Content type must be image/jpeg, image/png, or image/webp",
+									}),
+								)
+							}
+							if (req.fileSize > MAX_AVATAR_SIZE) {
+								return yield* Effect.fail(
+									new UploadError({ message: "File size must be between 1 byte and 5MB" }),
+								)
+							}
+
 							// Check rate limit (5 per hour)
 							yield* checkAvatarRateLimit(user.id)
 
@@ -88,6 +105,24 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ Bot Avatar Upload ============
 					Match.when({ type: "bot-avatar" }, (req) =>
 						Effect.gen(function* () {
+							if (!req.botId) {
+								return yield* Effect.fail(
+									new UploadError({ message: "botId is required for bot-avatar uploads" }),
+								)
+							}
+							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "Content type must be image/jpeg, image/png, or image/webp",
+									}),
+								)
+							}
+							if (req.fileSize > MAX_AVATAR_SIZE) {
+								return yield* Effect.fail(
+									new UploadError({ message: "File size must be between 1 byte and 5MB" }),
+								)
+							}
+
 							const botRepo = yield* BotRepo
 
 							// Check if bot exists
@@ -146,6 +181,26 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ Organization Avatar Upload ============
 					Match.when({ type: "organization-avatar" }, (req) =>
 						Effect.gen(function* () {
+							if (!req.organizationId) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "organizationId is required for organization-avatar uploads",
+									}),
+								)
+							}
+							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "Content type must be image/jpeg, image/png, or image/webp",
+									}),
+								)
+							}
+							if (req.fileSize > MAX_AVATAR_SIZE) {
+								return yield* Effect.fail(
+									new UploadError({ message: "File size must be between 1 byte and 5MB" }),
+								)
+							}
+
 							const orgRepo = yield* OrganizationRepo
 
 							// Check if organization exists
@@ -199,6 +254,24 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ Custom Emoji Upload ============
 					Match.when({ type: "custom-emoji" }, (req) =>
 						Effect.gen(function* () {
+							if (!req.organizationId) {
+								return yield* Effect.fail(
+									new UploadError({ message: "organizationId is required for custom-emoji uploads" }),
+								)
+							}
+							if (!ALLOWED_EMOJI_TYPES.includes(req.contentType as (typeof ALLOWED_EMOJI_TYPES)[number])) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "Content type must be image/png, image/gif, or image/webp",
+									}),
+								)
+							}
+							if (req.fileSize > MAX_EMOJI_SIZE) {
+								return yield* Effect.fail(
+									new UploadError({ message: "File size must be between 1 byte and 256KB" }),
+								)
+							}
+
 							// Check if user is admin/owner of the org
 							yield* organizationPolicy.canUpdate(req.organizationId)
 
@@ -240,6 +313,15 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ Attachment Upload ============
 					Match.when({ type: "attachment" }, (req) =>
 						Effect.gen(function* () {
+							const { organizationId, channelId, fileName } = req
+							if (!organizationId || !channelId || !fileName) {
+								return yield* Effect.fail(
+									new UploadError({
+										message: "organizationId, channelId, and fileName are required for attachment uploads",
+									}),
+								)
+							}
+
 							const attachmentId = AttachmentId.makeUnsafe(randomUUIDv7())
 
 							yield* Effect.logDebug(
@@ -255,11 +337,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 										yield* attachmentRepo.insert({
 											id: attachmentId,
 											uploadedBy: user.id,
-											organizationId: req.organizationId,
+											organizationId,
 											status: "uploading",
-											channelId: req.channelId,
+											channelId,
 											messageId: null,
-											fileName: req.fileName,
+											fileName,
 											fileSize: req.fileSize,
 											externalUrl: null,
 											uploadedAt: new Date(),

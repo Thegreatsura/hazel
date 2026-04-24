@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
+import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
 import { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
@@ -28,130 +28,73 @@ export type UploadType = typeof UploadType.Type
 // ============ Request Schemas ============
 
 /**
- * Base fields shared by all upload types
+ * Unified presign upload request.
+ *
+ * Flat struct with optional per-type fields, discriminated by `type`. We use a
+ * single `Schema.Struct` (instead of a `Schema.Union` of `Schema.Class`) because
+ * `HttpApiClient` encodes payloads via `Schema.encodeUnknown`, and class schemas
+ * require actual class instances — plain JSON payloads fail the encode step
+ * client-side with "Expected X, got {...}" before any network request is made.
+ *
+ * Per-type required fields (e.g. `botId` for bot-avatar, `channelId` +
+ * `organizationId` + `fileName` for attachment) are validated in the backend
+ * handler branches in `apps/backend/src/routes/uploads.http.ts`.
  */
-const BaseUploadFields = {
+export const PresignUploadRequest = Schema.Struct({
+	type: UploadType,
 	contentType: Schema.String,
-	fileSize: Schema.Number,
+	fileSize: Schema.Number.check(
+		Schema.isBetween(
+			{ minimum: 1, maximum: MAX_ATTACHMENT_SIZE },
+			{ message: "File size must be between 1 byte and 10MB" },
+		),
+	),
+	botId: Schema.optional(BotId),
+	organizationId: Schema.optional(OrganizationId),
+	channelId: Schema.optional(ChannelId),
+	fileName: Schema.optional(Schema.String),
+})
+export type PresignUploadRequest = typeof PresignUploadRequest.Type
+
+// ============ Per-type DTO shapes (TS-only) ============
+// These are convenience types for callers that build narrower payloads.
+// They intentionally do not exist as runtime Schemas — see the note above.
+
+export type UserAvatarUploadRequest = {
+	type: "user-avatar"
+	contentType: string
+	fileSize: number
 }
 
-const allowedAvatarTypeFilter = Schema.makeFilter<string>((s) =>
-	ALLOWED_AVATAR_TYPES.includes(s as (typeof ALLOWED_AVATAR_TYPES)[number])
-		? undefined
-		: "Content type must be image/jpeg, image/png, or image/webp",
-)
+export type BotAvatarUploadRequest = {
+	type: "bot-avatar"
+	botId: BotId
+	contentType: string
+	fileSize: number
+}
 
-const allowedEmojiTypeFilter = Schema.makeFilter<string>((s) =>
-	ALLOWED_EMOJI_TYPES.includes(s as (typeof ALLOWED_EMOJI_TYPES)[number])
-		? undefined
-		: "Content type must be image/png, image/gif, or image/webp",
-)
+export type OrganizationAvatarUploadRequest = {
+	type: "organization-avatar"
+	organizationId: OrganizationId
+	contentType: string
+	fileSize: number
+}
 
-/**
- * User avatar upload request
- */
-export class UserAvatarUploadRequest extends Schema.Class<UserAvatarUploadRequest>("UserAvatarUploadRequest")(
-	{
-		type: Schema.Literal("user-avatar"),
-		contentType: Schema.String.check(allowedAvatarTypeFilter),
-		fileSize: Schema.Number.check(
-			Schema.isBetween(
-				{ minimum: 1, maximum: MAX_AVATAR_SIZE },
-				{
-					message: "File size must be between 1 byte and 5MB",
-				},
-			),
-		),
-	},
-) {}
+export type AttachmentUploadRequest = {
+	type: "attachment"
+	fileName: string
+	contentType: string
+	fileSize: number
+	organizationId: OrganizationId
+	channelId: ChannelId
+}
 
-/**
- * Bot avatar upload request
- */
-export class BotAvatarUploadRequest extends Schema.Class<BotAvatarUploadRequest>("BotAvatarUploadRequest")({
-	type: Schema.Literal("bot-avatar"),
-	botId: BotId,
-	contentType: Schema.String.check(allowedAvatarTypeFilter),
-	fileSize: Schema.Number.check(
-		Schema.isBetween(
-			{ minimum: 1, maximum: MAX_AVATAR_SIZE },
-			{
-				message: "File size must be between 1 byte and 5MB",
-			},
-		),
-	),
-}) {}
-
-/**
- * Organization avatar upload request
- */
-export class OrganizationAvatarUploadRequest extends Schema.Class<OrganizationAvatarUploadRequest>(
-	"OrganizationAvatarUploadRequest",
-)({
-	type: Schema.Literal("organization-avatar"),
-	organizationId: OrganizationId,
-	contentType: Schema.String.check(allowedAvatarTypeFilter),
-	fileSize: Schema.Number.check(
-		Schema.isBetween(
-			{ minimum: 1, maximum: MAX_AVATAR_SIZE },
-			{
-				message: "File size must be between 1 byte and 5MB",
-			},
-		),
-	),
-}) {}
-
-/**
- * Attachment upload request
- */
-export class AttachmentUploadRequest extends Schema.Class<AttachmentUploadRequest>("AttachmentUploadRequest")(
-	{
-		type: Schema.Literal("attachment"),
-		fileName: Schema.String,
-		contentType: Schema.String,
-		fileSize: Schema.Number.check(
-			Schema.isBetween(
-				{ minimum: 1, maximum: MAX_ATTACHMENT_SIZE },
-				{
-					message: "File size must be between 1 byte and 10MB",
-				},
-			),
-		),
-		organizationId: OrganizationId,
-		channelId: ChannelId,
-	},
-) {}
-
-/**
- * Custom emoji upload request
- */
-export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequest>(
-	"CustomEmojiUploadRequest",
-)({
-	type: Schema.Literal("custom-emoji"),
-	organizationId: OrganizationId,
-	contentType: Schema.String.check(allowedEmojiTypeFilter),
-	fileSize: Schema.Number.check(
-		Schema.isBetween(
-			{ minimum: 1, maximum: MAX_EMOJI_SIZE },
-			{
-				message: "File size must be between 1 byte and 256KB",
-			},
-		),
-	),
-}) {}
-
-/**
- * Unified presign upload request - discriminated union of all upload types
- */
-export const PresignUploadRequest = Schema.Union([
-	UserAvatarUploadRequest,
-	BotAvatarUploadRequest,
-	OrganizationAvatarUploadRequest,
-	AttachmentUploadRequest,
-	CustomEmojiUploadRequest,
-])
-export type PresignUploadRequest = typeof PresignUploadRequest.Type
+export type CustomEmojiUploadRequest = {
+	type: "custom-emoji"
+	organizationId: OrganizationId
+	contentType: string
+	fileSize: number
+}
 
 // ============ Response Schema ============
 

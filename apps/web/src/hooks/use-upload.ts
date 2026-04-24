@@ -159,8 +159,7 @@ export function useUpload() {
 			try {
 				// Step 1: Get presigned URL from backend
 				const presignPayload = buildPresignPayload(params)
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Union type not compatible with mutation typing
-				const presignRes = await presignMutation({ payload: presignPayload as any })
+				const presignRes = await presignMutation({ payload: presignPayload })
 
 				if (!Exit.isSuccess(presignRes)) {
 					toast.error("Upload failed", {
