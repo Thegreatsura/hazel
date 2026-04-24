@@ -11,6 +11,7 @@ import { MAX_RECENT_SEARCHES, recentSearchesAtom, type RecentSearch } from "~/at
 import IconClose from "~/components/icons/icon-close"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { Loader } from "~/components/ui/loader"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { useOrganization } from "~/hooks/use-organization"
 import { useSearchQuery } from "~/hooks/use-search-query"
 import { useAuth } from "~/lib/auth"
@@ -47,9 +48,9 @@ export function SearchView({ onClose }: SearchViewProps) {
 	const editorRef = useRef<SearchSlateEditorRef>(null)
 
 	// Focus editor on mount
-	useEffect(() => {
+	useMountEffect(() => {
 		editorRef.current?.focus()
-	}, [])
+	})
 
 	// Search results
 	const { results, isLoading, isEmpty, hasQuery } = useSearchQuery({

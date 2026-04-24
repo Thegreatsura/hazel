@@ -1,10 +1,11 @@
 import { useAuth as useClerkAuth, ClerkLoaded, ClerkLoading, RedirectToSignIn } from "@clerk/react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { Option } from "effect"
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { Loader } from "~/components/loader"
 import { Button } from "~/components/ui/button"
 import { Text } from "~/components/ui/text"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { useAuth } from "~/lib/auth"
 
@@ -42,7 +43,7 @@ function AppShell() {
 	usePostHogIdentify()
 
 	const preloadStartedRef = useRef(false)
-	useEffect(() => {
+	useMountEffect(() => {
 		if (preloadStartedRef.current) return
 		preloadStartedRef.current = true
 		void import("~/db/collections").then((m) =>
@@ -54,10 +55,10 @@ function AppShell() {
 				m.connectParticipantCollection.preload(),
 			]).catch((err) => console.warn("[layout] collection preload error", err)),
 		)
-	}, [])
+	})
 
 	const schemaReloadAttemptedRef = useRef(false)
-	useEffect(() => {
+	useMountEffect(() => {
 		const onError = () => {
 			if (schemaReloadAttemptedRef.current) return
 			schemaReloadAttemptedRef.current = true
@@ -66,7 +67,7 @@ function AppShell() {
 		}
 		window.addEventListener("collection:schema-error", onError)
 		return () => window.removeEventListener("collection:schema-error", onError)
-	}, [])
+	})
 
 	if (isLoading && !user) return <Loader />
 

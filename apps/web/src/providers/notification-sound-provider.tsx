@@ -2,6 +2,7 @@ import type { ChannelId, MessageId } from "@hazel/schema"
 import { useAtomValue } from "@effect/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type ReactNode, useEffect, useMemo, useRef } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import {
 	createIsMutedGetter,
 	notificationSoundSettingsAtom,
@@ -97,7 +98,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 	const soundSink = useMemo(() => new SoundNotificationSink({ notificationSoundManager }), [])
 	const nativeSink = useMemo(() => new NativeNotificationSink(), [])
 
-	useEffect(() => {
+	useMountEffect(() => {
 		const cleanupPriming = notificationSoundManager.initPriming()
 		notificationSoundManager.setDependencies({
 			getConfig: () => ({
@@ -108,7 +109,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		})
 
 		return cleanupPriming
-	}, [])
+	})
 
 	useEffect(() => {
 		notificationSoundManager.setDependencies({

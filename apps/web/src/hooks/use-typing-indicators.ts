@@ -3,6 +3,7 @@ import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useEffect, useRef, useState } from "react"
 import { channelMemberCollection, typingIndicatorCollection, userCollection } from "~/db/collections"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { useAuth } from "~/lib/auth"
 import { pushTypingDiagnostics } from "~/lib/typing-diagnostics"
 
@@ -47,7 +48,7 @@ export function useTypingIndicators({ channelId, staleThreshold = 6000 }: UseTyp
 		[],
 	)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		const interval = setInterval(() => {
 			setNow(Date.now())
 		}, 1000)
@@ -55,7 +56,7 @@ export function useTypingIndicators({ channelId, staleThreshold = 6000 }: UseTyp
 		return () => {
 			clearInterval(interval)
 		}
-	}, [])
+	})
 
 	useEffect(() => {
 		const emitCollectionSnapshot = () => {

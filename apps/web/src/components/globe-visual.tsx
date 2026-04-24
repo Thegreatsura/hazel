@@ -1,7 +1,8 @@
 import { IconMoon } from "~/components/icons/icon-moon"
 import { IconSun } from "~/components/icons/icon-sun"
 import { motion } from "motion/react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 
 interface GlobeVisualProps {
 	selectedOffset: number | null
@@ -11,14 +12,14 @@ interface GlobeVisualProps {
 export function GlobeVisual({ selectedOffset, hoveredOffset }: GlobeVisualProps) {
 	const [currentHour, setCurrentHour] = useState(0)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		const updateHour = () => {
 			setCurrentHour(new Date().getUTCHours())
 		}
 		updateHour()
 		const interval = setInterval(updateHour, 60000)
 		return () => clearInterval(interval)
-	}, [])
+	})
 
 	const activeOffset = hoveredOffset ?? selectedOffset ?? 0
 	const localHour = (currentHour + activeOffset + 24) % 24

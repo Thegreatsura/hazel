@@ -7,8 +7,9 @@
 import { ClerkProvider } from "@clerk/react"
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
 import { HotkeysProvider } from "@tanstack/react-hotkeys"
-import { StrictMode, useEffect, useState, type ReactNode } from "react"
+import { StrictMode, useState, type ReactNode } from "react"
 import ReactDOM from "react-dom/client"
+import { useMountEffect } from "./hooks/use-mount-effect.ts"
 
 import { routeTree } from "./routeTree.gen.ts"
 
@@ -59,12 +60,12 @@ function DeferredPostHog({ children }: { children: ReactNode }) {
 		children: ReactNode
 	}> | null>(null)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		import("posthog-js/react").then((m) => {
 			const Provider = m.PostHogProvider
 			setProvider(() => Provider)
 		})
-	}, [])
+	})
 
 	if (!PostHogProvider) return <>{children}</>
 	return (

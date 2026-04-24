@@ -3,7 +3,8 @@
  * @description Get the app version for display in the UI
  */
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { isTauri } from "./tauri"
 
 /**
@@ -19,13 +20,13 @@ export function useAppVersion(): string | null {
 		return null
 	})
 
-	useEffect(() => {
+	useMountEffect(() => {
 		if (isTauri()) {
 			// Get version from Tauri API (actual installed app version)
 			const app = (window as any).__TAURI__?.app
 			app?.getVersion?.().then(setVersion)
 		}
-	}, [])
+	})
 
 	return version
 }

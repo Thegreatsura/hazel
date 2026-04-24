@@ -1,7 +1,8 @@
 import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { createConnectInviteMutation, workspaceSearchMutation } from "~/atoms/connect-share-atoms"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { IconClose } from "~/components/icons/icon-close"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
@@ -46,11 +47,11 @@ export function ShareChannelModal({
 	const searchWorkspaces = useAtomSet(workspaceSearchMutation, { mode: "promiseExit" })
 	const createInvite = useAtomSet(createConnectInviteMutation, { mode: "promiseExit" })
 
-	useEffect(() => {
+	useMountEffect(() => {
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
-	}, [])
+	})
 
 	const handleSearch = useCallback(
 		(query: string) => {

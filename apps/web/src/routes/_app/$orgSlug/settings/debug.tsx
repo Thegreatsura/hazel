@@ -2,8 +2,9 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { type Notification } from "@hazel/domain/models"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { reactScanEnabledAtom } from "~/atoms/react-scan-atoms"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { IconServers } from "~/components/icons/icon-servers"
 import { Button } from "~/components/ui/button"
 import {
@@ -74,11 +75,11 @@ function DebugSettings() {
 		mode: "promiseExit",
 	})
 
-	useEffect(() => {
+	useMountEffect(() => {
 		getNativeNotificationPermissionState()
 			.then(setNotificationPermission)
 			.catch(() => setNotificationPermission("unavailable"))
-	}, [])
+	})
 
 	const handleGenerateMockData = async () => {
 		setIsGeneratingMockData(true)

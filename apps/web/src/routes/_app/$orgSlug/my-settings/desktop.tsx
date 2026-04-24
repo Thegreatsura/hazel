@@ -6,7 +6,8 @@
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import {
 	checkForUpdates,
 	createDownloadEffect,
@@ -43,14 +44,14 @@ function DesktopSettings() {
 	const setUpdateState = useAtomSet(tauriUpdateStateAtom)
 	const setDownloadState = useAtomSet(tauriDownloadStateAtom)
 
-	useEffect(() => {
+	useMountEffect(() => {
 		isAutostartEnabled()
 			.then(setAutostartEnabled)
 			.catch((error) => {
 				console.error("[desktop-settings] Failed to check autostart status:", error)
 				setAutostartEnabled(false)
 			})
-	}, [])
+	})
 
 	const handleCheckForUpdates = () => {
 		checkForUpdates(setUpdateState)
