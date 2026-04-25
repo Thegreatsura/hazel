@@ -6,18 +6,16 @@
 import { Effect, Schedule } from "effect"
 import { getClerkToken } from "./clerk-token"
 import { runtime } from "./services/common/runtime"
-import { isTauri } from "./tauri"
 
 const retrySchedule = Schedule.exponential("2 seconds").pipe(
 	Schedule.jittered,
 	Schedule.either(Schedule.spaced("60 seconds")),
-	Schedule.compose(Schedule.recurs(8)),
+	Schedule.both(Schedule.recurs(8)),
 )
 
 const shouldRetry = (response: Response): boolean => response.status >= 500 && response.status < 600
 
 const doFetch = async (input: RequestInfo | URL, init: RequestInit | undefined): Promise<Response> => {
-	if (isTauri()) return fetch(input, init)
 	const token = await getClerkToken()
 	if (!token) return new Response(null, { status: 401 })
 	return fetch(input, {

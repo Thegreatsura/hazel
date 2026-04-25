@@ -1,5 +1,5 @@
-import { useAuth as useClerkAuth, ClerkLoaded, ClerkLoading, RedirectToSignIn } from "@clerk/react"
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { useAuth as useClerkAuth, ClerkLoaded, ClerkLoading } from "@clerk/react"
+import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router"
 import { Option } from "effect"
 import { useRef } from "react"
 import { Loader } from "~/components/loader"
@@ -34,7 +34,16 @@ function Gate({ currentUrl }: { currentUrl: string }) {
 	// /onboarding + /select-organization routes. Default `true` caused a
 	// RedirectToSignIn ↔ Clerk hosted sign-in loop.
 	const { isSignedIn } = useClerkAuth({ treatPendingAsSignedOut: false })
-	if (!isSignedIn) return <RedirectToSignIn redirectUrl={currentUrl} />
+	if (!isSignedIn) {
+		return (
+			<Navigate
+				to="/sign-in/$"
+				params={{ _splat: "" }}
+				search={{ redirect_url: currentUrl }}
+				replace
+			/>
+		)
+	}
 	return <AppShell />
 }
 

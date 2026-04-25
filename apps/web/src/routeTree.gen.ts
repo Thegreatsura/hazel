@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DevLayoutRouteImport } from './routes/_dev/layout'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up/$'
+import { Route as SignInSplatRouteImport } from './routes/sign-in/$'
 import { Route as JoinSlugRouteImport } from './routes/join/$slug'
 import { Route as DevUiLayoutRouteImport } from './routes/_dev/ui/layout'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
@@ -76,6 +78,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppLayoutRoute,
+} as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const JoinSlugRoute = JoinSlugRouteImport.update({
   id: '/join/$slug',
@@ -371,6 +383,8 @@ export interface FileRoutesByFullPath {
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/ui': typeof DevUiLayoutRouteWithChildren
   '/join/$slug': typeof JoinSlugRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
@@ -424,6 +438,8 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/ui': typeof DevUiLayoutRouteWithChildren
   '/join/$slug': typeof JoinSlugRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/ui/agent-steps': typeof DevUiAgentStepsRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
@@ -473,6 +489,8 @@ export interface FileRoutesById {
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/_dev/ui': typeof DevUiLayoutRouteWithChildren
   '/join/$slug': typeof JoinSlugRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/_app/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
@@ -530,6 +548,8 @@ export interface FileRouteTypes {
     | '/$orgSlug'
     | '/ui'
     | '/join/$slug'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
     | '/$orgSlug/settings'
@@ -583,6 +603,8 @@ export interface FileRouteTypes {
     | '/'
     | '/ui'
     | '/join/$slug'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/onboarding/setup-organization'
     | '/ui/agent-steps'
     | '/dev/embeds/demo'
@@ -631,6 +653,8 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug'
     | '/_dev/ui'
     | '/join/$slug'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
     | '/_app/$orgSlug/notifications'
@@ -686,6 +710,8 @@ export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
   DevLayoutRoute: typeof DevLayoutRouteWithChildren
   JoinSlugRoute: typeof JoinSlugRoute
+  SignInSplatRoute: typeof SignInSplatRoute
+  SignUpSplatRoute: typeof SignUpSplatRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
   DevEmbedsOpenstatusRoute: typeof DevEmbedsOpenstatusRoute
@@ -715,6 +741,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppLayoutRoute
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/join/$slug': {
       id: '/join/$slug'
@@ -1309,6 +1349,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
   DevLayoutRoute: DevLayoutRouteWithChildren,
   JoinSlugRoute: JoinSlugRoute,
+  SignInSplatRoute: SignInSplatRoute,
+  SignUpSplatRoute: SignUpSplatRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,
   DevEmbedsOpenstatusRoute: DevEmbedsOpenstatusRoute,

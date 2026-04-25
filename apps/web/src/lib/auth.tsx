@@ -18,7 +18,8 @@ export const userAtom = HazelRpcClient.query("user.me", void 0, {
 export const restartWebLogin = (options?: LoginOptions) => {
 	const redirectUrl =
 		options?.returnTo || window.location.pathname + window.location.search + window.location.hash
-	window.Clerk?.redirectToSignIn?.({ redirectUrl })
+	const params = new URLSearchParams({ redirect_url: redirectUrl })
+	window.location.assign(`/sign-in?${params.toString()}`)
 }
 
 export function useAuth() {

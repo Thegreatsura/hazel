@@ -128,6 +128,10 @@ declare module "react-aria-components" {
 				<ClerkProvider
 					publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
 					afterSignOutUrl="/"
+					signInUrl="/sign-in"
+					signUpUrl="/sign-up"
+					signInFallbackRedirectUrl="/"
+					signUpFallbackRedirectUrl="/"
 				>
 					<RegistryContext.Provider value={appRegistry}>
 						<RouterProvider router={router} />
