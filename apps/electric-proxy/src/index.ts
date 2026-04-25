@@ -492,7 +492,7 @@ const ServerLive = Layer.effectDiscard(
 			})
 		}
 
-		const serviceMap = yield* Effect.services<
+		const serviceMap = yield* Effect.context<
 			ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth
 		>()
 		const run = Effect.runPromiseWith(serviceMap)

@@ -114,7 +114,7 @@ export const handleAIRequest = (params: {
 					yield* Effect.log(`Agent response complete: ${session.messageId}`)
 				}).pipe(
 					Effect.timeoutOrElse({
-						onTimeout: () =>
+						orElse: () =>
 							Effect.fail(
 								new SessionTimeoutError({
 									message: "Overall AI session exceeded 3 minute time limit",

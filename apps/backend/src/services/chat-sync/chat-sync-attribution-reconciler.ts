@@ -1,7 +1,7 @@
 import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 interface ReconcileAttributionParams {
 	organizationId: OrganizationId
@@ -14,7 +14,7 @@ interface ReconcileAttributionParams {
 const defaultShadowDisplayName = (provider: string): string =>
 	`${provider.charAt(0).toUpperCase()}${provider.slice(1)} User`
 
-export class ChatSyncAttributionReconciler extends ServiceMap.Service<ChatSyncAttributionReconciler>()(
+export class ChatSyncAttributionReconciler extends Context.Service<ChatSyncAttributionReconciler>()(
 	"ChatSyncAttributionReconciler",
 	{
 		make: Effect.gen(function* () {

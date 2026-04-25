@@ -7,13 +7,13 @@
  * Enabled by default on port 9090. Set `healthPort: false` in config to disable.
  */
 
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 
 export interface BotHealthServerConfig {
 	readonly port: number
 }
 
-export class BotHealthServerConfigTag extends ServiceMap.Service<
+export class BotHealthServerConfigTag extends Context.Service<
 	BotHealthServerConfigTag,
 	BotHealthServerConfig
 >()("@hazel/bot-sdk/BotHealthServerConfig") {}
@@ -24,11 +24,11 @@ interface HealthResponse {
 	readonly uptime_ms: number
 }
 
-export class BotHealthServer extends ServiceMap.Service<BotHealthServer>()("BotHealthServer", {
+export class BotHealthServer extends Context.Service<BotHealthServer>()("BotHealthServer", {
 	make: Effect.gen(function* () {
 		const config = yield* BotHealthServerConfigTag
 		const startTime = Date.now()
-		const services = yield* Effect.services<never>()
+		const services = yield* Effect.context<never>()
 
 		const collectHealth = Effect.sync(
 			(): HealthResponse => ({

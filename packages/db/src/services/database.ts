@@ -1,7 +1,7 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
-import { Schema, ServiceMap } from "effect"
+import { Schema, Context } from "effect"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -29,7 +29,7 @@ export interface TransactionService {
 	readonly execute: TxFn
 }
 
-export class TransactionContext extends ServiceMap.Service<TransactionContext, TransactionService>()(
+export class TransactionContext extends Context.Service<TransactionContext, TransactionService>()(
 	"TransactionContext",
 ) {}
 
@@ -134,7 +134,7 @@ const makeService = (config: Config) =>
 		)
 
 		const transaction = Effect.fn("Database.transaction")(<T, E, R>(effect: Effect.Effect<T, E, R>) =>
-			Effect.services<R>().pipe(
+			Effect.context<R>().pipe(
 				Effect.map((services) => Effect.runPromiseExitWith(services)),
 				Effect.flatMap((runPromiseExit) =>
 					Effect.callback<T, DatabaseError | E, R>((resume) => {
@@ -256,6 +256,6 @@ const makeService = (config: Config) =>
 
 type Shape = Effect.Success<ReturnType<typeof makeService>>
 
-export class Database extends ServiceMap.Service<Database, Shape>()("Database") {}
+export class Database extends Context.Service<Database, Shape>()("Database") {}
 
 export const layer = (config: Config) => Layer.effect(Database, makeService(config))

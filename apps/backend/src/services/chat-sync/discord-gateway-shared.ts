@@ -7,7 +7,7 @@ import {
 	ExternalWebhookId,
 	SyncConnectionId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Option, Schema } from "effect"
+import { Context, Effect, Option, Schema } from "effect"
 import { DiscordSyncWorker } from "./discord-sync-worker"
 import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
 
@@ -190,7 +190,7 @@ type DiscordGatewayChannelLink = {
 }
 
 type DiscordGatewayDispatchWorker = Pick<
-	ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
+	Context.Service.Shape<typeof DiscordSyncWorker>,
 	| "ingestMessageCreate"
 	| "ingestMessageUpdate"
 	| "ingestMessageDelete"

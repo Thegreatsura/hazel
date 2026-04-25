@@ -1,4 +1,4 @@
-import { ServiceMap } from "effect"
+import { Context } from "effect"
 import type { ApiScope } from "./api-scope"
 
 /**
@@ -14,6 +14,6 @@ import type { ApiScope } from "./api-scope"
  * - Empty array `[]` = public endpoint (no scope needed)
  * - Missing annotation = error (caught by startup validation)
  */
-export class RequiredScopes extends ServiceMap.Service<RequiredScopes, ReadonlyArray<ApiScope>>()(
+export class RequiredScopes extends Context.Service<RequiredScopes, ReadonlyArray<ApiScope>>()(
 	"@hazel/domain/RequiredScopes",
 ) {}

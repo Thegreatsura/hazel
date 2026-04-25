@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { BotRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { BotId, UserId } from "@hazel/schema"
-import { Effect, Result, Layer, ServiceMap } from "effect"
+import { Effect, Result, Layer, Context } from "effect"
 import { BotPolicy } from "./bot-policy.ts"
 import {
 	makeActor,
@@ -27,7 +27,7 @@ const makeBotRepoLayer = (bots: Record<string, { createdBy: UserId }>) =>
 			}
 			return f(bot)
 		},
-	} as ServiceMap.Service.Shape<typeof BotRepo>)
+	} as Context.Service.Shape<typeof BotRepo>)
 
 const makePolicyLayer = (members: Record<string, Role>, bots: Record<string, { createdBy: UserId }>) =>
 	Layer.effect(BotPolicy, BotPolicy.make).pipe(

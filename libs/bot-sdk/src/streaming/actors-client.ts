@@ -8,7 +8,7 @@
  */
 
 import { createActorsClient } from "@hazel/actors/client"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 // biome-ignore lint/suspicious/noExplicitAny: Opaque type to avoid non-portable DTS references to @hazel/actors internals
 export type MessageActor = any
@@ -72,7 +72,7 @@ export interface ActorsClientConfig {
  * }).pipe(Effect.provide(layer))
  * ```
  */
-export class ActorsClient extends ServiceMap.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
+export class ActorsClient extends Context.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
 	make: Effect.fn("ActorsClient.create")(function* (config: ActorsClientConfig) {
 		const endpoint = config.endpoint ?? "https://rivet.hazel.sh"
 		const client = createActorsClient(endpoint)

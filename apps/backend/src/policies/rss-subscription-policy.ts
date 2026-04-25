@@ -1,12 +1,12 @@
 import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class RssSubscriptionPolicy extends ServiceMap.Service<RssSubscriptionPolicy>()(
+export class RssSubscriptionPolicy extends Context.Service<RssSubscriptionPolicy>()(
 	"RssSubscriptionPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

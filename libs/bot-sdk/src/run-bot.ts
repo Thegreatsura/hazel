@@ -9,7 +9,7 @@
  */
 
 import { BunRuntime } from "@effect/platform-bun"
-import { Effect, Layer, Redacted, ServiceMap } from "effect"
+import { Effect, Layer, Redacted, Context } from "effect"
 import type { CommandGroup, EmptyCommands } from "./command.ts"
 import { createHazelBot, HazelBotClient, type HazelBotConfig } from "./hazel-bot-sdk.ts"
 import { BotEnvConfig } from "./bot-config.ts"
@@ -48,7 +48,7 @@ export interface RunBotConfig<Commands extends CommandGroup<any> = EmptyCommands
 	 * Does NOT need to call bot.start - that's handled automatically.
 	 */
 	readonly setup: (
-		bot: ServiceMap.Service.Shape<typeof HazelBotClient>,
+		bot: Context.Service.Shape<typeof HazelBotClient>,
 	) => Effect.Effect<void, unknown, unknown>
 
 	/**

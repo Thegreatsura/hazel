@@ -2,7 +2,7 @@ import { verifyToken } from "@clerk/backend"
 import { CurrentUser, InvalidBearerTokenError, InvalidJwtPayloadError, SessionLoadError } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
 import { ClerkJwtClaims, type ClerkUserId, type UserId } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { ClerkClient } from "../session/clerk-client.ts"
 
 type UserRow = {
@@ -50,7 +50,7 @@ export const decodeClerkJwtClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
  * Backend authentication service. Verifies Clerk bearer JWTs and syncs the
  * user into the DB if it's their first request.
  */
-export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
+export class BackendAuth extends Context.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
 	make: Effect.gen(function* () {
 		const clerk = yield* ClerkClient
 		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY")

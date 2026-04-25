@@ -2,7 +2,7 @@ import { BotInstallationRepo, BotRepo, OrganizationMemberRepo, UserRepo } from "
 import { Integrations } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
 /**
  * Integration Bot Service
@@ -10,7 +10,7 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
  * Manages global bot users for integration providers.
  * Each provider has a single shared bot user across all organizations.
  */
-export class IntegrationBotService extends ServiceMap.Service<IntegrationBotService>()(
+export class IntegrationBotService extends Context.Service<IntegrationBotService>()(
 	"IntegrationBotService",
 	{
 		make: Effect.gen(function* () {

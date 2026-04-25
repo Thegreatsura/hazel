@@ -1,7 +1,7 @@
 import { PersistedCache, Persistence } from "effect/unstable/persistence"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import type { BotId, ChannelId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import {
 	AccessContextLookupError,
 	type BotAccessContext,
@@ -35,17 +35,15 @@ export interface AccessContextCache {
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class AccessContextCacheService extends ServiceMap.Service<AccessContextCacheService>()(
+export class AccessContextCacheService extends Context.Service<AccessContextCacheService>()(
 	"AccessContextCacheService",
 	{
 		make: Effect.gen(function* () {
 			const db = yield* Database.Database
 
 			// Create bot access context cache
-			const botCache = yield* PersistedCache.make({
-				storeId: `${CACHE_STORE_ID}:bot`,
-
-				lookup: (request: BotAccessContextRequest) =>
+			const botCache = yield* PersistedCache.make(
+				(request: BotAccessContextRequest) =>
 					Effect.gen(function* () {
 						yield* Effect.annotateCurrentSpan("cache.lookup_performed", true)
 						yield* Effect.annotateCurrentSpan("cache.result", "miss")
@@ -89,11 +87,13 @@ export class AccessContextCacheService extends ServiceMap.Service<AccessContextC
 
 						return { channelIds }
 					}),
-
-				timeToLive: (_exit, _request) => CACHE_TTL,
-				inMemoryCapacity: IN_MEMORY_CAPACITY,
-				inMemoryTTL: (_exit, _request) => IN_MEMORY_TTL,
-			})
+				{
+					storeId: `${CACHE_STORE_ID}:bot`,
+					timeToLive: (_exit, _request) => CACHE_TTL,
+					inMemoryCapacity: IN_MEMORY_CAPACITY,
+					inMemoryTTL: (_exit, _request) => IN_MEMORY_TTL,
+				},
+			)
 
 			return {
 				getBotContext: Effect.fn("AccessContextCache.getBotContext")(function* (

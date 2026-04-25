@@ -1,5 +1,5 @@
 import { createClerkClient } from "@clerk/backend"
-import { ServiceMap, Data, Effect, Layer } from "effect"
+import { Context, Data, Effect, Layer } from "effect"
 import { SQL } from "bun"
 
 export class ValidationError extends Data.TaggedError("ValidationError")<{
@@ -7,7 +7,7 @@ export class ValidationError extends Data.TaggedError("ValidationError")<{
 	message: string
 }> {}
 
-export class CredentialValidator extends ServiceMap.Service<CredentialValidator>()("CredentialValidator", {
+export class CredentialValidator extends Context.Service<CredentialValidator>()("CredentialValidator", {
 	make: Effect.succeed({
 		validateClerk: (secretKey: string, publishableKey: string) =>
 			Effect.tryPromise({

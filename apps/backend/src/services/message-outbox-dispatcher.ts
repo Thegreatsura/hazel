@@ -9,7 +9,7 @@ import {
 	ReactionDeletedPayloadSchema,
 } from "@hazel/backend-core/repositories"
 import { Database } from "@hazel/db"
-import { ServiceMap, Effect, Layer, Redacted, Schema } from "effect"
+import { Context, Effect, Layer, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
 import { formatError } from "../lib/format-error"
 import { DatabaseLive } from "./database"
@@ -26,7 +26,7 @@ const OUTBOX_DISPATCHER_LOCK_KEY = 1_046_277_921
 const computeRetryDelayMs = (attempt: number): number =>
 	Math.min(5_000 * 3 ** Math.max(0, attempt - 1), 300_000)
 
-export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDispatcher>()(
+export class MessageOutboxDispatcher extends Context.Service<MessageOutboxDispatcher>()(
 	"MessageOutboxDispatcher",
 	{
 		make: Effect.gen(function* () {

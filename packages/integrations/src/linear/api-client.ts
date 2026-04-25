@@ -6,7 +6,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
+import { Context, Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration
@@ -416,7 +416,7 @@ const isRetryableError = (
  * const issue = yield* client.fetchIssue("ENG-123", accessToken)
  * ```
  */
-export class LinearApiClient extends ServiceMap.Service<LinearApiClient>()("LinearApiClient", {
+export class LinearApiClient extends Context.Service<LinearApiClient>()("LinearApiClient", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

@@ -27,7 +27,7 @@ import type {
 	UserId,
 } from "@hazel/schema"
 import { Discord } from "@hazel/integrations"
-import { Effect, Layer, Option, ServiceMap } from "effect"
+import { Effect, Layer, Option, Context } from "effect"
 import { ChannelAccessSyncService } from "../channel-access-sync.ts"
 import { IntegrationBotService } from "../integrations/integration-bot-service.ts"
 import { configLayer, serviceShape } from "../../test/effect-helpers.ts"
@@ -126,7 +126,7 @@ type WorkerLayerDeps = {
 	databaseExecute?: (query: unknown) => Effect.Effect<unknown, unknown, never>
 }
 
-type DiscordSyncWorkerShape = ServiceMap.Service.Shape<typeof DiscordSyncWorkerTag>
+type DiscordSyncWorkerShape = Context.Service.Shape<typeof DiscordSyncWorkerTag>
 
 const PAYLOAD: DiscordIngressMessageCreate = {
 	syncConnectionId: SYNC_CONNECTION_ID,

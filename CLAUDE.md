@@ -208,17 +208,19 @@ Without both changes, Electric sync requests for the new table will be rejected 
 
 ## Effect-TS Best Practices
 
-> **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing ServiceMap.Service, Schema.TaggedError, Layer composition, or effect-atom code.
+> **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing Context.Service, Schema.TaggedError, Layer composition, or effect-atom code.
 
-### Always Use `ServiceMap.Service` Instead of `Context.Tag`
+> **Naming note**: As of `effect@4.0.0-beta.57` the `ServiceMap` module was renamed back to `Context`. The v3 `Context.Tag` API is gone — `Context.Service` (with a `make` option) is the v4 way to declare services. Older code may still reference `ServiceMap`; treat any new `ServiceMap` import as a mistake.
 
-**ALWAYS** prefer `ServiceMap.Service` (from `effect`) over `Context.Tag` for defining services. `ServiceMap.Service` with a `make` option stores the constructor effect on the class. You must define the layer explicitly using `Layer.effect`.
+### Always Use `Context.Service` for Services
+
+**ALWAYS** prefer `Context.Service` (from `effect`) for defining services. `Context.Service` with a `make` option stores the constructor effect on the class. You must define the layer explicitly using `Layer.effect`.
 
 ```typescript
-// ✅ CORRECT - Use ServiceMap.Service with make and explicit layer
-import { ServiceMap, Effect, Layer } from "effect"
+// ✅ CORRECT - Use Context.Service with make and explicit layer
+import { Context, Effect, Layer } from "effect"
 
-export class MyService extends ServiceMap.Service<MyService>()("MyService", {
+export class MyService extends Context.Service<MyService>()("MyService", {
 	make: Effect.gen(function* () {
 		// ... implementation
 		return {
@@ -233,20 +235,8 @@ export class MyService extends ServiceMap.Service<MyService>()("MyService", {
 ```
 
 ```typescript
-// ❌ WRONG - Don't use Context.Tag for services
-export class MyService extends Context.Tag("MyService")<
-	MyService,
-	{
-		/* shape */
-	}
->() {
-	static layer = Layer.effect(
-		this,
-		Effect.gen(function* () {
-			/* ... */
-		}),
-	)
-}
+// ❌ WRONG - Don't use the legacy ServiceMap name
+import { ServiceMap } from "effect" // <- no longer exported in beta.57+
 ```
 
 ```typescript
@@ -259,18 +249,13 @@ export class MyService extends Effect.Service<MyService>()("MyService", {
 }) {}
 ```
 
-**When Context.Tag is acceptable:**
-
-- Infrastructure layers with runtime injection (e.g., Cloudflare KV namespace, worker bindings)
-- Factory patterns where the resource is provided externally at runtime
-
 ### Wire Dependencies with `Layer.provide`
 
 Wire service dependencies using `Layer.provide` on the layer. The v3 `dependencies` array no longer exists.
 
 ```typescript
 // ✅ CORRECT - Dependencies wired via Layer.provide on the layer
-export class MyService extends ServiceMap.Service<MyService>()("MyService", {
+export class MyService extends Context.Service<MyService>()("MyService", {
 	make: Effect.gen(function* () {
 		const db = yield* DatabaseService
 		const cache = yield* CacheService

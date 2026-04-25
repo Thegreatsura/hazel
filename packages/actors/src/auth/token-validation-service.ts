@@ -1,7 +1,7 @@
 import { verifyToken } from "@clerk/backend"
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { ClerkJwtClaims } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Context, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { TokenValidationConfigService } from "./config-service"
 import { BotTokenValidationError, ConfigError, InvalidTokenFormatError, JwtValidationError } from "./errors"
 import {
@@ -23,7 +23,7 @@ function isBotToken(token: string): boolean {
 /**
  * Service for validating authentication tokens (Clerk JWT and bot tokens).
  */
-export class TokenValidationService extends ServiceMap.Service<TokenValidationService>()(
+export class TokenValidationService extends Context.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
 		make: Effect.gen(function* () {

@@ -12,7 +12,7 @@ import {
 } from "@hazel/schema"
 import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
 import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./discord-sync-worker"
 import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
 
@@ -196,7 +196,7 @@ type DiscordGatewayChannelLink = {
 }
 
 type DiscordGatewayDispatchWorker = Pick<
-	ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
+	Context.Service.Shape<typeof DiscordSyncWorker>,
 	| "ingestMessageCreate"
 	| "ingestMessageUpdate"
 	| "ingestMessageDelete"
@@ -571,7 +571,7 @@ export const createDiscordGatewayDispatchHandlers = (deps: {
 	}
 }
 
-export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayService>()(
+export class DiscordGatewayService extends Context.Service<DiscordGatewayService>()(
 	"DiscordGatewayService",
 	{
 		make: Effect.gen(function* () {

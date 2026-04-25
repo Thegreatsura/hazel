@@ -56,7 +56,7 @@ import {
 	Ref,
 	Schema,
 	Semaphore,
-	ServiceMap,
+	Context,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createLoggerLayer, logLevelFromString, type BotLogConfig, type LogFormat } from "./log-config.ts"
@@ -126,7 +126,7 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly heartbeatIntervalMs?: number
 }
 
-export class HazelBotRuntimeConfigTag extends ServiceMap.Service<
+export class HazelBotRuntimeConfigTag extends Context.Service<
 	HazelBotRuntimeConfigTag,
 	HazelBotRuntimeConfig
 >()("@hazel/bot-sdk/HazelBotRuntimeConfig") {}
@@ -192,7 +192,7 @@ export interface SendMessageOptions {
  * Hazel Bot Client - Effect Service with typed convenience methods
  * Uses scoped: since it manages scoped resources (RateLimiter)
  */
-export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelBotClient", {
+export class HazelBotClient extends Context.Service<HazelBotClient>()("HazelBotClient", {
 	make: Effect.gen(function* () {
 		const auth = yield* BotAuth
 		// Get the RPC client from context
@@ -574,7 +574,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 
 		const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
 			Effect.gen(function* () {
-				const services = yield* Effect.services<any>()
+				const services = yield* Effect.context<any>()
 				let nextResumeOffset = yield* loadResumeOffset(runtimeConfig)
 				let nextSessionId = yield* loadGatewaySessionId()
 				let hasConnected = false
@@ -1904,7 +1904,7 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
  * @example
  * ```typescript
  * import { createHazelBot, HazelBotClient, Command, CommandGroup } from "@hazel/bot-sdk"
- * import { ServiceMap, Schema } from "effect"
+ * import { Context, Schema } from "effect"
  *
  * // Define typesafe commands
  * const EchoCommand = Command.make("echo", {

@@ -2,11 +2,11 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Latch from "effect/Latch"
 import * as Queue from "effect/Queue"
-import * as ServiceMap from "effect/ServiceMap"
+import * as Context from "effect/Context"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 
-export class NetworkMonitor extends ServiceMap.Service<NetworkMonitor>()("NetworkMonitor", {
+export class NetworkMonitor extends Context.Service<NetworkMonitor>()("NetworkMonitor", {
 	make: Effect.gen(function* () {
 		const latch = yield* Latch.make(true)
 

@@ -1,5 +1,5 @@
 import { RedisClient } from "bun"
-import { Config, Duration, Effect, Layer, Match, Schema, ServiceMap } from "effect"
+import { Config, Duration, Effect, Layer, Match, Schema, Context } from "effect"
 
 // ============ Error Types ============
 
@@ -92,7 +92,7 @@ const sanitizeRedisUrl = (url: string): string => url.replace(/\/\/.*@/, "//***@
  * }).pipe(Effect.provide(Redis.layer))
  * ```
  */
-export class Redis extends ServiceMap.Service<
+export class Redis extends Context.Service<
 	Redis,
 	{
 		// String operations
@@ -239,7 +239,7 @@ export class Redis extends ServiceMap.Service<
 				}).pipe(
 					Effect.timeoutOrElse({
 						duration: Duration.seconds(10),
-						onTimeout: () =>
+						orElse: () =>
 							Effect.fail(
 								new RedisError({
 									message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
@@ -275,7 +275,7 @@ export class Redis extends ServiceMap.Service<
 			}).pipe(
 				Effect.timeoutOrElse({
 					duration: Duration.seconds(10),
-					onTimeout: () =>
+					orElse: () =>
 						Effect.fail(
 							new RedisError({
 								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
@@ -300,7 +300,7 @@ export class Redis extends ServiceMap.Service<
 /**
  * Create the Redis service implementation from a connected client
  */
-const makeService = (client: RedisClient, url: string): ServiceMap.Service.Shape<typeof Redis> => ({
+const makeService = (client: RedisClient, url: string): Context.Service.Shape<typeof Redis> => ({
 	// String operations
 	get: (key) =>
 		Effect.tryPromise({

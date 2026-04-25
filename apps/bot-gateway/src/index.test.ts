@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ConfigProvider, Effect, Layer, Option, Redacted, Result, ServiceMap } from "effect"
+import { ConfigProvider, Effect, Layer, Option, Redacted, Result, Context } from "effect"
 import {
 	createGatewayServer,
 	GatewayStartupError,
@@ -41,7 +41,7 @@ const makeHub = () =>
 	}) as any
 
 const makeTestServices = async () =>
-	(await Effect.runPromise(Effect.services<never>())) as ServiceMap.ServiceMap<never>
+	(await Effect.runPromise(Effect.context<never>())) as Context.Context<never>
 
 describe("bot-gateway startup", () => {
 	it("maps config failures to GatewayStartupError", async () => {

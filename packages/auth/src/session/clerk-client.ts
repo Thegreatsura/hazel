@@ -1,7 +1,7 @@
 import { createClerkClient, type Organization, type User } from "@clerk/backend"
 import { ClerkUserFetchError } from "@hazel/domain"
 import { ClerkOrganizationId, ClerkUserId } from "@hazel/schema"
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 import { OrganizationFetchError } from "../errors.ts"
 import { AuthConfig } from "../config.ts"
 
@@ -9,7 +9,7 @@ import { AuthConfig } from "../config.ts"
  * Clerk Backend SDK wrapper with Effect integration.
  * Provides type-safe access to Clerk Backend API operations.
  */
-export class ClerkClient extends ServiceMap.Service<ClerkClient>()("@hazel/auth/ClerkClient", {
+export class ClerkClient extends Context.Service<ClerkClient>()("@hazel/auth/ClerkClient", {
 	make: Effect.gen(function* () {
 		const config = yield* AuthConfig
 		const client = createClerkClient({

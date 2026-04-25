@@ -8,7 +8,7 @@
 import { FetchHttpClient } from "effect/unstable/http"
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc"
 import { ChannelRpcs, MessageReactionRpcs, MessageRpcs, TypingIndicatorRpcs } from "@hazel/domain/rpc"
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 import { createBotAuthMiddleware } from "./auth-middleware.ts"
 
 /**
@@ -36,7 +36,7 @@ export interface BotRpcClientConfig {
 /**
  * Internal context tag for the RPC client configuration
  */
-export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfigTag, BotRpcClientConfig>()(
+export class BotRpcClientConfigTag extends Context.Service<BotRpcClientConfigTag, BotRpcClientConfig>()(
 	"@hazel/bot-sdk/BotRpcClientConfig",
 ) {}
 
@@ -44,7 +44,7 @@ export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfig
  * Context tag for the RPC client instance
  * Type is inferred from the actual RpcClient.make result
  */
-export class BotRpcClient extends ServiceMap.Service<
+export class BotRpcClient extends Context.Service<
 	BotRpcClient,
 	Effect.Success<ReturnType<typeof makeBotRpcClient>>
 >()("@hazel/bot-sdk/BotRpcClient") {}

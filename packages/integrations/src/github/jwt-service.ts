@@ -1,6 +1,6 @@
 import { createPrivateKey } from "node:crypto"
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Config, Effect, Layer, Redacted, Schema } from "effect"
+import { Context, Config, Effect, Layer, Redacted, Schema } from "effect"
 import { SignJWT } from "jose"
 
 // ============================================================================
@@ -61,7 +61,7 @@ const InstallationTokenApiResponse = Schema.Struct({
 
 // GitHub API error response schema
 const GitHubErrorApiResponse = Schema.Struct({
-	message: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "Unknown error")),
+	message: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("Unknown error"))),
 })
 
 // ============================================================================
@@ -157,7 +157,7 @@ const GITHUB_API_BASE_URL = "https://api.github.com"
  * // token.expiresAt is when it expires (1 hour from now)
  * ```
  */
-export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>()("GitHubAppJWTService", {
+export class GitHubAppJWTService extends Context.Service<GitHubAppJWTService>()("GitHubAppJWTService", {
 	make: Effect.gen(function* () {
 		// Load config once at service initialization
 		// Use orDie since missing config is a fatal startup error

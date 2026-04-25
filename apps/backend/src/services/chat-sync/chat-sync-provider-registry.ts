@@ -1,5 +1,5 @@
 import { Discord } from "@hazel/integrations"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema, Schedule } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Schema, Schedule } from "effect"
 import {
 	type ChatSyncOutboundAttachment,
 	formatMessageContentWithAttachments,
@@ -85,7 +85,7 @@ const isDiscordSnowflake = (value: string): boolean =>
 	value.length >= DISCORD_SNOWFLAKE_MIN_LENGTH &&
 	value.length <= DISCORD_SNOWFLAKE_MAX_LENGTH
 
-export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProviderRegistry>()(
+export class ChatSyncProviderRegistry extends Context.Service<ChatSyncProviderRegistry>()(
 	"ChatSyncProviderRegistry",
 	{
 		make: Effect.gen(function* () {

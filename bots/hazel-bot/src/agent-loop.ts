@@ -65,7 +65,7 @@ export const streamAgentLoop = (options: {
 					}),
 					// Iteration timeout: wall-clock limit per LLM call
 					Effect.timeoutOrElse({
-						onTimeout: () =>
+						orElse: () =>
 							Effect.fail(
 								new IterationTimeoutError({
 									message: "Single LLM call exceeded 2 minute time limit",

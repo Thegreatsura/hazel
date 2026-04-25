@@ -1,8 +1,8 @@
 import { Repository, schema } from "@hazel/db"
 import { ChannelSection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
-export class ChannelSectionRepo extends ServiceMap.Service<ChannelSectionRepo>()("ChannelSectionRepo", {
+export class ChannelSectionRepo extends Context.Service<ChannelSectionRepo>()("ChannelSectionRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.channelSectionsTable,

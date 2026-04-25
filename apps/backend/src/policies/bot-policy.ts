@@ -1,12 +1,12 @@
 import { BotRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { BotId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class BotPolicy extends ServiceMap.Service<BotPolicy>()("BotPolicy/Policy", {
+export class BotPolicy extends Context.Service<BotPolicy>()("BotPolicy/Policy", {
 	make: Effect.gen(function* () {
 		const policyEntity = "Bot" as const
 

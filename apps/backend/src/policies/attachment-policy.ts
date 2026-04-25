@@ -7,11 +7,11 @@ import {
 } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { AttachmentId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class AttachmentPolicy extends ServiceMap.Service<AttachmentPolicy>()("AttachmentPolicy/Policy", {
+export class AttachmentPolicy extends Context.Service<AttachmentPolicy>()("AttachmentPolicy/Policy", {
 	make: Effect.gen(function* () {
 		const policyEntity = "Attachment" as const
 

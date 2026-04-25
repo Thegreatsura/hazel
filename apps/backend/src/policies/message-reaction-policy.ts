@@ -1,12 +1,12 @@
 import { MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { ErrorUtils, PermissionError, policy } from "@hazel/domain"
 import type { MessageId, MessageReactionId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { ConnectConversationService } from "../services/connect-conversation-service"
 import { OrgResolver } from "../services/org-resolver"
 
-export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPolicy>()(
+export class MessageReactionPolicy extends Context.Service<MessageReactionPolicy>()(
 	"MessageReactionPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

@@ -2,9 +2,9 @@ import { and, count, Database, eq, isNull, Repository, schema, type TxFn } from 
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
+import { Context, Effect, Layer, Option, type Schema } from "effect"
 
-export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMemberRepo>()(
+export class OrganizationMemberRepo extends Context.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",
 	{
 		make: Effect.gen(function* () {

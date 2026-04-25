@@ -8,12 +8,12 @@ import {
 } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
 import { DatabaseLive } from "./database"
 import { OrgResolver } from "./org-resolver"
 
-export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
+export class ConnectConversationService extends Context.Service<ConnectConversationService>()(
 	"ConnectConversationService",
 	{
 		make: Effect.gen(function* () {

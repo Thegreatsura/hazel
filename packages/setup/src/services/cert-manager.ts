@@ -1,4 +1,4 @@
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { resolve } from "node:path"
 
 export interface CertPaths {
@@ -16,7 +16,7 @@ const findRepoRoot = (): string => {
 	return process.cwd()
 }
 
-export class CertManager extends ServiceMap.Service<CertManager>()("CertManager", {
+export class CertManager extends Context.Service<CertManager>()("CertManager", {
 	make: Effect.succeed({
 		get certsDir() {
 			return resolve(findRepoRoot(), "certs")

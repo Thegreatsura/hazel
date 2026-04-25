@@ -1,11 +1,11 @@
 import { CustomEmojiRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class CustomEmojiPolicy extends ServiceMap.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
+export class CustomEmojiPolicy extends Context.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
 	make: Effect.gen(function* () {
 		const policyEntity = "CustomEmoji" as const
 

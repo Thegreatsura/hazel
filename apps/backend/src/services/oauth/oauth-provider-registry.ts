@@ -1,6 +1,6 @@
 import { UnsupportedProviderError } from "@hazel/domain/http"
 import { GitHub } from "@hazel/integrations"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthIntegrationProvider, OAuthProviderConfig } from "./provider-config"
@@ -64,7 +64,7 @@ const SUPPORTED_PROVIDERS: readonly OAuthIntegrationProvider[] = ["linear", "git
  * 3. Add provider to SUPPORTED_PROVIDERS array
  * 4. Set environment variables: {PROVIDER}_CLIENT_ID, {PROVIDER}_CLIENT_SECRET, {PROVIDER}_REDIRECT_URI
  */
-export class OAuthProviderRegistry extends ServiceMap.Service<OAuthProviderRegistry>()(
+export class OAuthProviderRegistry extends Context.Service<OAuthProviderRegistry>()(
 	"OAuthProviderRegistry",
 	{
 		make: Effect.gen(function* () {

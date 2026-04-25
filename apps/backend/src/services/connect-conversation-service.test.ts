@@ -16,7 +16,7 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Effect, Layer, Option, ServiceMap } from "effect"
+import { Effect, Layer, Option, Context } from "effect"
 import { serviceShape } from "../test/effect-helpers"
 import { ChannelAccessSyncService } from "./channel-access-sync"
 import { ConnectConversationService } from "./connect-conversation-service"
@@ -70,9 +70,9 @@ type MutableParticipant = {
 	deletedAt: Date | null
 }
 
-type ConnectConversationServiceShape = ServiceMap.Service.Shape<typeof ConnectConversationService>
+type ConnectConversationServiceShape = Context.Service.Shape<typeof ConnectConversationService>
 type ConnectParticipantUpsertInput = Parameters<
-	ServiceMap.Service.Shape<typeof ConnectParticipantRepo>["upsertByChannelAndUser"]
+	Context.Service.Shape<typeof ConnectParticipantRepo>["upsertByChannelAndUser"]
 >[0]
 
 const makeChannelRepoLayer = () =>

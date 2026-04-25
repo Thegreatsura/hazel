@@ -1,7 +1,7 @@
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError } from "@hazel/domain"
-import { ServiceMap, Array, Config, Effect, Layer, Option } from "effect"
+import { Context, Array, Config, Effect, Layer, Option } from "effect"
 import type {
 	MessageCreatedPayload,
 	MessageDeletedPayload,
@@ -12,7 +12,7 @@ import type {
 import { formatError } from "../lib/format-error"
 import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./chat-sync/discord-sync-worker"
 
-export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
+export class MessageSideEffectService extends Context.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
 	{
 		make: Effect.gen(function* () {

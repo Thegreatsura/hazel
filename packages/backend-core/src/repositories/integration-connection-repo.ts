@@ -2,9 +2,9 @@ import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@
 
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
-export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationConnectionRepo>()(
+export class IntegrationConnectionRepo extends Context.Service<IntegrationConnectionRepo>()(
 	"IntegrationConnectionRepo",
 	{
 		make: Effect.gen(function* () {

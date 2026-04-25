@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect, Result, Layer, ServiceMap } from "effect"
+import { Effect, Result, Layer, Context } from "effect"
 import { ChannelPolicy } from "./channel-policy.ts"
 import {
 	makeActor,
@@ -30,7 +30,7 @@ const makeChannelRepoLayer = (channels: Record<string, { organizationId: Organiz
 			}
 			return f(channel)
 		},
-	} as ServiceMap.Service.Shape<typeof ChannelRepo>)
+	} as Context.Service.Shape<typeof ChannelRepo>)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,

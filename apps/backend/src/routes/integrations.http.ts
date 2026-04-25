@@ -35,7 +35,7 @@ const OAuthState = Schema.Struct({
 	userId: Schema.String,
 	level: Schema.optional(Schema.Literals(["organization", "user"])).pipe(
 		Schema.decodeTo(Schema.toType(Schema.Literals(["organization", "user"])), {
-			decode: SchemaGetter.withDefault((): "organization" | "user" => "organization"),
+			decode: SchemaGetter.withDefault(Effect.succeed<"organization" | "user">("organization")),
 			encode: SchemaGetter.required(),
 		}),
 	),
@@ -419,7 +419,7 @@ const OAuthSessionState = Schema.Struct({
 	userId: Schema.String,
 	level: Schema.optional(Schema.Literals(["organization", "user"])).pipe(
 		Schema.decodeTo(Schema.toType(Schema.Literals(["organization", "user"])), {
-			decode: SchemaGetter.withDefault((): "organization" | "user" => "organization"),
+			decode: SchemaGetter.withDefault(Effect.succeed<"organization" | "user">("organization")),
 			encode: SchemaGetter.required(),
 		}),
 	),

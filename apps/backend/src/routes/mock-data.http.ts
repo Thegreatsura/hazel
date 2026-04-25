@@ -22,8 +22,8 @@ export const HttpMockDataLive = HttpApiBuilder.group(HazelApi, "mockData", (hand
 					.transaction(
 						Effect.gen(function* () {
 							const result = yield* mockDataService.generateForMarketingScreenshots({
-								organizationId: OrganizationId.makeUnsafe(payload.organizationId),
-								currentUserId: UserId.makeUnsafe(currentUser.id),
+								organizationId: OrganizationId.make(payload.organizationId),
+								currentUserId: UserId.make(currentUser.id),
 							})
 
 							const txid = yield* generateTransactionId()

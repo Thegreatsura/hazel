@@ -204,7 +204,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								const existingChannel = yield* channelMemberRepo.findExistingSingleDmChannel(
 									user.id,
 									payload.participantIds[0],
-									OrganizationId.makeUnsafe(payload.organizationId),
+									OrganizationId.make(payload.organizationId),
 								)
 
 								if (Option.isSome(existingChannel)) {
@@ -236,13 +236,13 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 
 							// Create channel
-							yield* channelPolicy.canCreate(OrganizationId.makeUnsafe(payload.organizationId))
+							yield* channelPolicy.canCreate(OrganizationId.make(payload.organizationId))
 							const createdChannel = yield* channelRepo
 								.insert({
 									name: channelName || "Group Channel",
 									icon: null,
 									type: payload.type,
-									organizationId: OrganizationId.makeUnsafe(payload.organizationId),
+									organizationId: OrganizationId.make(payload.organizationId),
 									parentChannelId: null,
 									sectionId: null,
 									deletedAt: null,
@@ -514,14 +514,6 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								Effect.fail(
 									new WorkflowServiceUnavailableError({
 										message: "Cannot connect to workflow service",
-										cause: String(err),
-									}),
-								),
-							),
-							Effect.catchTag("BadRequest", (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to trigger thread naming workflow",
 										cause: String(err),
 									}),
 								),

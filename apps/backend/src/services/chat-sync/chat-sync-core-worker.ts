@@ -28,7 +28,7 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
@@ -154,7 +154,7 @@ export interface ChatSyncIngressThreadCreate {
 // Uses two-type-param overload to avoid requiring `make` (which would cause circular inference with DiscordSyncWorker).
 // Shape uses `Record<string, Function>` because the real shape can't be inferred without circular deps.
 // Consumers can access methods via `yield* ChatSyncCoreWorker` — method calls are checked at each call site.
-export class ChatSyncCoreWorker extends ServiceMap.Service<
+export class ChatSyncCoreWorker extends Context.Service<
 	ChatSyncCoreWorker,
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 	Record<string, Function>

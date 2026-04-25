@@ -1,10 +1,10 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class IntegrationConnectionPolicy extends ServiceMap.Service<IntegrationConnectionPolicy>()(
+export class IntegrationConnectionPolicy extends Context.Service<IntegrationConnectionPolicy>()(
 	"IntegrationConnectionPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

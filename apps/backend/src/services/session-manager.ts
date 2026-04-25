@@ -6,7 +6,7 @@ import {
 	InvalidJwtPayloadError,
 } from "@hazel/domain"
 import { OrganizationMemberRepo, OrganizationRepo, UserRepo } from "@hazel/backend-core"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
 /**
  * Session management service. Authenticates Clerk bearer tokens and lazily
@@ -17,7 +17,7 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
  * have orgs/memberships appear. Webhooks are still preferred in production
  * for instant propagation, but they're no longer required.
  */
-export class SessionManager extends ServiceMap.Service<SessionManager>()("SessionManager", {
+export class SessionManager extends Context.Service<SessionManager>()("SessionManager", {
 	make: Effect.gen(function* () {
 		const auth = yield* BackendAuth
 		const clerk = yield* ClerkClient

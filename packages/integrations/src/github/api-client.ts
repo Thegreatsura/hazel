@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Schedule, Schema } from "effect"
+import { Context, Duration, Effect, Layer, Schedule, Schema } from "effect"
 
 /**
  * GitHub PR URL patterns:
@@ -132,16 +132,16 @@ const GitHubPRApiResponse = Schema.Struct({
 	title: Schema.String,
 	body: Schema.NullOr(Schema.String),
 	state: Schema.String,
-	draft: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(() => false)),
-	merged: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(() => false)),
+	draft: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
+	merged: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
 	user: Schema.NullOr(
 		Schema.Struct({
 			login: Schema.String,
 			avatar_url: Schema.optional(Schema.NullOr(Schema.String)),
 		}),
 	),
-	additions: Schema.Number.pipe(Schema.withDecodingDefaultKey(() => 0)),
-	deletions: Schema.Number.pipe(Schema.withDecodingDefaultKey(() => 0)),
+	additions: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(0))),
+	deletions: Schema.Number.pipe(Schema.withDecodingDefaultKey(Effect.succeed(0))),
 	head: Schema.optional(Schema.Struct({ ref: Schema.String })),
 	updated_at: Schema.optional(Schema.String),
 	labels: Schema.Array(
@@ -149,7 +149,7 @@ const GitHubPRApiResponse = Schema.Struct({
 			name: Schema.String,
 			color: Schema.String,
 		}),
-	).pipe(Schema.withDecodingDefaultKey(() => [])),
+	).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
 })
 
 // GitHub API repository owner response schema
@@ -178,13 +178,13 @@ const GitHubRepositoriesApiResponse = Schema.Struct({
 
 // GitHub API error response schema
 const GitHubErrorApiResponse = Schema.Struct({
-	message: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "Unknown error")),
+	message: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("Unknown error"))),
 })
 
 // GitHub App info response schema
 const GitHubAppApiResponse = Schema.Struct({
 	id: Schema.Number,
-	name: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "GitHub App")),
+	name: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("GitHub App"))),
 })
 
 // ============================================================================
@@ -311,7 +311,7 @@ const isRetryableError = (error: GitHubApiError | GitHubRateLimitError | GitHubP
  * - Rate limit handling with retry-after header support
  * - Distributed tracing via Effect spans
  */
-export class GitHubApiClient extends ServiceMap.Service<GitHubApiClient>()("GitHubApiClient", {
+export class GitHubApiClient extends Context.Service<GitHubApiClient>()("GitHubApiClient", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

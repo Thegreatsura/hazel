@@ -6,7 +6,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Predicate, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Context, Duration, Effect, Layer, Predicate, Schema, SchemaGetter, SchemaIssue } from "effect"
 import type { OAuthIntegrationProvider } from "./provider-config"
 
 // ============================================================================
@@ -26,7 +26,7 @@ const OAuthTokenApiResponse = Schema.Struct({
 	scope: Schema.optionalKey(Schema.String),
 	token_type: Schema.optional(Schema.String).pipe(
 		Schema.decodeTo(Schema.toType(Schema.String), {
-			decode: SchemaGetter.withDefault(() => "Bearer"),
+			decode: SchemaGetter.withDefault(Effect.succeed("Bearer")),
 			encode: SchemaGetter.required(),
 		}),
 	),
@@ -85,7 +85,7 @@ const encodeFormData = (params: Record<string, string>): string =>
  * Provides Effect-based HTTP methods for OAuth token operations using HttpClient
  * with proper schema validation and error handling.
  */
-export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAuthHttpClient", {
+export class OAuthHttpClient extends Context.Service<OAuthHttpClient>()("OAuthHttpClient", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

@@ -1,4 +1,4 @@
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export interface CheckResult {
 	name: string
@@ -34,7 +34,7 @@ const checkContainer = (containerName: string, displayName: string): Effect.Effe
 		),
 	)
 
-export class Doctor extends ServiceMap.Service<Doctor>()("Doctor", {
+export class Doctor extends Context.Service<Doctor>()("Doctor", {
 	make: Effect.succeed({
 		checkBun: (): Effect.Effect<CheckResult> =>
 			Effect.tryPromise({

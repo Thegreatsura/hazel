@@ -16,7 +16,7 @@ import {
 
 import type { ChannelId, ConnectConversationId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
 export interface ListByChannelParams {
 	channelId: ChannelId
@@ -35,7 +35,7 @@ export interface ListByChannelParams {
 	limit: number
 }
 
-export class MessageRepo extends ServiceMap.Service<MessageRepo>()("MessageRepo", {
+export class MessageRepo extends Context.Service<MessageRepo>()("MessageRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.messagesTable,

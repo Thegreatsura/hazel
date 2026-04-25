@@ -9,7 +9,7 @@ import {
 } from "@hazel/backend-core"
 import { Database, asc, eq, inArray, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageOutboxEventId, UserId } from "@hazel/schema"
-import { Effect, Layer, Redacted, ServiceMap } from "effect"
+import { Effect, Layer, Redacted, Context } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { EnvVars } from "../lib/env-vars"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
@@ -38,7 +38,7 @@ const runRepoEffect = <A, E, R>(harness: ChatSyncDbHarness, effect: Effect.Effec
 
 const runDispatcherEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
-	sideEffects: ServiceMap.Service.Shape<typeof MessageSideEffectService>,
+	sideEffects: Context.Service.Shape<typeof MessageSideEffectService>,
 	make: Effect.Effect<A, E, R>,
 ) =>
 	Effect.runPromise(

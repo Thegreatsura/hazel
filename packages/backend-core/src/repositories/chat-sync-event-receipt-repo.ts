@@ -2,9 +2,9 @@ import { and, Database, eq, gte, Repository, schema, type TxFn } from "@hazel/db
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
-export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventReceiptRepo>()(
+export class ChatSyncEventReceiptRepo extends Context.Service<ChatSyncEventReceiptRepo>()(
 	"ChatSyncEventReceiptRepo",
 	{
 		make: Effect.gen(function* () {

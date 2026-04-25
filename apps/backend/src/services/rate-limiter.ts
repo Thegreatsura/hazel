@@ -1,5 +1,5 @@
 import { Redis, type RedisErrors } from "@hazel/effect-bun"
-import { ServiceMap, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 
 /**
  * Result of a rate limit check
@@ -58,7 +58,7 @@ end
 /**
  * Rate limiter service backed by Redis via @hazel/effect-bun
  */
-export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter", {
+export class RateLimiter extends Context.Service<RateLimiter>()("RateLimiter", {
 	make: Effect.gen(function* () {
 		const redis = yield* Redis
 

@@ -1,6 +1,6 @@
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 /**
  * Webhook Bot Service
@@ -8,7 +8,7 @@ import { ServiceMap, Effect, Layer } from "effect"
  * Manages machine users for channel webhooks.
  * Each webhook has its own unique bot user identity.
  */
-export class WebhookBotService extends ServiceMap.Service<WebhookBotService>()("WebhookBotService", {
+export class WebhookBotService extends Context.Service<WebhookBotService>()("WebhookBotService", {
 	make: Effect.gen(function* () {
 		const userRepo = yield* UserRepo
 		const orgMemberRepo = yield* OrganizationMemberRepo

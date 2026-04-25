@@ -6,7 +6,7 @@
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, ServiceMap, type Tracer } from "effect"
+import { Effect, Context, type Tracer } from "effect"
 
 type GatewayEventType = string
 type GatewayEventOperation = string
@@ -55,7 +55,7 @@ export interface LogContext {
  * Reference for fiber-local context propagation
  * Allows context to flow through Effect operations without explicit passing
  */
-export const currentLogContext = ServiceMap.Reference<LogContext | null>("@hazel/bot-sdk/CurrentLogContext", {
+export const currentLogContext = Context.Reference<LogContext | null>("@hazel/bot-sdk/CurrentLogContext", {
 	defaultValue: () => null,
 })
 

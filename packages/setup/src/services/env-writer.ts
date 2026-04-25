@@ -1,4 +1,4 @@
-import { ServiceMap, Console, Effect, Layer } from "effect"
+import { Context, Console, Effect, Layer } from "effect"
 import { dirname } from "node:path"
 import { mkdir } from "node:fs/promises"
 
@@ -46,7 +46,7 @@ const parseEnvContent = (content: string): Record<string, string> => {
 	return result
 }
 
-export class EnvWriter extends ServiceMap.Service<EnvWriter>()("EnvWriter", {
+export class EnvWriter extends Context.Service<EnvWriter>()("EnvWriter", {
 	make: Effect.succeed({
 		writeEnvFile: (filePath: string, vars: Record<string, string>, dryRun: boolean = false) =>
 			Effect.gen(function* () {

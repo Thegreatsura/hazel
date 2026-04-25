@@ -1,7 +1,7 @@
 import type { WebhookEvent } from "@clerk/backend"
 import type { DatabaseError } from "@hazel/db"
 import { ClerkUserId, type OrganizationId, type UserId } from "@hazel/schema"
-import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { Effect, Layer, Option, Schema, Context } from "effect"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
 import { UserRepo } from "../repositories/user-repo"
@@ -27,7 +27,7 @@ export type MembershipChange = {
  * - `organization.*`            → upsert / soft-delete by slug (with Clerk org ID stashed in settings)
  * - `organizationMembership.*`  → maintain the org_members junction table
  */
-export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
+export class ClerkSync extends Context.Service<ClerkSync>()("ClerkSync", {
 	make: Effect.gen(function* () {
 		const userRepo = yield* UserRepo
 		const orgRepo = yield* OrganizationRepo

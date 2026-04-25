@@ -1,8 +1,8 @@
 import { Repository, schema } from "@hazel/db"
 import { Attachment } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
-export class AttachmentRepo extends ServiceMap.Service<AttachmentRepo>()("AttachmentRepo", {
+export class AttachmentRepo extends Context.Service<AttachmentRepo>()("AttachmentRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.attachmentsTable,

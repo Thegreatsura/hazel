@@ -1,8 +1,8 @@
 import { Repository, schema } from "@hazel/db"
 import { PinnedMessage } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
-export class PinnedMessageRepo extends ServiceMap.Service<PinnedMessageRepo>()("PinnedMessageRepo", {
+export class PinnedMessageRepo extends Context.Service<PinnedMessageRepo>()("PinnedMessageRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.pinnedMessagesTable,

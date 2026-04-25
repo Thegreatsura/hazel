@@ -1,5 +1,5 @@
 import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi"
-import { ServiceMap, Schema as S } from "effect"
+import { Context as EffectContext, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
 import { OrganizationId, UserId } from "@hazel/schema"
 import { User } from "./models"
@@ -27,7 +27,7 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	settings: S.NullOr(User.UserSettingsSchema),
 }) {}
 
-export class Context extends ServiceMap.Service<Context, Schema>()("CurrentUser") {}
+export class Context extends EffectContext.Service<Context, Schema>()("CurrentUser") {}
 
 const AuthFailure = S.Union([
 	UnauthorizedError,

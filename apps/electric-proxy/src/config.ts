@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Layer, Option, Redacted } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted } from "effect"
 
 /**
  * Proxy configuration interface
@@ -19,7 +19,7 @@ export interface ProxyConfig {
  * Proxy configuration service.
  * Reads configuration from environment variables.
  */
-export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()("ProxyConfigService", {
+export class ProxyConfigService extends Context.Service<ProxyConfigService>()("ProxyConfigService", {
 	make: Effect.gen(function* () {
 		const electricUrl = yield* Config.string("ELECTRIC_URL")
 		const electricSourceId = yield* Config.string("ELECTRIC_SOURCE_ID").pipe(

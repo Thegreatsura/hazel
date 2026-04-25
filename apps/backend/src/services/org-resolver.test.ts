@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { PermissionError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Result, Layer, Option, ServiceMap } from "effect"
+import { Effect, Result, Layer, Option, Context } from "effect"
 import { OrgResolver } from "./org-resolver"
 import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers"
 import { CurrentUser } from "@hazel/domain"
@@ -97,7 +97,7 @@ const runEither = <A, E>(
 	)
 
 const use = <A, E, R>(
-	fn: (resolver: ServiceMap.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
+	fn: (resolver: Context.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
 ) => OrgResolver.use(fn)
 
 describe("OrgResolver", () => {

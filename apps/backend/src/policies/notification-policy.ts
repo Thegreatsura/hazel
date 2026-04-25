@@ -1,10 +1,10 @@
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 
-export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()(
+export class NotificationPolicy extends Context.Service<NotificationPolicy>()(
 	"NotificationPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

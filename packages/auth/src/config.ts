@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Layer } from "effect"
+import { Context, Config, Effect, Layer } from "effect"
 
 /**
  * Configuration for auth services (Clerk only).
@@ -10,7 +10,7 @@ export interface AuthConfigShape {
 	readonly clerkPublishableKey: string
 }
 
-export class AuthConfig extends ServiceMap.Service<AuthConfig>()("@hazel/auth/AuthConfig", {
+export class AuthConfig extends Context.Service<AuthConfig>()("@hazel/auth/AuthConfig", {
 	make: Effect.gen(function* () {
 		const clerkSecretKey = yield* Config.string("CLERK_SECRET_KEY")
 		const clerkPublishableKey = yield* Config.string("CLERK_PUBLISHABLE_KEY").pipe(

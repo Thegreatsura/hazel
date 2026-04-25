@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, ServiceMap } from "effect"
+import { Cause, Effect, Exit, Context } from "effect"
 import type { ActorContext } from "rivetkit"
 import { StatePersistenceError } from "./errors.ts"
 import { runPromise, runPromiseExit } from "./runtime.ts"
@@ -6,13 +6,13 @@ import { runPromise, runPromiseExit } from "./runtime.ts"
 type AnyActorContext = ActorContext<any, any, any, any, any, any>
 
 /**
- * ServiceMap.Service for injecting Rivet's ActorContext into Effect pipelines.
+ * Context.Service for injecting Rivet's ActorContext into Effect pipelines.
  *
- * Uses ServiceMap.Service (not Effect.Service) because the actor context is an
+ * Uses Context.Service (not Effect.Service) because the actor context is an
  * externally-provided runtime resource injected by the Rivet framework,
  * not a service we construct via layers.
  */
-export class RivetActorContext extends ServiceMap.Service<RivetActorContext, AnyActorContext>()(
+export class RivetActorContext extends Context.Service<RivetActorContext, AnyActorContext>()(
 	"@hazel/rivet-effect/RivetActorContext",
 ) {}
 

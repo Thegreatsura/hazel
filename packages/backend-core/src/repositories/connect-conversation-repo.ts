@@ -1,9 +1,9 @@
 import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId } from "@hazel/schema"
 import { ConnectConversation } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
-export class ConnectConversationRepo extends ServiceMap.Service<ConnectConversationRepo>()(
+export class ConnectConversationRepo extends Context.Service<ConnectConversationRepo>()(
 	"ConnectConversationRepo",
 	{
 		make: Effect.gen(function* () {

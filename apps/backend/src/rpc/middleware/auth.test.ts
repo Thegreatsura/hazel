@@ -4,7 +4,7 @@ import type { SuccessValue } from "effect/unstable/rpc/RpcMiddleware"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
 import { CurrentUser, type CurrentUser as CurrentUserNamespace } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
-import { Effect, Layer, Option, Ref, Result, ServiceMap } from "effect"
+import { Effect, Layer, Option, Ref, Result, Context } from "effect"
 import { AuthMiddleware, AuthMiddlewareLive } from "./auth.ts"
 import { SessionManager } from "../../services/session-manager.ts"
 import { serviceShape } from "../../test/effect-helpers"
@@ -12,9 +12,9 @@ import { serviceShape } from "../../test/effect-helpers"
 const USER_ID = "00000000-0000-4000-8000-000000000001" as UserId
 const BOT_USER_ID = "00000000-0000-4000-8000-000000000002" as UserId
 
-type SessionManagerShape = ServiceMap.Service.Shape<typeof SessionManager>
-type BotRepoShape = ServiceMap.Service.Shape<typeof BotRepo>
-type UserRepoShape = ServiceMap.Service.Shape<typeof UserRepo>
+type SessionManagerShape = Context.Service.Shape<typeof SessionManager>
+type BotRepoShape = Context.Service.Shape<typeof BotRepo>
+type UserRepoShape = Context.Service.Shape<typeof UserRepo>
 type EffectSuccess<T> = T extends Effect.Effect<infer A, any, any> ? A : never
 type OptionValue<T> = T extends Option.Option<infer A> ? A : never
 type BotRecord = OptionValue<EffectSuccess<ReturnType<BotRepoShape["findByTokenHash"]>>>
@@ -55,7 +55,7 @@ const invokeMiddleware = (headers: Headers.Headers) =>
 				return successValue
 			}),
 			{
-				clientId: 1,
+				client: {} as never,
 				requestId: 1n as never,
 				rpc: {} as never,
 				payload: undefined,

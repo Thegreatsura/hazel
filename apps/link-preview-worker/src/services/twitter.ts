@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
-import { ServiceMap, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 
 const SYNDICATION_URL = "https://cdn.syndication.twimg.com"
 const TWEET_ID_REGEX = /^[0-9]+$/
@@ -72,7 +72,7 @@ function buildTweetUrl(id: string): string {
  * Twitter API Service
  * Provides methods to interact with Twitter's syndication API
  */
-export class TwitterApi extends ServiceMap.Service<TwitterApi>()("TwitterApi", {
+export class TwitterApi extends Context.Service<TwitterApi>()("TwitterApi", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

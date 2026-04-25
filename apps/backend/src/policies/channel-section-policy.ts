@@ -1,11 +1,11 @@
 import { ChannelSectionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelSectionId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class ChannelSectionPolicy extends ServiceMap.Service<ChannelSectionPolicy>()(
+export class ChannelSectionPolicy extends Context.Service<ChannelSectionPolicy>()(
 	"ChannelSectionPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

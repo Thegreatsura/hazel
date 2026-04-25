@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Result, Schema } from "effect"
+import { Context, Duration, Effect, Layer, Result, Schema } from "effect"
 
 export const DiscordAccountInfo = Schema.Struct({
 	externalAccountId: Schema.String,
@@ -31,14 +31,14 @@ const DiscordUserApiResponse = Schema.Struct({
 	id: Schema.String,
 	username: Schema.String,
 	global_name: Schema.optional(Schema.NullOr(Schema.String)),
-	discriminator: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "0")),
+	discriminator: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("0"))),
 })
 
 const DiscordGuildApiResponse = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	icon: Schema.optional(Schema.NullOr(Schema.String)),
-	owner: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(() => false)),
+	owner: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
 })
 
 const DiscordWebhookCreateResponse = Schema.Struct({
@@ -59,7 +59,7 @@ const DiscordMessageCreateResponse = Schema.Struct({
 })
 
 const DiscordErrorApiResponse = Schema.Struct({
-	message: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "Unknown Discord error")),
+	message: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("Unknown Discord error"))),
 })
 
 export class DiscordApiError extends Schema.TaggedErrorClass<DiscordApiError>()("DiscordApiError", {
@@ -87,7 +87,7 @@ const parseDiscordErrorMessage = (status: number, message: string): string => {
 const channelTypeIsMessageCapable = (type: number): boolean =>
 	type === 0 || type === 5 || type === 10 || type === 11 || type === 12
 
-export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("DiscordApiClient", {
+export class DiscordApiClient extends Context.Service<DiscordApiClient>()("DiscordApiClient", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

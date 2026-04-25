@@ -1,4 +1,4 @@
-import { ServiceMap } from "effect"
+import { Context } from "effect"
 import { RequiredScopes } from "./required-scopes"
 
 /**
@@ -6,12 +6,12 @@ import { RequiredScopes } from "./required-scopes"
  * Returns the list of RPC tags that are missing annotations.
  */
 export const validateRpcGroupScopes = (
-	requests: ReadonlyMap<string, { readonly annotations: ServiceMap.ServiceMap<never> }>,
+	requests: ReadonlyMap<string, { readonly annotations: Context.Context<never> }>,
 	groupName: string,
 ): { valid: boolean; missing: string[] } => {
 	const missing: string[] = []
 	for (const [tag, rpc] of requests) {
-		const scopes = ServiceMap.get(rpc.annotations as any, RequiredScopes) as
+		const scopes = Context.get(rpc.annotations as any, RequiredScopes) as
 			| ReadonlyArray<string>
 			| undefined
 		if (!scopes) {

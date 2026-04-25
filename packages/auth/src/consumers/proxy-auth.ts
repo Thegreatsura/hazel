@@ -1,7 +1,7 @@
 import { verifyToken } from "@clerk/backend"
 import { Database, eq, schema } from "@hazel/db"
 import { ClerkJwtClaims } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
 
@@ -20,7 +20,7 @@ export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthe
  * NOT upsert users — if the user isn't already in the DB (via Clerk webhook
  * sync), the request is rejected.
  */
-export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
+export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	make: Effect.gen(function* () {
 		const userLookupCache = yield* UserLookupCache
 		const db = yield* Database.Database

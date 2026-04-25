@@ -2,9 +2,9 @@ import { and, Database, eq, inArray, Repository, schema, type TxFn } from "@haze
 
 import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
-export class BotInstallationRepo extends ServiceMap.Service<BotInstallationRepo>()("BotInstallationRepo", {
+export class BotInstallationRepo extends Context.Service<BotInstallationRepo>()("BotInstallationRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.botInstallationsTable,

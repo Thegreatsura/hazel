@@ -3,7 +3,7 @@ import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
 import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
+import { Context, Effect, Layer, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { OAuthHttpClient } from "./oauth/oauth-http-client"
 import { type OAuthIntegrationProvider, loadProviderConfig } from "./oauth/provider-config"
@@ -63,7 +63,7 @@ const refreshOAuthToken = (
 		Effect.mapError((cause) => new TokenRefreshError({ provider, cause })),
 	)
 
-export class IntegrationTokenService extends ServiceMap.Service<IntegrationTokenService>()(
+export class IntegrationTokenService extends Context.Service<IntegrationTokenService>()(
 	"IntegrationTokenService",
 	{
 		make: Effect.gen(function* () {

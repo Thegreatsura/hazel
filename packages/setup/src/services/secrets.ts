@@ -1,6 +1,6 @@
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
-export class SecretGenerator extends ServiceMap.Service<SecretGenerator>()("SecretGenerator", {
+export class SecretGenerator extends Context.Service<SecretGenerator>()("SecretGenerator", {
 	make: Effect.succeed({
 		generatePassword: (length: number): string => {
 			const bytes = new Uint8Array(length)

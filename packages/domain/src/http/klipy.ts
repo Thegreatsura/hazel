@@ -1,5 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { CurrentUser } from "../"
 import { RequiredScopes } from "../scopes/required-scopes"
 
@@ -71,9 +71,9 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 	.add(
 		HttpApiEndpoint.get("trending", "/trending", {
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
 				per_page: Schema.optional(Schema.NumberFromString).pipe(
-					Schema.withDecodingDefault(() => "25"),
+					Schema.withDecodingDefault(Effect.succeed("25")),
 				),
 			},
 			success: KlipySearchResponse,
@@ -84,9 +84,9 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 		HttpApiEndpoint.get("search", "/search", {
 			query: {
 				q: Schema.String,
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
 				per_page: Schema.optional(Schema.NumberFromString).pipe(
-					Schema.withDecodingDefault(() => "25"),
+					Schema.withDecodingDefault(Effect.succeed("25")),
 				),
 			},
 			success: KlipySearchResponse,

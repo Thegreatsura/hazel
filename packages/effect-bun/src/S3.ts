@@ -1,6 +1,6 @@
 import type { BunFile, S3File, S3FilePresignOptions } from "bun"
 import { s3 as bunS3 } from "bun"
-import { Effect, Layer, Match, Schema, ServiceMap } from "effect"
+import { Effect, Layer, Match, Schema, Context } from "effect"
 
 // ============ Error Types ============
 
@@ -141,7 +141,7 @@ export type S3WriteData = string | ArrayBuffer | Uint8Array | Blob | Response | 
  * })
  * ```
  */
-export class S3 extends ServiceMap.Service<
+export class S3 extends Context.Service<
 	S3,
 	{
 		/**

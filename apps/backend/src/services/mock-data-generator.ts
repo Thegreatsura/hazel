@@ -14,7 +14,7 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { DatabaseLive } from "./database"
 
 // Professional team members for a tech startup
@@ -178,7 +178,7 @@ interface MockDataConfig {
 	currentUserId: UserId
 }
 
-export class MockDataGenerator extends ServiceMap.Service<MockDataGenerator>()("MockDataGenerator", {
+export class MockDataGenerator extends Context.Service<MockDataGenerator>()("MockDataGenerator", {
 	make: Effect.gen(function* () {
 		const generateForMarketingScreenshots = (config: MockDataConfig) =>
 			Effect.gen(function* () {

@@ -1,10 +1,10 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { makePolicy, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class OrganizationPolicy extends ServiceMap.Service<OrganizationPolicy>()(
+export class OrganizationPolicy extends Context.Service<OrganizationPolicy>()(
 	"OrganizationPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

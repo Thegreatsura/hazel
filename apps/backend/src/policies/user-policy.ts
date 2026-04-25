@@ -1,8 +1,8 @@
 import type { UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { makePolicy } from "../lib/policy-utils"
 
-export class UserPolicy extends ServiceMap.Service<UserPolicy>()("UserPolicy/Policy", {
+export class UserPolicy extends Context.Service<UserPolicy>()("UserPolicy/Policy", {
 	make: Effect.gen(function* () {
 		const policyEntity = "User" as const
 		const authorize = makePolicy(policyEntity)

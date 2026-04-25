@@ -15,7 +15,7 @@ import {
 	GenerateMockDataResponse,
 } from "@hazel/domain/http"
 import { BotId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { Effect, Layer, Option, Schema, Context } from "effect"
 import { Etag, HttpRouter } from "effect/unstable/http"
 import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"
 import { vi } from "vitest"
@@ -26,9 +26,9 @@ import { MockDataGenerator } from "../services/mock-data-generator"
 import { configLayer, serviceShape } from "../test/effect-helpers"
 
 vi.mock("@hazel/effect-bun", async () => {
-	const { Layer, ServiceMap } = await import("effect")
+	const { Layer, Context } = await import("effect")
 
-	class Redis extends ServiceMap.Service<
+	class Redis extends Context.Service<
 		Redis,
 		{
 			readonly get: (key: string) => unknown
@@ -46,8 +46,8 @@ vi.mock("@hazel/effect-bun", async () => {
 
 const makeCurrentUser = () =>
 	({
-		id: UserId.makeUnsafe("00000000-0000-4000-8000-000000000111"),
-		organizationId: OrganizationId.makeUnsafe("00000000-0000-4000-8000-000000000123"),
+		id: UserId.make("00000000-0000-4000-8000-000000000111"),
+		organizationId: OrganizationId.make("00000000-0000-4000-8000-000000000123"),
 		role: "owner",
 		avatarUrl: undefined,
 		firstName: "Test",
@@ -139,7 +139,7 @@ describe("HTTP success response encoding", () => {
 						}),
 					),
 				}),
-				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				Context.empty() as Context.Context<any>,
 			)
 
 			if (response.status !== 200) {
@@ -181,11 +181,11 @@ describe("HTTP success response encoding", () => {
 					},
 					body: JSON.stringify(
 						new MarkOfflinePayload({
-							userId: UserId.makeUnsafe("00000000-0000-4000-8000-000000000222"),
+							userId: UserId.make("00000000-0000-4000-8000-000000000222"),
 						}),
 					),
 				}),
-				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				Context.empty() as Context.Context<any>,
 			)
 
 			if (response.status !== 200) {
@@ -211,8 +211,8 @@ describe("HTTP success response encoding", () => {
 						findByTokenHash: () =>
 							Effect.succeed(
 								Option.some({
-									id: BotId.makeUnsafe("00000000-0000-4000-8000-000000000456"),
-									userId: UserId.makeUnsafe("00000000-0000-4000-8000-000000000333"),
+									id: BotId.make("00000000-0000-4000-8000-000000000456"),
+									userId: UserId.make("00000000-0000-4000-8000-000000000333"),
 									scopes: ["messages:write"],
 								}),
 							),
@@ -237,7 +237,7 @@ describe("HTTP success response encoding", () => {
 						}),
 					),
 				}),
-				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				Context.empty() as Context.Context<any>,
 			)
 
 			if (response.status !== 200) {

@@ -9,7 +9,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Schedule, Schema } from "effect"
+import { Context, Duration, Effect, Layer, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration
@@ -227,7 +227,7 @@ const isRetryableError = (error: CraftApiError | CraftNotFoundError | CraftRateL
  * const documents = yield* CraftApiClient.listDocuments(baseUrl, accessToken)
  * ```
  */
-export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftApiClient", {
+export class CraftApiClient extends Context.Service<CraftApiClient>()("CraftApiClient", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 

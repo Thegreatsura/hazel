@@ -322,7 +322,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 								)
 							}
 
-							const attachmentId = AttachmentId.makeUnsafe(randomUUIDv7())
+							const attachmentId = AttachmentId.make(randomUUIDv7())
 
 							yield* Effect.logDebug(
 								`Generating presigned URL for attachment upload: ${attachmentId} (size: ${req.fileSize} bytes, type: ${req.contentType})`,

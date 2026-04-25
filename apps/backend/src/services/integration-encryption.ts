@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 
 export interface EncryptedToken {
 	ciphertext: string // Base64 encoded
@@ -23,7 +23,7 @@ export class KeyVersionNotFoundError extends Schema.TaggedErrorClass<KeyVersionN
 	},
 ) {}
 
-export class IntegrationEncryption extends ServiceMap.Service<IntegrationEncryption>()(
+export class IntegrationEncryption extends Context.Service<IntegrationEncryption>()(
 	"IntegrationEncryption",
 	{
 		make: Effect.gen(function* () {

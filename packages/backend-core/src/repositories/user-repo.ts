@@ -2,9 +2,9 @@ import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel
 
 import type { ClerkUserId, UserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
+import { Context, Effect, Layer, Option, type Schema } from "effect"
 
-export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
+export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 	make: Effect.gen(function* () {
 		const baseRepo = yield* Repository.makeRepository(
 			schema.usersTable,

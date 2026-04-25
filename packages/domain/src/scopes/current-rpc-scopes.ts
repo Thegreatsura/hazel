@@ -1,4 +1,4 @@
-import { ServiceMap } from "effect"
+import { Context } from "effect"
 import type { ApiScope } from "./api-scope"
 
 /**
@@ -9,6 +9,6 @@ import type { ApiScope } from "./api-scope"
  * of accepting hardcoded scope strings, ensuring annotation and enforcement
  * always match.
  */
-export class CurrentRpcScopes extends ServiceMap.Service<CurrentRpcScopes, ReadonlyArray<ApiScope>>()(
+export class CurrentRpcScopes extends Context.Service<CurrentRpcScopes, ReadonlyArray<ApiScope>>()(
 	"CurrentRpcScopes",
 ) {}

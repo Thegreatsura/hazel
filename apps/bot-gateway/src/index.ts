@@ -22,7 +22,7 @@ import {
 	Option,
 	Ref,
 	Schema,
-	ServiceMap,
+	Context,
 } from "effect"
 import { TracerLive } from "./observability/tracer"
 
@@ -119,7 +119,7 @@ const extractGatewayOp = (payload: string | BufferSource): string | undefined =>
 	}
 }
 
-export class GatewayConfig extends ServiceMap.Service<GatewayConfig>()("GatewayConfig", {
+export class GatewayConfig extends Context.Service<GatewayConfig>()("GatewayConfig", {
 	make: Effect.gen(function* () {
 		const config = {
 			port: yield* Config.int("PORT").pipe(Config.withDefault(DEFAULT_PORT)),
@@ -194,7 +194,7 @@ interface GatewaySession {
 	closed: boolean
 }
 
-class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("DurableStreamClient", {
+class DurableStreamClient extends Context.Service<DurableStreamClient>()("DurableStreamClient", {
 	make: Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		const ensuredStreamsRef = yield* Ref.make(new Set<string>())
@@ -328,13 +328,13 @@ class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("Dur
 	static readonly layer = Layer.effect(this, this.make)
 }
 
-class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub", {
+class BotGatewayHub extends Context.Service<BotGatewayHub>()("BotGatewayHub", {
 	make: Effect.gen(function* () {
 		const botRepo = yield* BotRepo
 		const redis = yield* Redis
 		const durableStreams = yield* DurableStreamClient
 		const config = yield* GatewayConfig
-		const runtime = (yield* Effect.services<any>()) as ServiceMap.ServiceMap<never>
+		const runtime = (yield* Effect.context<any>()) as Context.Context<never>
 		const sessionsRef = yield* Ref.make(new Map<string, GatewaySession>())
 
 		const sendFrame = (
@@ -477,7 +477,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 
 						const ackResult = yield* Deferred.await(ackDeferred).pipe(
 							Effect.timeoutOrElse({
-								onTimeout: () =>
+								orElse: () =>
 									Effect.fail(
 										new GatewayProtocolError({
 											message: `Timed out waiting for ACK from session ${id}`,
@@ -797,7 +797,7 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 		readonly dependency: StartupDependency
 		readonly startMessage: string
 		readonly successMessage: string
-		readonly successLogs?: (context: ServiceMap.ServiceMap<ROut>) => Record<string, unknown>
+		readonly successLogs?: (context: Context.Context<ROut>) => Record<string, unknown>
 		readonly failureMessage: string
 	},
 ) =>
@@ -838,7 +838,7 @@ export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.layer
 	startMessage: "Loading gateway startup config...",
 	successMessage: "Gateway startup config loaded",
 	successLogs: (context) => {
-		const config = ServiceMap.get(context, GatewayConfig)
+		const config = Context.get(context, GatewayConfig)
 		return {
 			port: config.port,
 			durableStreamsUrl: config.durableStreamsUrl,
@@ -899,7 +899,7 @@ type GatewayServe = (options: any) => {
 export const createGatewayServer = (options: {
 	readonly config: (typeof GatewayConfig)["Service"]
 	readonly hub: (typeof BotGatewayHub)["Service"]
-	readonly runtime: ServiceMap.ServiceMap<never>
+	readonly runtime: Context.Context<never>
 	readonly serve?: GatewayServe
 }) =>
 	Effect.gen(function* () {
@@ -1074,7 +1074,7 @@ export const makeProgram = (options?: {
 	Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		const hub = yield* BotGatewayHub
-		const runtime = (yield* Effect.services<any>()) as ServiceMap.ServiceMap<never>
+		const runtime = (yield* Effect.context<any>()) as Context.Context<never>
 
 		yield* createGatewayServer({
 			config,

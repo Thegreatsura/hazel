@@ -67,6 +67,11 @@ const AllRpcs = BaseRpcs.merge(ChatSyncRpcs)
 export class HazelRpcClient extends AtomRpc.Service<HazelRpcClient>()("HazelRpcClient", {
 	group: AllRpcs,
 	protocol: AtomRpcProtocolLive,
-}) {}
+}) {
+	static readonly layer = Layer.effect(
+		HazelRpcClient,
+		RpcClientBuilder.make(AllRpcs, { flatten: true }),
+	).pipe(Layer.provide(AtomRpcProtocolLive))
+}
 
 export type { RpcClientError } from "effect/unstable/rpc"

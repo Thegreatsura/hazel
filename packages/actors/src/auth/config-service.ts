@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Layer, Option, Redacted } from "effect"
+import { Context, Config, Effect, Layer, Option, Redacted } from "effect"
 
 /**
  * Configuration required for token validation.
@@ -14,7 +14,7 @@ export interface TokenValidationConfig {
 
 const optionalValue = <A, E>(effect: Effect.Effect<A, E, never>) => effect.pipe(Effect.option)
 
-export class TokenValidationConfigService extends ServiceMap.Service<TokenValidationConfigService>()(
+export class TokenValidationConfigService extends Context.Service<TokenValidationConfigService>()(
 	"TokenValidationConfigService",
 	{
 		make: Effect.gen(function* () {

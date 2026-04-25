@@ -1,11 +1,11 @@
 import { ChannelMemberRepo, ChannelRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class ChannelMemberPolicy extends ServiceMap.Service<ChannelMemberPolicy>()(
+export class ChannelMemberPolicy extends Context.Service<ChannelMemberPolicy>()(
 	"ChannelMemberPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

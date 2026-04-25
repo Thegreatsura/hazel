@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 import { ChatSyncAttributionReconciler } from "./chat-sync-attribution-reconciler.ts"
 import { serviceShape } from "../../test/effect-helpers"
 
@@ -10,9 +10,9 @@ const USER_ID = "00000000-0000-4000-8000-000000000002" as UserId
 const SHADOW_USER_ID = "00000000-0000-4000-8000-000000000003" as UserId
 
 const makeLayer = (deps: {
-	messageRepo: ServiceMap.Service.Shape<typeof MessageRepo>
-	userRepo: ServiceMap.Service.Shape<typeof UserRepo>
-	organizationMemberRepo: ServiceMap.Service.Shape<typeof OrganizationMemberRepo>
+	messageRepo: Context.Service.Shape<typeof MessageRepo>
+	userRepo: Context.Service.Shape<typeof UserRepo>
+	organizationMemberRepo: Context.Service.Shape<typeof OrganizationMemberRepo>
 }) =>
 	Layer.effect(ChatSyncAttributionReconciler, ChatSyncAttributionReconciler.make).pipe(
 		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),

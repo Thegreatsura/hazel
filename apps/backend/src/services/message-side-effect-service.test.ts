@@ -2,7 +2,7 @@ import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/unstable
 import { randomUUID } from "node:crypto"
 import { Database, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
 import { configLayer, serviceShape } from "../test/effect-helpers"
@@ -36,7 +36,7 @@ type WorkerOptions = {
 
 const runServiceEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
-	worker: ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
+	worker: Context.Service.Shape<typeof DiscordSyncWorker>,
 	make: Effect.Effect<A, E, R>,
 	httpClientLayer: Layer.Layer<HttpClient.HttpClient> = FetchHttpClient.layer,
 ) =>

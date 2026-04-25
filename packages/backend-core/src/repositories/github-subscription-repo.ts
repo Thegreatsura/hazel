@@ -2,9 +2,9 @@ import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 
-export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptionRepo>()(
+export class GitHubSubscriptionRepo extends Context.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
 	{
 		make: Effect.gen(function* () {

@@ -8,9 +8,9 @@ import type {
 	SyncChannelLinkId,
 	SyncMessageLinkId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
+import { Context, Effect, Layer, Option, Schema } from "effect"
 
-export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageLinkRepo>()(
+export class ChatSyncMessageLinkRepo extends Context.Service<ChatSyncMessageLinkRepo>()(
 	"ChatSyncMessageLinkRepo",
 	{
 		make: Effect.gen(function* () {

@@ -1,12 +1,12 @@
 import { ChannelRepo, GitHubSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class GitHubSubscriptionPolicy extends ServiceMap.Service<GitHubSubscriptionPolicy>()(
+export class GitHubSubscriptionPolicy extends Context.Service<GitHubSubscriptionPolicy>()(
 	"GitHubSubscriptionPolicy/Policy",
 	{
 		make: Effect.gen(function* () {

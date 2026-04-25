@@ -1,6 +1,6 @@
 import { Persistence } from "effect/unstable/persistence"
 import type { UserId } from "@hazel/schema"
-import { ServiceMap, Duration, Effect, Exit, Layer, Metric, Option } from "effect"
+import { Context, Duration, Effect, Exit, Layer, Metric, Option } from "effect"
 import { UserLookupCacheError } from "../errors.ts"
 import { userLookupCacheHits, userLookupCacheMisses, userLookupCacheOperationLatency } from "../metrics.ts"
 import { UserLookupCacheRequest, type UserLookupResult } from "./user-lookup-request.ts"
@@ -12,7 +12,7 @@ export const USER_LOOKUP_CACHE_TTL = Duration.minutes(5)
  * User lookup cache service using Persistence.
  * Caches the mapping from externalId (Clerk user ID) → internal UserId.
  */
-export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@hazel/auth/UserLookupCache", {
+export class UserLookupCache extends Context.Service<UserLookupCache>()("@hazel/auth/UserLookupCache", {
 	make: Effect.gen(function* () {
 		const persistence = yield* Persistence.Persistence
 

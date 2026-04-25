@@ -2,9 +2,9 @@ import { and, Database, eq, lt, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
-import { ServiceMap, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
-export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
+export class TypingIndicatorRepo extends Context.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
 	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 		const baseRepo = yield* Repository.makeRepository(
@@ -54,7 +54,7 @@ export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>
 					return client
 						.insert(schema.typingIndicatorsTable)
 						.values({
-							id: TypingIndicatorId.makeUnsafe(crypto.randomUUID()),
+							id: TypingIndicatorId.make(crypto.randomUUID()),
 							channelId: params.channelId,
 							memberId: params.memberId,
 							lastTyped: params.lastTyped,

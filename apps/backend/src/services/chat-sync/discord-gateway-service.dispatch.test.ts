@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import type { ExternalChannelId, SyncConnectionId } from "@hazel/schema"
-import { Effect, ServiceMap } from "effect"
+import { Effect, Context } from "effect"
 import { recordChatSyncDiagnostic } from "../../test/chat-sync-test-diagnostics"
 import {
 	createDiscordGatewayDispatchHandlers,
@@ -29,7 +29,7 @@ type GatewayLink = {
 }
 
 type DispatchWorker = Pick<
-	ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
+	Context.Service.Shape<typeof DiscordSyncWorker>,
 	| "ingestMessageCreate"
 	| "ingestMessageUpdate"
 	| "ingestMessageDelete"

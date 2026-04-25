@@ -1,5 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ExternalChannelId, OrganizationId } from "@hazel/schema"
@@ -207,9 +207,9 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`, {
 			params: { orgId: OrganizationId },
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
 				perPage: Schema.optional(Schema.NumberFromString).pipe(
-					Schema.withDecodingDefault(() => "30"),
+					Schema.withDecodingDefault(Effect.succeed("30")),
 				),
 			},
 			success: GitHubRepositoriesResponse,

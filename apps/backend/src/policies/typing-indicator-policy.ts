@@ -1,9 +1,9 @@
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
 
-export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPolicy>()(
+export class TypingIndicatorPolicy extends Context.Service<TypingIndicatorPolicy>()(
 	"TypingIndicatorPolicy/Policy",
 	{
 		make: Effect.gen(function* () {
