@@ -100,22 +100,44 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 					slug: string | null
 					image_url?: string | null
 				}
-				if (!anyData.slug) {
-					yield* Effect.logWarning(`Clerk org ${anyData.id} has no slug — skipping`)
-					return
-				}
 
-				// Look up by slug first (primary key in our URL routing).
-				const existing = yield* orgRepo
-					.findBySlug(anyData.slug)
+				// Resolve to an existing org by Clerk org ID first (already-linked rows),
+				// then fall back to slug (canonical pre-migration rows that haven't been linked yet).
+				// Slug-only lookup was the source of duplicate "ghost" rows after the WorkOS → Clerk migration.
+				const byClerkId = yield* orgRepo
+					.findByClerkOrgId(anyData.id)
 					.pipe(Effect.map(Option.getOrNull))
 
+				const bySlug =
+					!byClerkId && anyData.slug
+						? yield* orgRepo.findBySlug(anyData.slug).pipe(Effect.map(Option.getOrNull))
+						: null
+
+				const existing = byClerkId ?? bySlug
+
 				if (existing) {
+					const currentSettings = (existing.settings as { clerkOrganizationId?: string } | null) ?? null
+					const needsClerkIdLink = currentSettings?.clerkOrganizationId !== anyData.id
 					yield* orgRepo.update({
 						id: existing.id,
 						name: anyData.name,
 						logoUrl: anyData.image_url ?? existing.logoUrl,
+						...(needsClerkIdLink
+							? {
+									settings: {
+										...(currentSettings ?? {}),
+										clerkOrganizationId: anyData.id,
+									},
+								}
+							: {}),
 					})
+					return
+				}
+
+				if (!anyData.slug) {
+					yield* Effect.logWarning(
+						`Clerk org ${anyData.id} has no slug and no existing row — skipping insert`,
+					)
 					return
 				}
 
@@ -133,10 +155,16 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 		const handleOrgDeleted = (data: unknown) =>
 			Effect.gen(function* () {
 				const anyData = data as { id?: string; slug?: string | null }
-				if (!anyData.slug) return
-				const existing = yield* orgRepo.findBySlug(anyData.slug)
-				if (Option.isNone(existing)) return
-				yield* orgRepo.deleteById(existing.value.id)
+				const byClerkId = anyData.id
+					? yield* orgRepo.findByClerkOrgId(anyData.id).pipe(Effect.map(Option.getOrNull))
+					: null
+				const bySlug =
+					!byClerkId && anyData.slug
+						? yield* orgRepo.findBySlug(anyData.slug).pipe(Effect.map(Option.getOrNull))
+						: null
+				const existing = byClerkId ?? bySlug
+				if (!existing) return
+				yield* orgRepo.deleteById(existing.id)
 			}).pipe(Effect.asVoid)
 
 		// --- Organization memberships ---
@@ -156,18 +184,24 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 					role?: string | null
 				}
 				const clerkUserId = anyData.public_user_data?.user_id
+				const clerkOrgId = anyData.organization?.id
 				const orgSlug = anyData.organization?.slug
-				if (!clerkUserId || !orgSlug) return Option.none()
+				if (!clerkUserId || (!clerkOrgId && !orgSlug)) return Option.none()
 
 				const userOpt = yield* userRepo
 					.findByExternalId(clerkUserId)
 					.pipe(Effect.map(Option.getOrNull))
-				const orgOpt = yield* orgRepo
-					.findBySlug(orgSlug)
-					.pipe(Effect.map(Option.getOrNull))
+				const byClerkId = clerkOrgId
+					? yield* orgRepo.findByClerkOrgId(clerkOrgId).pipe(Effect.map(Option.getOrNull))
+					: null
+				const bySlug =
+					!byClerkId && orgSlug
+						? yield* orgRepo.findBySlug(orgSlug).pipe(Effect.map(Option.getOrNull))
+						: null
+				const orgOpt = byClerkId ?? bySlug
 				if (!userOpt || !orgOpt) {
 					yield* Effect.logWarning(
-						`Skipping membership upsert — user or org not found (user=${clerkUserId}, org=${orgSlug})`,
+						`Skipping membership upsert — user or org not found (user=${clerkUserId}, org=${clerkOrgId ?? orgSlug})`,
 					)
 					return Option.none()
 				}
@@ -191,18 +225,24 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 			Effect.gen(function* () {
 				const anyData = data as {
 					public_user_data?: { user_id?: string }
-					organization?: { slug?: string | null }
+					organization?: { id?: string; slug?: string | null }
 				}
 				const clerkUserId = anyData.public_user_data?.user_id
+				const clerkOrgId = anyData.organization?.id
 				const orgSlug = anyData.organization?.slug
-				if (!clerkUserId || !orgSlug) return Option.none()
+				if (!clerkUserId || (!clerkOrgId && !orgSlug)) return Option.none()
 
 				const userOpt = yield* userRepo
 					.findByExternalId(clerkUserId)
 					.pipe(Effect.map(Option.getOrNull))
-				const orgOpt = yield* orgRepo
-					.findBySlug(orgSlug)
-					.pipe(Effect.map(Option.getOrNull))
+				const byClerkId = clerkOrgId
+					? yield* orgRepo.findByClerkOrgId(clerkOrgId).pipe(Effect.map(Option.getOrNull))
+					: null
+				const bySlug =
+					!byClerkId && orgSlug
+						? yield* orgRepo.findBySlug(orgSlug).pipe(Effect.map(Option.getOrNull))
+						: null
+				const orgOpt = byClerkId ?? bySlug
 				if (!userOpt || !orgOpt) return Option.none()
 
 				yield* membershipRepo.softDeleteByOrgAndUser(orgOpt.id, userOpt.id)

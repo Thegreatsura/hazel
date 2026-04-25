@@ -6,9 +6,12 @@
  *   - 0 channels AND 0 messages                    (no real data on it)
  *
  * Criteria for the "canonical" row (what we keep):
- *   - settings.clerkOrganizationId IS NULL         (pre-migration row)
  *   - Same lowercased name as the ghost
  *   - Has channels or messages (i.e. the real org)
+ *   - Its clerkOrganizationId is NULL or matches the ghost's
+ *     (NULL = pre-migration WorkOS row; match = a previous merge / webhook back-link
+ *     already stamped it. A different non-NULL value means the row is bound to a
+ *     different Clerk org — skip, that's not a duplicate, that's two real orgs.)
  *
  * If multiple canonical candidates exist for one ghost, we skip that group
  * and log a warning — needs manual review. If the ghost has non-zero data
@@ -112,10 +115,16 @@ const program = Effect.gen(function* () {
 
 		for (const ghost of ghosts) {
 			const canonicalCandidates = list.filter(
-				(o) => o.id !== ghost.id && o.clerkOrgId === null,
+				(o) =>
+					o.id !== ghost.id &&
+					(o.channelCount > 0 || o.messageCount > 0) &&
+					(o.clerkOrgId === null || o.clerkOrgId === ghost.clerkOrgId),
 			)
 			if (canonicalCandidates.length === 0) {
-				skipped.push({ name, reason: `no non-Clerk row to merge ghost ${ghost.id} into` })
+				skipped.push({
+					name,
+					reason: `no row with channels/messages and matching (or null) clerkOrganizationId to merge ghost ${ghost.id} into`,
+				})
 				continue
 			}
 			if (canonicalCandidates.length > 1) {

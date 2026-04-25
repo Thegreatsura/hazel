@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
 import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
@@ -30,6 +30,27 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 							.limit(1),
 					),
 				)(slug, tx)
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+
+		// Find an organization by the Clerk org id stashed in `settings.clerkOrganizationId`.
+		// Used by the Clerk webhook so post-migration events resolve to the canonical row
+		// even when slugs diverge between WorkOS-era and Clerk.
+		const findByClerkOrgId = (clerkOrgId: string, tx?: TxFn) =>
+			db
+				.makeQuery((execute, payload: { clerkOrgId: string }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.organizationsTable)
+							.where(
+								and(
+									sql`${schema.organizationsTable.settings}->>'clerkOrganizationId' = ${payload.clerkOrgId}`,
+									isNull(schema.organizationsTable.deletedAt),
+								),
+							)
+							.limit(1),
+					),
+				)({ clerkOrgId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
@@ -110,6 +131,7 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 		return {
 			...baseRepo,
 			findBySlug,
+			findByClerkOrgId,
 			findBySlugIfPublic,
 			findAllActive,
 			softDelete,
