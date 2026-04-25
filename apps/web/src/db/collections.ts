@@ -148,6 +148,7 @@ export const userCollection = createEffectCollection({
 	schema: User.Schema,
 	getKey: (item) => item.id,
 })
+userCollection.createIndex((row) => row.id)
 
 export const organizationMemberCollection = createEffectCollection({
 	id: "organization_members",
@@ -407,6 +408,7 @@ export const chatSyncMessageLinkCollection = createEffectCollection({
 	schema: ChatSyncMessageLink.Schema,
 	getKey: (item) => item.id,
 })
+chatSyncMessageLinkCollection.createIndex((row) => row.createdAt)
 
 export const botCollection = createEffectCollection({
 	id: "bots",
