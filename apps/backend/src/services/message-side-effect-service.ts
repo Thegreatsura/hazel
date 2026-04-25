@@ -9,6 +9,7 @@ import type {
 	ReactionCreatedPayload,
 	ReactionDeletedPayload,
 } from "@hazel/backend-core"
+import { formatError } from "../lib/format-error"
 import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./chat-sync/discord-sync-worker"
 
 export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
@@ -57,7 +58,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 									Effect.logWarning("Failed to sync outbox message create to Discord", {
 										messageId: payload.messageId,
 										channelId: payload.channelId,
-										error: String(error),
+										error: formatError(error),
 									}),
 								),
 							)
@@ -107,11 +108,22 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							},
 						})
 						.pipe(
+							Effect.tapError((err) =>
+								Effect.logError("MessageNotificationWorkflow dispatch failed", {
+									messageId: payload.messageId,
+									channelId: payload.channelId,
+									errorTag:
+										typeof err === "object" && err && "_tag" in err
+											? (err as { _tag: string })._tag
+											: "unknown",
+									error: formatError(err),
+								}),
+							),
 							Effect.catch((err) =>
 								Effect.fail(
 									new WorkflowInitializationError({
 										message: "Failed to execute notification workflow",
-										cause: String(err),
+										cause: formatError(err),
 									}),
 								),
 							),
@@ -172,8 +184,8 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 						.pipe(
 							Effect.tapError((err) =>
 								Effect.logError("Failed to execute thread naming workflow", {
-									error: err.message,
 									threadChannelId: payload.channelId,
+									error: formatError(err),
 								}),
 							),
 							Effect.catch(() => Effect.void),
@@ -189,7 +201,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox message update to Discord", {
 									messageId: payload.messageId,
-									error: String(error),
+									error: formatError(error),
 								}),
 							),
 						)
@@ -204,7 +216,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox message delete to Discord", {
 									messageId: payload.messageId,
-									error: String(error),
+									error: formatError(error),
 								}),
 							),
 						)
@@ -219,7 +231,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox reaction create to Discord", {
 									reactionId: payload.reactionId,
-									error: String(error),
+									error: formatError(error),
 								}),
 							),
 						)
@@ -242,7 +254,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox reaction delete to Discord", {
 									hazelMessageId: payload.hazelMessageId,
-									error: String(error),
+									error: formatError(error),
 								}),
 							),
 						)

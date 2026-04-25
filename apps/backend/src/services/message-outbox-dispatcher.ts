@@ -11,6 +11,7 @@ import {
 import { Database } from "@hazel/db"
 import { ServiceMap, Effect, Layer, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
+import { formatError } from "../lib/format-error"
 import { DatabaseLive } from "./database"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
@@ -119,7 +120,16 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 						}
 
 						const nextAttempt = event.attemptCount + 1
-						const errorMessage = String(result.failure)
+						const errorMessage = formatError(result.failure)
+
+						yield* Effect.logWarning("Outbox event processing failed", {
+							eventId: event.id,
+							eventType: event.eventType,
+							sequence: event.sequence,
+							attempt: nextAttempt,
+							willRetry: nextAttempt < OUTBOX_FAILURE_LIMIT,
+							error: errorMessage,
+						})
 
 						if (nextAttempt >= OUTBOX_FAILURE_LIMIT) {
 							yield* outboxRepo.markFailed(event.id, {
