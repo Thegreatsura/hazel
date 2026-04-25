@@ -1,6 +1,7 @@
 import type { Row, ShapeStreamOptions } from "@electric-sql/client"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type { Collection, CollectionConfig, CollectionStatus } from "@tanstack/db"
+import { BTreeIndex } from "@tanstack/db"
 import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collection"
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection as tanstackCreateCollection } from "@tanstack/react-db"
@@ -296,6 +297,8 @@ export function effectElectricCollectionOptions(
 		: config.shapeOptions
 
 	const standardConfig = electricCollectionOptions({
+		autoIndex: "eager",
+		defaultIndexType: BTreeIndex,
 		...config,
 		shapeOptions: modifiedShapeOptions,
 		onInsert: promiseOnInsert,
