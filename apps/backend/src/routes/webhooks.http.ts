@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { verifyWebhook as verifyClerkWebhook } from "@clerk/backend/webhooks"
-import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpApiBuilder, HttpApiClient } from "effect/unstable/httpapi"
 import { HttpServerRequest } from "effect/unstable/http"
-import { InternalServerError } from "@hazel/domain"
+import { Cluster, InternalServerError, WorkflowInitializationError } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
@@ -170,15 +170,122 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 					}
 				}
 
+				const payload = yield* Effect.try({
+					try: () => JSON.parse(rawBody) as Record<string, unknown>,
+					catch: (err) =>
+						new InternalServerError({
+							message: "Invalid GitHub webhook JSON payload",
+							detail: String(err),
+						}),
+				})
+
 				yield* Effect.logInfo("Received GitHub webhook", {
 					eventType,
 					deliveryId,
+					repository: (payload.repository as { full_name?: string } | undefined)?.full_name,
+					action: payload.action,
 				})
 
-				return new GitHubWebhookResponse({
-					processed: true,
-					messagesCreated: 0,
+				const clusterUrl = yield* Config.string("CLUSTER_URL")
+				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
+					baseUrl: clusterUrl,
 				})
+
+				const wrapWorkflowError = (label: string) => (err: unknown) =>
+					Effect.fail(
+						new WorkflowInitializationError({
+							message: label,
+							cause: String(err),
+						}),
+					)
+
+				if (eventType === "installation") {
+					const installation = payload.installation as
+						| { id: number; account: { login: string; type: string } }
+						| undefined
+					const action = payload.action as string | undefined
+					const sender = payload.sender as { login: string } | undefined
+
+					if (
+						!installation?.id ||
+						!installation?.account ||
+						!action ||
+						!["created", "deleted", "suspend", "unsuspend"].includes(action)
+					) {
+						yield* Effect.logDebug(
+							"Skipping installation webhook - missing fields or unsupported action",
+							{
+								hasInstallation: !!installation?.id,
+								hasAccount: !!installation?.account,
+								action,
+							},
+						)
+						return new GitHubWebhookResponse({ processed: false, messagesCreated: 0 })
+					}
+
+					yield* client.workflows
+						.GitHubInstallationWorkflow({
+							payload: {
+								deliveryId,
+								action: action as "created" | "deleted" | "suspend" | "unsuspend",
+								installationId: installation.id,
+								accountLogin: installation.account.login,
+								accountType: installation.account.type as "User" | "Organization",
+								senderLogin: sender?.login ?? "unknown",
+							},
+						})
+						.pipe(
+							Effect.tapError((err) =>
+								Effect.logError("Failed to execute GitHub installation workflow", {
+									deliveryId,
+									action,
+									installationId: installation.id,
+									error: String(err),
+								}),
+							),
+							Effect.catch(wrapWorkflowError("Failed to execute GitHub installation workflow")),
+						)
+
+					return new GitHubWebhookResponse({ processed: true, messagesCreated: 0 })
+				}
+
+				const repository = payload.repository as
+					| { id: number; full_name: string }
+					| undefined
+				const installationId = (payload.installation as { id: number } | undefined)?.id
+
+				if (!installationId || !repository?.id || !repository?.full_name) {
+					yield* Effect.logDebug("Skipping GitHub webhook - missing required fields", {
+						hasInstallation: !!installationId,
+						hasRepository: !!repository?.id,
+					})
+					return new GitHubWebhookResponse({ processed: false, messagesCreated: 0 })
+				}
+
+				yield* client.workflows
+					.GitHubWebhookWorkflow({
+						payload: {
+							deliveryId,
+							eventType,
+							installationId,
+							repositoryId: repository.id,
+							repositoryFullName: repository.full_name,
+							eventPayload: payload,
+						},
+					})
+					.pipe(
+						Effect.tapError((err) =>
+							Effect.logError("Failed to execute GitHub webhook workflow", {
+								deliveryId,
+								eventType,
+								repository: repository.full_name,
+								error: String(err),
+							}),
+						),
+						Effect.catch(wrapWorkflowError("Failed to execute GitHub webhook workflow")),
+					)
+
+				return new GitHubWebhookResponse({ processed: true, messagesCreated: 0 })
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
 					Effect.fail(
