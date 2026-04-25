@@ -4,6 +4,7 @@ import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { usePostHog } from "posthog-js/react"
 import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import {
 	computeStepNumber,
 	computeTotalSteps,
@@ -54,14 +55,8 @@ export function useOnboarding(options: UseOnboardingOptions) {
 	const finalizeOnboarding = useAtomSet(finalizeOnboardingMutation, { mode: "promiseExit" })
 	const { organization: clerkOrganization } = useClerkOrganization()
 
-	// Track if we've initialized with the options
-	const hasInitialized = useRef(false)
-
 	// Initialize state with options on mount
-	useEffect(() => {
-		if (hasInitialized.current) return
-		hasInitialized.current = true
-
+	useMountEffect(() => {
 		const initialState = createInitialState({
 			orgId: options.orgId,
 			organization: options.organization,
@@ -79,7 +74,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 			user_type: initialState.userType,
 			total_steps: getTotalSteps(initialState.userType),
 		})
-	}, [options.orgId, options.organization, options.initialStep, setState, posthog])
+	})
 
 	// Notify parent when step changes (for URL sync)
 	const prevStepRef = useRef<OnboardingStep | null>(null)
@@ -90,22 +85,26 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		prevStepRef.current = state.currentStep
 	}, [state.currentStep, options.onStepChange])
 
-	// Track step views (excluding internal states)
+	// Track step views (excluding internal states). posthog.capture is a pure
+	// side effect with no React interaction — safe to fire once per step from
+	// the render body with a Set guard.
 	const hasTrackedStepRef = useRef<Set<OnboardingStep>>(new Set())
-	useEffect(() => {
+	{
 		const step = state.currentStep
-		// Skip internal states and already tracked steps
-		if (step === "finalization" || step === "completed") return
-		if (hasTrackedStepRef.current.has(step)) return
-
-		hasTrackedStepRef.current.add(step)
-		posthog.capture("onboarding_step_viewed", {
-			step,
-			step_number: getStepNumber(step, state.userType),
-			user_type: state.userType,
-			total_steps: getTotalSteps(state.userType),
-		})
-	}, [state.currentStep, state.userType, posthog])
+		if (
+			step !== "finalization" &&
+			step !== "completed" &&
+			!hasTrackedStepRef.current.has(step)
+		) {
+			hasTrackedStepRef.current.add(step)
+			posthog.capture("onboarding_step_viewed", {
+				step,
+				step_number: getStepNumber(step, state.userType),
+				user_type: state.userType,
+				total_steps: getTotalSteps(state.userType),
+			})
+		}
+	}
 
 	// Helper to track step completion
 	const trackStepCompleted = useCallback(
@@ -298,16 +297,14 @@ export function useOnboarding(options: UseOnboardingOptions) {
 	})
 
 	// Keep ref in sync with state
-	useEffect(() => {
-		finalizationContext.current = {
-			orgId: state.initialOrgId || state.data.createdOrgId,
-			memberId: options.organizationMemberId,
-			userId: user?.id,
-			metadata: { role: state.data.role, useCases: state.data.useCases },
-			emails: state.data.emails,
-			userType: state.userType,
-		}
-	}, [state.initialOrgId, state.data, options.organizationMemberId, user?.id, state.userType])
+	finalizationContext.current = {
+		orgId: state.initialOrgId || state.data.createdOrgId,
+		memberId: options.organizationMemberId,
+		userId: user?.id,
+		metadata: { role: state.data.role, useCases: state.data.useCases },
+		emails: state.data.emails,
+		userType: state.userType,
+	}
 
 	// Finalization handler - stable callback with minimal dependencies
 	const handleFinalization = useCallback(async () => {
@@ -367,19 +364,17 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		}
 	}, [finalizeOnboarding, updateMemberMetadata, clerkOrganization, setState, posthog])
 
-	// Auto-trigger finalization when reaching that step
+	// Auto-trigger finalization when reaching that step. The ref guard makes
+	// the dispatch idempotent; handleFinalization is async and its state
+	// updates schedule the next render safely.
 	const finalizationTriggered = useRef(false)
-	useEffect(() => {
-		if (state.currentStep === "finalization" && !state.isProcessing && !finalizationTriggered.current) {
-			finalizationTriggered.current = true
-			handleFinalization()
-		}
-
-		// Reset the flag if we go back from finalization
-		if (state.currentStep !== "finalization") {
-			finalizationTriggered.current = false
-		}
-	}, [state.currentStep, state.isProcessing, handleFinalization])
+	if (state.currentStep === "finalization" && !state.isProcessing && !finalizationTriggered.current) {
+		finalizationTriggered.current = true
+		void handleFinalization()
+	}
+	if (state.currentStep !== "finalization" && finalizationTriggered.current) {
+		finalizationTriggered.current = false
+	}
 
 	return {
 		// State

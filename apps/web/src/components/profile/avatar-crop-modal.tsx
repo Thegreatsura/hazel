@@ -46,14 +46,12 @@ export function AvatarCropModal({ isOpen, onOpenChange, imageFile, onCropComplet
 	const objectUrlRef = useRef<string | null>(null)
 	const cropAreaRef = useRef<CropAreaHandle>(null)
 
-	// Sync image state when file changes
+	// Sync image state when file changes — detect the transition during render.
 	const prevImageFileRef = useRef<File | null>(imageFile)
-	useEffect(() => {
-		if (imageFile !== prevImageFileRef.current) {
-			prevImageFileRef.current = imageFile
-			setImageState(imageFile ? { status: "loading" } : { status: "idle" })
-		}
-	}, [imageFile])
+	if (imageFile !== prevImageFileRef.current) {
+		prevImageFileRef.current = imageFile
+		setImageState(imageFile ? { status: "loading" } : { status: "idle" })
+	}
 
 	// Load image asynchronously when file is set
 	useEffect(() => {

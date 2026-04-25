@@ -1,12 +1,13 @@
 import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, RssSubscriptionId } from "@hazel/schema"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import {
 	deleteRssSubscriptionMutation,
 	listRssSubscriptionsMutation,
 	type RssSubscriptionData,
 	updateRssSubscriptionMutation,
 } from "~/atoms/rss-subscription-atoms"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconPlus from "~/components/icons/icon-plus"
 import IconTrash from "~/components/icons/icon-trash"
@@ -30,9 +31,7 @@ export function RssIntegrationCard({ channelId }: RssIntegrationCardProps) {
 
 	const listSubscriptions = useAtomSet(listRssSubscriptionsMutation, { mode: "promiseExit" })
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	useEffect(() => {
-		listSubscriptionsRef.current = listSubscriptions
-	}, [listSubscriptions])
+	listSubscriptionsRef.current = listSubscriptions
 
 	const fetchSubscriptions = useCallback(async () => {
 		setIsLoading(true)
@@ -51,9 +50,9 @@ export function RssIntegrationCard({ channelId }: RssIntegrationCardProps) {
 		setIsLoading(false)
 	}, [channelId])
 
-	useEffect(() => {
-		fetchSubscriptions()
-	}, [fetchSubscriptions])
+	useMountEffect(() => {
+		void fetchSubscriptions()
+	})
 
 	return (
 		<>

@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useRef } from "react"
 import { toast } from "sonner"
 import { useRegisterSW } from "virtual:pwa-register/react"
 
@@ -13,10 +13,12 @@ import { useRegisterSW } from "virtual:pwa-register/react"
  * - Gracefully handles offline scenarios
  */
 export const VersionCheck = () => {
-	const {
-		needRefresh: [needRefresh],
-		updateServiceWorker,
-	} = useRegisterSW({
+	// `updateServiceWorker` is returned by useRegisterSW but referenced from
+	// onNeedRefresh (which is constructed in the same call). Route it through
+	// a ref so the action handler always reads the latest value.
+	const updateServiceWorkerRef = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined)
+
+	const { updateServiceWorker } = useRegisterSW({
 		onRegisteredSW(_swUrl, registration) {
 			// Check for updates every 60 seconds
 			if (registration) {
@@ -25,10 +27,7 @@ export const VersionCheck = () => {
 				}, 60 * 1000)
 			}
 		},
-	})
-
-	useEffect(() => {
-		if (needRefresh) {
+		onNeedRefresh() {
 			toast("A new version is available", {
 				id: "version-update",
 				description: "Reload the page to get the latest updates",
@@ -37,7 +36,7 @@ export const VersionCheck = () => {
 					label: "Reload",
 					onClick: () => {
 						// This activates the new SW and reloads
-						updateServiceWorker(true)
+						void updateServiceWorkerRef.current?.(true)
 					},
 				},
 				cancel: {
@@ -45,8 +44,10 @@ export const VersionCheck = () => {
 					onClick: () => {},
 				},
 			})
-		}
-	}, [needRefresh, updateServiceWorker])
+		},
+	})
+
+	updateServiceWorkerRef.current = updateServiceWorker
 
 	return null
 }

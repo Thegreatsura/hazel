@@ -68,10 +68,12 @@ export function usePanelResize({
 		startWidth: number
 	} | null>(null)
 
-	// Update width when initialWidth changes
-	useEffect(() => {
+	// Sync width when parent passes a new initialWidth.
+	const prevInitialWidthRef = useRef(initialWidth)
+	if (prevInitialWidthRef.current !== initialWidth) {
+		prevInitialWidthRef.current = initialWidth
 		setWidthState(initialWidth)
-	}, [initialWidth])
+	}
 
 	const getContainerWidth = useCallback(() => {
 		return containerRef?.current?.offsetWidth ?? window.innerWidth

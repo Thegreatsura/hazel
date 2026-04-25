@@ -3,7 +3,8 @@ import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { toDate } from "~/lib/utils"
 import { toast } from "sonner"
 import {
@@ -33,11 +34,16 @@ import { useOrganization } from "~/hooks/use-organization"
 import { exitToast } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/settings/integrations")({
-	component: IntegrationsPage,
+	component: IntegrationsPageRoute,
 })
 
-function IntegrationsPage() {
+function IntegrationsPageRoute() {
 	const { channelId, orgSlug } = Route.useParams()
+	// Remount on channel change so mount-only fetches re-run cleanly.
+	return <IntegrationsPage key={channelId} channelId={channelId as ChannelId} orgSlug={orgSlug} />
+}
+
+function IntegrationsPage({ channelId, orgSlug }: { channelId: ChannelId; orgSlug: string }) {
 	const { organizationId } = useOrganization()
 
 	// Fetch channel name for edit modal
@@ -66,9 +72,7 @@ function IntegrationsPage() {
 	})
 
 	const listWebhooksRef = useRef(listWebhooks)
-	useEffect(() => {
-		listWebhooksRef.current = listWebhooks
-	}, [listWebhooks])
+	listWebhooksRef.current = listWebhooks
 
 	const fetchWebhooks = useCallback(async () => {
 		setIsLoading(true)
@@ -87,9 +91,9 @@ function IntegrationsPage() {
 		setIsLoading(false)
 	}, [channelId])
 
-	useEffect(() => {
-		fetchWebhooks()
-	}, [fetchWebhooks])
+	useMountEffect(() => {
+		void fetchWebhooks()
+	})
 
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">

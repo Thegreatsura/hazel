@@ -1,8 +1,9 @@
 import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, MessageId } from "@hazel/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef } from "react"
 import { notificationCollection, organizationMemberCollection } from "~/db/collections"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { useAuth } from "~/lib/auth"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { useOrganization } from "./use-organization"
@@ -133,22 +134,25 @@ export function useVisibleMessageNotificationCleaner(options: UseVisibleMessageN
 		[messageIdsWithNotifications, processPendingDeletions, debounceMs],
 	)
 
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			clearTimeout(debounceTimeoutRef.current)
-			// Process any remaining pending deletions
-			if (pendingMessageIdsRef.current.size > 0) {
-				void processPendingDeletions()
-			}
-		}
-	}, [processPendingDeletions])
-
-	// Reset deleted tracking when channel changes
-	useEffect(() => {
+	// Reset deleted tracking when channel changes. Assigning during render is
+	// safe for refs and equivalent to resetting on prop change.
+	const prevChannelIdRef = useRef(channelId)
+	if (prevChannelIdRef.current !== channelId) {
+		prevChannelIdRef.current = channelId
 		deletedMessageIdsRef.current.clear()
 		pendingMessageIdsRef.current.clear()
-	}, [channelId])
+	}
+
+	// Flush any remaining pending deletions on unmount. Use a ref so the
+	// cleanup always calls the latest processPendingDeletions.
+	const processPendingDeletionsRef = useRef(processPendingDeletions)
+	processPendingDeletionsRef.current = processPendingDeletions
+	useMountEffect(() => () => {
+		clearTimeout(debounceTimeoutRef.current)
+		if (pendingMessageIdsRef.current.size > 0) {
+			void processPendingDeletionsRef.current()
+		}
+	})
 
 	return { onVisibleMessagesChange }
 }

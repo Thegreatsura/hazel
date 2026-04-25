@@ -3,7 +3,7 @@ import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { type } from "arktype"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
 import { usePanelWidth } from "~/atoms/panel-atoms"
 import { ChatHeader } from "~/components/chat/chat-header"
@@ -11,6 +11,7 @@ import { ChatTabBar } from "~/components/chat/chat-tab-bar"
 import type { MessageListRef } from "~/components/chat/message-list"
 import { ThreadPanel } from "~/components/chat/thread-panel"
 import { SplitPanel, SplitPanelContent, SplitPanelRoot } from "~/components/ui/split-panel"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import {
 	connectConversationChannelCollection,
 	messageCollection,
@@ -139,6 +140,12 @@ function ChatLayout() {
 
 function RouteComponent() {
 	const { id } = Route.useParams()
+	// key={id} remounts the inner tree when the channel changes, so the
+	// "clear notifications on entry" side effect runs exactly once per visit.
+	return <ChatRouteContent key={id} channelId={id as ChannelId} />
+}
+
+function ChatRouteContent({ channelId }: { channelId: ChannelId }) {
 	const { organizationId } = useOrganization()
 	const messageListRef = useRef<MessageListRef>(null)
 
@@ -150,14 +157,13 @@ function RouteComponent() {
 	// Note: Runs twice in dev due to StrictMode - this is expected and harmless
 	const clearNotifications = useAtomSet(clearChannelNotificationsMutation, { mode: "promiseExit" })
 
-	useEffect(() => {
-		clearNotifications({ payload: { channelId: id as ChannelId } })
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [id])
+	useMountEffect(() => {
+		void clearNotifications({ payload: { channelId } })
+	})
 
 	return (
 		<ChatProvider
-			channelId={id as ChannelId}
+			channelId={channelId}
 			organizationId={organizationId!}
 			onMessageSent={handleMessageSent}
 		>

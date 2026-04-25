@@ -2,7 +2,8 @@ import { useAtomSet } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { toDate } from "~/lib/utils"
 import {
 	deleteRssSubscriptionMutation,
@@ -42,9 +43,7 @@ export function RssSubscriptionsSection({ organizationId }: RssSubscriptionsSect
 
 	// Ref to avoid stale closures
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	useEffect(() => {
-		listSubscriptionsRef.current = listSubscriptions
-	}, [listSubscriptions])
+	listSubscriptionsRef.current = listSubscriptions
 
 	// Query all channels in organization
 	const { data: channelsData } = useLiveQuery(
@@ -79,9 +78,9 @@ export function RssSubscriptionsSection({ organizationId }: RssSubscriptionsSect
 	}, [])
 
 	// Fetch on mount
-	useEffect(() => {
-		fetchSubscriptions(true)
-	}, [fetchSubscriptions])
+	useMountEffect(() => {
+		void fetchSubscriptions(true)
+	})
 
 	// Group subscriptions by feed URL
 	const groupedSubscriptions = useMemo(() => {

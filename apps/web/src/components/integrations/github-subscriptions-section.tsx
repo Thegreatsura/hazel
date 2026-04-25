@@ -2,7 +2,8 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import {
 	deleteGitHubSubscriptionMutation,
 	type GitHubSubscriptionData,
@@ -61,9 +62,7 @@ export function GitHubSubscriptionsSection({ organizationId }: GitHubSubscriptio
 
 	// Ref to avoid stale closures
 	const listSubscriptionsRef = useRef(listSubscriptions)
-	useEffect(() => {
-		listSubscriptionsRef.current = listSubscriptions
-	}, [listSubscriptions])
+	listSubscriptionsRef.current = listSubscriptions
 
 	// Query all channels in organization
 	const { data: channelsData } = useLiveQuery(
@@ -98,9 +97,9 @@ export function GitHubSubscriptionsSection({ organizationId }: GitHubSubscriptio
 	}, [])
 
 	// Fetch on mount
-	useEffect(() => {
-		fetchSubscriptions(true)
-	}, [fetchSubscriptions])
+	useMountEffect(() => {
+		void fetchSubscriptions(true)
+	})
 
 	// Group subscriptions by repository
 	const groupedSubscriptions = useMemo(() => {

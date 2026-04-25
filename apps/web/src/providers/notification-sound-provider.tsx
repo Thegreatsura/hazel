@@ -84,20 +84,21 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		currentChannelId,
 	})
 
-	useEffect(() => {
-		latestValuesRef.current = {
-			settings,
-			doNotDisturb,
-			quietHoursStart,
-			quietHoursEnd,
-			sessionStartTime,
-			currentChannelId,
-		}
-	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd, sessionStartTime, currentChannelId])
+	latestValuesRef.current = {
+		settings,
+		doNotDisturb,
+		quietHoursStart,
+		quietHoursEnd,
+		sessionStartTime,
+		currentChannelId,
+	}
 
 	const soundSink = useMemo(() => new SoundNotificationSink({ notificationSoundManager }), [])
 	const nativeSink = useMemo(() => new NativeNotificationSink(), [])
 
+	// Both getters close over latestValuesRef which is updated during render,
+	// so one-time wiring on mount is enough — subsequent re-wires would be
+	// identical. soundSink/nativeSink are stable (useMemo with empty deps).
 	useMountEffect(() => {
 		const cleanupPriming = notificationSoundManager.initPriming()
 		notificationSoundManager.setDependencies({
@@ -107,21 +108,6 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 1000,
 			}),
 		})
-
-		return cleanupPriming
-	})
-
-	useEffect(() => {
-		notificationSoundManager.setDependencies({
-			getConfig: () => ({
-				soundFile: latestValuesRef.current.settings?.soundFile ?? "notification01",
-				volume: latestValuesRef.current.settings?.volume ?? 0.5,
-				cooldownMs: latestValuesRef.current.settings?.cooldownMs ?? 1000,
-			}),
-		})
-	}, [settings])
-
-	useEffect(() => {
 		notificationOrchestrator.setDependencies({
 			getContext: () => {
 				const latest = latestValuesRef.current
@@ -143,16 +129,9 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 			soundSink,
 			nativeSink,
 		})
-	}, [
-		soundSink,
-		nativeSink,
-		settings,
-		doNotDisturb,
-		quietHoursStart,
-		quietHoursEnd,
-		sessionStartTime,
-		currentChannelId,
-	])
+
+		return cleanupPriming
+	})
 
 	useEffect(() => {
 		if (!recentNotifications || recentNotifications.length === 0) {

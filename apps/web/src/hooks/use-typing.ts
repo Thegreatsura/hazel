@@ -3,6 +3,7 @@ import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schem
 import { Exit } from "effect"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { deleteTypingIndicatorMutation, upsertTypingIndicatorMutation } from "~/atoms/typing-indicator-atom"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { pushTypingDiagnostics } from "~/lib/typing-diagnostics"
 
 interface UseTypingOptions {
@@ -241,14 +242,18 @@ export function useTyping({
 		void stopTyping()
 	}, [channelId, memberId, stopTyping])
 
-	useEffect(() => {
+	// Stop typing on blur/hide and on unmount. Route through a ref so the
+	// listeners register once and always call the latest stopTyping.
+	const stopTypingRef = useRef(stopTyping)
+	stopTypingRef.current = stopTyping
+	useMountEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.visibilityState === "hidden") {
-				void stopTyping()
+				void stopTypingRef.current()
 			}
 		}
 		const handleBlur = () => {
-			void stopTyping()
+			void stopTypingRef.current()
 		}
 
 		window.addEventListener("blur", handleBlur)
@@ -257,14 +262,10 @@ export function useTyping({
 		return () => {
 			window.removeEventListener("blur", handleBlur)
 			document.removeEventListener("visibilitychange", handleVisibilityChange)
+			// Also stop typing on unmount.
+			void stopTypingRef.current()
 		}
-	}, [stopTyping])
-
-	useEffect(() => {
-		return () => {
-			void stopTyping()
-		}
-	}, [stopTyping])
+	})
 
 	return {
 		isTyping,

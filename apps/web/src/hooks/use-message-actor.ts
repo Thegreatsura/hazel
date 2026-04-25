@@ -108,12 +108,14 @@ export function useMessageActor(
 	> | null>(null)
 	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	// Sync state from cache when cached prop changes (e.g., after database update with steps)
-	useEffect(() => {
+	// Sync state from cache when cached prop changes (e.g., after DB update).
+	const prevCachedRef = useRef(cached)
+	if (cached !== prevCachedRef.current) {
+		prevCachedRef.current = cached
 		if (shouldUseCached && cached) {
 			setState(stateFromCache(cached))
 		}
-	}, [shouldUseCached, cached])
+	}
 
 	useEffect(() => {
 		// Skip connection if disabled, no messageId, or using cached completed/failed state

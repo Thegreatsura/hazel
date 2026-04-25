@@ -35,10 +35,13 @@ export function useCropInteraction({
 		startCrop: CropRect
 	} | null>(null)
 
-	// Update crop rect when initial crop changes (new image loaded)
-	useEffect(() => {
+	// Update crop rect when initial crop changes (new image loaded). Identity
+	// comparison is enough — callers pass the object by reference when it changes.
+	const prevInitialCropRef = useRef(initialCrop)
+	if (prevInitialCropRef.current !== initialCrop) {
+		prevInitialCropRef.current = initialCrop
 		setCropRect(initialCrop)
-	}, [initialCrop])
+	}
 
 	const handlePointerDown = useCallback(
 		(e: React.PointerEvent, mode: DragMode) => {

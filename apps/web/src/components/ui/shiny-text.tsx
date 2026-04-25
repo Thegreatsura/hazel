@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { motion, useAnimationFrame, useMotionValue, useTransform } from "motion/react"
 
 interface ShinyTextProps {
@@ -83,11 +83,14 @@ export function ShinyText({
 		}
 	})
 
-	useEffect(() => {
+	// Reset the animation cycle when the direction flips.
+	const prevDirectionRef = useRef(direction)
+	if (prevDirectionRef.current !== direction) {
+		prevDirectionRef.current = direction
 		directionRef.current = direction === "left" ? 1 : -1
 		elapsedRef.current = 0
 		progress.set(0)
-	}, [direction, progress])
+	}
 
 	const backgroundPosition = useTransform(progress, (p) => `${150 - p * 2}% center`)
 

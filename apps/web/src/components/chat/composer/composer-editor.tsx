@@ -1,6 +1,8 @@
+import { useAtomSubscribe } from "@effect/atom-react"
 import type { MessageId } from "@hazel/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useMemo } from "react"
+import { editingMessageAtomFamily } from "~/atoms/chat-atoms"
 import { channelMemberCollection, messageCollection } from "~/db/collections"
 import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { useTyping } from "~/hooks/use-typing"
@@ -54,27 +56,20 @@ export function ComposerEditor({ placeholder, className }: ComposerEditorProps) 
 		[channelId, user?.id],
 	)
 
-	// Query the message being edited (for toolbar/context menu triggered edits)
-	const { data: editingMessage } = useLiveQuery(
-		(q) =>
-			q
-				.from({ message: messageCollection })
-				.where(({ message }) => eq(message.id, editingMessageId ?? ""))
-				.findOne(),
-		[editingMessageId],
-	)
-
-	// Track previous editingMessageId to detect external changes
-	const prevEditingMessageIdRef = useRef<MessageId | null>(null)
-
-	// Populate editor when editingMessageId is set externally (toolbar/context menu)
-	useEffect(() => {
-		if (editingMessageId && editingMessageId !== prevEditingMessageIdRef.current && editingMessage) {
-			editorRef.current?.setContent(editingMessage.content)
+	// Populate editor when editingMessageId transitions to a new message
+	// (fired by toolbar/context menu or Arrow-Up in an empty composer). The
+	// target message is always one the user can see, so it's in the collection.
+	const onEditingMessageIdChange = useCallback(
+		(newId: MessageId | null) => {
+			if (!newId) return
+			const message = messageCollection.state.get(newId)
+			if (!message) return
+			editorRef.current?.setContent(message.content)
 			editorRef.current?.focus()
-		}
-		prevEditingMessageIdRef.current = editingMessageId
-	}, [editingMessageId, editingMessage, editorRef])
+		},
+		[editorRef],
+	)
+	useAtomSubscribe(editingMessageAtomFamily(channelId), onEditingMessageIdChange)
 
 	const currentChannelMember = useMemo(() => {
 		return channelMembersData || null

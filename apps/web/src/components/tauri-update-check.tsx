@@ -4,17 +4,20 @@
  * @description Check for app updates and prompt user to install (no-op in browser)
  */
 
-import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { useEffect, useRef } from "react"
+import { useAtomSet, useAtomSubscribe } from "@effect/atom-react"
+import { useCallback, useRef } from "react"
 import { toast } from "sonner"
 import {
 	checkForUpdates,
 	createDownloadEffect,
 	isTauriEnvironment,
+	type TauriDownloadState,
 	tauriDownloadStateAtom,
+	type TauriUpdateState,
 	tauriUpdateStateAtom,
 	UPDATE_CHECK_INTERVAL_MS,
 } from "~/atoms/tauri-update-atoms"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { runtime } from "~/lib/services/common/runtime"
 
 /**
@@ -29,9 +32,10 @@ import { runtime } from "~/lib/services/common/runtime"
  */
 export const TauriUpdateCheck = () => {
 	const setUpdateState = useAtomSet(tauriUpdateStateAtom)
+	const setDownloadState = useAtomSet(tauriDownloadStateAtom)
 
 	// Periodic update checking
-	useEffect(() => {
+	useMountEffect(() => {
 		if (!isTauriEnvironment) return
 
 		// Check immediately on mount
@@ -43,49 +47,48 @@ export const TauriUpdateCheck = () => {
 		}, UPDATE_CHECK_INTERVAL_MS)
 
 		return () => clearInterval(intervalId)
-	}, [setUpdateState])
-
-	// Subscribe to state
-	const updateState = useAtomValue(tauriUpdateStateAtom)
-	const downloadState = useAtomValue(tauriDownloadStateAtom)
-	const setDownloadState = useAtomSet(tauriDownloadStateAtom)
+	})
 
 	// Track whether we've shown the initial toast
 	const hasShownToastRef = useRef(false)
 
 	// Show toast when update becomes available
-	useEffect(() => {
-		if (!isTauriEnvironment) return
+	const onUpdateStateChange = useCallback(
+		(updateState: TauriUpdateState) => {
+			if (!isTauriEnvironment) return
 
-		if (updateState._tag === "available" && !hasShownToastRef.current) {
-			hasShownToastRef.current = true
-			const { update, version, body } = updateState
+			if (updateState._tag === "available" && !hasShownToastRef.current) {
+				hasShownToastRef.current = true
+				const { update, version, body } = updateState
 
-			toast(`Update available: v${version}`, {
-				id: "tauri-update",
-				description: body || "A new version is ready to install",
-				duration: Number.POSITIVE_INFINITY,
-				action: {
-					label: "Install & Restart",
-					onClick: () => {
-						runtime.runPromise(createDownloadEffect(update, setDownloadState))
+				toast(`Update available: v${version}`, {
+					id: "tauri-update",
+					description: body || "A new version is ready to install",
+					duration: Number.POSITIVE_INFINITY,
+					action: {
+						label: "Install & Restart",
+						onClick: () => {
+							runtime.runPromise(createDownloadEffect(update, setDownloadState))
+						},
 					},
-				},
-				cancel: {
-					label: "Later",
-					onClick: () => {},
-				},
-			})
-		}
+					cancel: {
+						label: "Later",
+						onClick: () => {},
+					},
+				})
+			}
 
-		// Reset toast tracking when state goes back to idle
-		if (updateState._tag === "idle") {
-			hasShownToastRef.current = false
-		}
-	}, [updateState, setDownloadState])
+			// Reset toast tracking when state goes back to idle
+			if (updateState._tag === "idle") {
+				hasShownToastRef.current = false
+			}
+		},
+		[setDownloadState],
+	)
+	useAtomSubscribe(tauriUpdateStateAtom, onUpdateStateChange)
 
 	// Update toast based on download state
-	useEffect(() => {
+	const onDownloadStateChange = useCallback((downloadState: TauriDownloadState) => {
 		if (!isTauriEnvironment) return
 
 		switch (downloadState._tag) {
@@ -114,7 +117,8 @@ export const TauriUpdateCheck = () => {
 				})
 				break
 		}
-	}, [downloadState])
+	}, [])
+	useAtomSubscribe(tauriDownloadStateAtom, onDownloadStateChange)
 
 	return null
 }

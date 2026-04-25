@@ -5,9 +5,10 @@ import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
 import { toDate } from "~/lib/utils"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { listOrganizationWebhooksMutation, type WebhookData } from "~/atoms/channel-webhook-atoms"
+import { useMountEffect } from "~/hooks/use-mount-effect"
 import { getProviderIconUrl } from "~/components/embeds/use-embed-theme"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
@@ -42,9 +43,7 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 
 	// Use ref to avoid stale closures and unnecessary effect re-runs
 	const listWebhooksRef = useRef(listWebhooks)
-	useEffect(() => {
-		listWebhooksRef.current = listWebhooks
-	}, [listWebhooks])
+	listWebhooksRef.current = listWebhooks
 
 	// Query all channels in organization (public and private only, not DMs/threads)
 	const { data: channelsData } = useLiveQuery(
@@ -71,9 +70,9 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 	}, [])
 
 	// Fetch webhooks on mount
-	useEffect(() => {
-		fetchWebhooks(true)
-	}, [fetchWebhooks])
+	useMountEffect(() => {
+		void fetchWebhooks(true)
+	})
 
 	// Filter to OpenStatus webhooks only
 	const openStatusWebhooks = useMemo(() => webhooks.filter((w) => w.name === "OpenStatus"), [webhooks])
