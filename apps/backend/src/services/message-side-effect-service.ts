@@ -97,7 +97,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 					)
 
 					yield* client.workflows
-						.MessageNotificationWorkflowDiscard({
+						.MessageNotificationWorkflow({
 							payload: {
 								messageId: payload.messageId,
 								channelId: payload.channelId,
@@ -175,7 +175,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 					}
 
 					yield* client.workflows
-						.ThreadNamingWorkflowDiscard({
+						.ThreadNamingWorkflow({
 							payload: {
 								threadChannelId: payload.channelId,
 								originalMessageId: originalMessage.value.id,
