@@ -137,4 +137,9 @@ export * as Template from "./Template.ts"
 /**
  * @since 4.0.0
  */
+export * as Url from "./Url.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as UrlParams from "./UrlParams.ts"
