@@ -58,25 +58,21 @@ export class SessionManager extends Context.Service<SessionManager>()("SessionMa
 
 				for (const m of memberships.data) {
 					const org = m.organization
-					if (!org.slug) continue
 
-					const existingOrg = yield* orgRepo.findBySlug(org.slug).pipe(Effect.map(Option.getOrNull))
+					// Resolve via Clerk-ID-first lookup so we hit the canonical row even when its
+					// slug has drifted from Clerk's. A slug-only lookup here was the source of
+					// duplicate rows being recreated after every dedup pass.
+					const resolved = yield* orgRepo.upsertFromClerk({
+						id: org.id,
+						name: org.name,
+						slug: org.slug,
+						imageUrl: org.imageUrl ?? null,
+					})
 
-					const orgId = existingOrg
-						? existingOrg.id
-						: yield* orgRepo
-								.insert({
-									name: org.name,
-									slug: org.slug,
-									logoUrl: org.imageUrl ?? null,
-									isPublic: false,
-									settings: { clerkOrganizationId: org.id },
-									deletedAt: null,
-								})
-								.pipe(Effect.map((rows) => rows[0]!.id))
+					if (!resolved) continue
 
 					yield* membershipRepo.upsertByOrgAndUser({
-						organizationId: orgId,
+						organizationId: resolved.id,
 						userId: localUserId as any,
 						role: roleFromClerk(m.role),
 						nickname: undefined,

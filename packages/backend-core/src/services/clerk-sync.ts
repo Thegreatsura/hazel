@@ -99,56 +99,18 @@ export class ClerkSync extends Context.Service<ClerkSync>()("ClerkSync", {
 					image_url?: string | null
 				}
 
-				// Resolve to an existing org by Clerk org ID first (already-linked rows),
-				// then fall back to slug (canonical pre-migration rows that haven't been linked yet).
-				// Slug-only lookup was the source of duplicate "ghost" rows after the WorkOS → Clerk migration.
-				const byClerkId = yield* orgRepo
-					.findByClerkOrgId(anyData.id)
-					.pipe(Effect.map(Option.getOrNull))
+				const resolved = yield* orgRepo.upsertFromClerk({
+					id: anyData.id,
+					name: anyData.name,
+					slug: anyData.slug,
+					imageUrl: anyData.image_url ?? null,
+				})
 
-				const bySlug =
-					!byClerkId && anyData.slug
-						? yield* orgRepo.findBySlug(anyData.slug).pipe(Effect.map(Option.getOrNull))
-						: null
-
-				const existing = byClerkId ?? bySlug
-
-				if (existing) {
-					const currentSettings =
-						(existing.settings as { clerkOrganizationId?: string } | null) ?? null
-					const needsClerkIdLink = currentSettings?.clerkOrganizationId !== anyData.id
-					yield* orgRepo.update({
-						id: existing.id,
-						name: anyData.name,
-						logoUrl: anyData.image_url ?? existing.logoUrl,
-						...(needsClerkIdLink
-							? {
-									settings: {
-										...(currentSettings ?? {}),
-										clerkOrganizationId: anyData.id,
-									},
-								}
-							: {}),
-					})
-					return
-				}
-
-				if (!anyData.slug) {
+				if (!resolved) {
 					yield* Effect.logWarning(
 						`Clerk org ${anyData.id} has no slug and no existing row — skipping insert`,
 					)
-					return
 				}
-
-				yield* orgRepo.insert({
-					name: anyData.name,
-					slug: anyData.slug,
-					logoUrl: anyData.image_url ?? null,
-					isPublic: false,
-					// Store the Clerk org ID in settings so we can correlate later.
-					settings: { clerkOrganizationId: anyData.id },
-					deletedAt: null,
-				})
 			}).pipe(Effect.asVoid)
 
 		const handleOrgDeleted = (data: unknown) =>

@@ -53,6 +53,69 @@ export class OrganizationRepo extends Context.Service<OrganizationRepo>()("Organ
 				)({ clerkOrgId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
+		// Resolve a Clerk organization to a local row, creating or back-linking as needed.
+		// Lookup order is Clerk-ID first, slug second — this is the same order the Clerk
+		// webhook uses, and it must stay aligned to prevent duplicate "ghost" rows from
+		// being recreated by the session lazy-sync after a dedup pass.
+		const upsertFromClerk = (
+			clerk: { id: string; name: string; slug: string | null; imageUrl?: string | null },
+			tx?: TxFn,
+		) =>
+			Effect.gen(function* () {
+				const byClerkId = yield* findByClerkOrgId(clerk.id, tx).pipe(Effect.map(Option.getOrNull))
+				const bySlug =
+					!byClerkId && clerk.slug
+						? yield* findBySlug(clerk.slug, tx).pipe(Effect.map(Option.getOrNull))
+						: null
+				const existing = byClerkId ?? bySlug
+
+				if (existing) {
+					const currentSettings =
+						(existing.settings as { clerkOrganizationId?: string } | null) ?? null
+					const needsClerkIdLink = currentSettings?.clerkOrganizationId !== clerk.id
+					const desiredLogoUrl = clerk.imageUrl ?? existing.logoUrl
+					const needsLogoUpdate = desiredLogoUrl !== existing.logoUrl
+					const needsNameUpdate = clerk.name !== existing.name
+
+					if (needsClerkIdLink || needsLogoUpdate || needsNameUpdate) {
+						yield* baseRepo.update(
+							{
+								id: existing.id,
+								...(needsNameUpdate ? { name: clerk.name } : {}),
+								...(needsLogoUpdate ? { logoUrl: desiredLogoUrl } : {}),
+								...(needsClerkIdLink
+									? {
+											settings: {
+												...(currentSettings ?? {}),
+												clerkOrganizationId: clerk.id,
+											},
+										}
+									: {}),
+							},
+							tx,
+						)
+					}
+					return existing
+				}
+
+				if (!clerk.slug) return null
+
+				const inserted = yield* baseRepo
+					.insert(
+						{
+							name: clerk.name,
+							slug: clerk.slug,
+							logoUrl: clerk.imageUrl ?? null,
+							isPublic: false,
+							settings: { clerkOrganizationId: clerk.id },
+							deletedAt: null,
+						},
+						tx,
+					)
+					.pipe(Effect.map((rows) => rows[0]!))
+				return inserted
+			})
+
 		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
 			db
 				.makeQuery((execute, slugValue: string) =>
@@ -136,6 +199,7 @@ export class OrganizationRepo extends Context.Service<OrganizationRepo>()("Organ
 			findAllActive,
 			softDelete,
 			setupDefaultChannels,
+			upsertFromClerk,
 		}
 	}),
 }) {

@@ -1,4 +1,5 @@
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
+import { sql } from "drizzle-orm"
 import {
 	boolean,
 	index,
@@ -8,6 +9,7 @@ import {
 	text,
 	timestamp,
 	unique,
+	uniqueIndex,
 	uuid,
 	varchar,
 } from "drizzle-orm/pg-core"
@@ -32,6 +34,14 @@ export const organizationsTable = pgTable(
 	(table) => [
 		index("organizations_slug_idx").on(table.slug),
 		index("organizations_deleted_at_idx").on(table.deletedAt),
+		// Defense-in-depth against the dedup-then-resync regression: even if a sync code path
+		// forgets to look up by Clerk org ID first, the database itself rejects two live rows
+		// claiming the same Clerk org. Partial so soft-deleted rows don't block re-creation.
+		uniqueIndex("organizations_clerk_org_id_unique")
+			.using("btree", sql`((${table.settings}->>'clerkOrganizationId'))`)
+			.where(
+				sql`${table.deletedAt} IS NULL AND ${table.settings}->>'clerkOrganizationId' IS NOT NULL`,
+			),
 	],
 )
 
