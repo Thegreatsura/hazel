@@ -285,18 +285,26 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 					<div className="flex flex-col gap-2">
 						<Label className="text-muted-fg text-xs">Quick presets</Label>
 						<div className="flex flex-wrap gap-2">
-							{STATUS_PRESETS.map((preset) => (
-								<Button
-									key={preset.message}
-									intent="outline"
-									size="sm"
-									onPress={() => handlePresetClick(preset)}
-									className="gap-1.5"
-								>
-									<span>{preset.emoji}</span>
-									<span>{preset.message}</span>
-								</Button>
-							))}
+							{STATUS_PRESETS.map((preset) => {
+								const isSelected = emoji === preset.emoji && message === preset.message
+								return (
+									<Button
+										key={preset.message}
+										intent="outline"
+										size="sm"
+										onPress={() => handlePresetClick(preset)}
+										aria-pressed={isSelected}
+										className={
+											isSelected
+												? "gap-1.5 border-primary/60 bg-primary/10 text-primary hover:bg-primary/15"
+												: "gap-1.5"
+										}
+									>
+										<span>{preset.emoji}</span>
+										<span>{preset.message}</span>
+									</Button>
+								)
+							})}
 						</div>
 					</div>
 				</ModalBody>
