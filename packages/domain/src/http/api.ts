@@ -1,5 +1,6 @@
 import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { ChatSyncGroup } from "./chat-sync"
+import { IntegrationsApiGroup as ApiV1IntegrationsApiGroup } from "./api-v1/integrations"
 import { MessagesApiGroup } from "./api-v1/messages"
 import { BotCommandsApiGroup } from "./bot-commands"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
@@ -16,6 +17,7 @@ import { WebhookGroup } from "./webhooks"
 
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(MessagesApiGroup)
+	.add(ApiV1IntegrationsApiGroup)
 	.add(BotCommandsApiGroup)
 	.add(PresencePublicGroup)
 	.add(RootGroup)

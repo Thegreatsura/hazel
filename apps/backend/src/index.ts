@@ -73,6 +73,7 @@ import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-serv
 import { MessageOutboxDispatcher } from "./services/message-outbox-dispatcher"
 import { MessageSideEffectService } from "./services/message-side-effect-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
+import { OAuthBearerAuth } from "./services/oauth-bearer-auth"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
@@ -205,6 +206,7 @@ const MainLive = Layer.mergeAll(
 	RateLimiter.layer,
 	// SessionManager.layer includes BackendAuth.layer via dependencies
 	SessionManager.layer,
+	OAuthBearerAuth.layer,
 ).pipe(
 	Layer.provideMerge(FetchHttpClient.layer),
 	Layer.provideMerge(ConfigProvider.layer(ConfigProvider.fromEnv())),
