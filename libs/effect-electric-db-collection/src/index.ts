@@ -13,10 +13,12 @@ export {
 } from "./collection"
 // Errors
 export {
+	AwaitTxIdError,
 	DeleteError,
 	ElectricCollectionError,
 	InsertError,
 	InvalidTxIdError,
+	MaxRetriesExceededError,
 	MissingTxIdError,
 	OptimisticActionError,
 	SyncConfigError,

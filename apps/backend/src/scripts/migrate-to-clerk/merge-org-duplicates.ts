@@ -67,7 +67,12 @@ const program = Effect.gen(function* () {
 					from organizations o
 					where o."deletedAt" is null
 				`) as unknown as Promise<
-					Array<{ org_id: string; channel_count: number; message_count: number; member_count: number }>
+					Array<{
+						org_id: string
+						channel_count: number
+						message_count: number
+						member_count: number
+					}>
 				>,
 		),
 	)({})

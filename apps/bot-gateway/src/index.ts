@@ -12,18 +12,7 @@ import {
 import { Redis } from "@hazel/effect-bun"
 import type { BotId } from "@hazel/schema"
 import type { ServerWebSocket } from "bun"
-import {
-	Cause,
-	Config,
-	ConfigProvider,
-	Deferred,
-	Effect,
-	Layer,
-	Option,
-	Ref,
-	Schema,
-	Context,
-} from "effect"
+import { Cause, Config, ConfigProvider, Deferred, Effect, Layer, Option, Ref, Schema, Context } from "effect"
 import { TracerLive } from "./observability/tracer"
 
 const DEFAULT_PORT = 3034

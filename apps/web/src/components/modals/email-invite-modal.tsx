@@ -70,7 +70,9 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 				for (const { r, email } of failures) {
 					console.error(`Failed to invite ${email}`, (r as PromiseRejectedResult).reason)
 				}
-				toast.warning(`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`)
+				toast.warning(
+					`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`,
+				)
 			} else {
 				for (const r of results) {
 					if (r.status === "rejected") console.error(r.reason)
@@ -137,7 +139,9 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 														>
 															<SelectTrigger />
 															<SelectContent>
-																<SelectItem id="org:member">Member</SelectItem>
+																<SelectItem id="org:member">
+																	Member
+																</SelectItem>
 																<SelectItem id="org:admin">Admin</SelectItem>
 															</SelectContent>
 														</Select>

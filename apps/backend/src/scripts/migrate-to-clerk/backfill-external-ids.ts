@@ -86,9 +86,7 @@ const program = Effect.gen(function* () {
 	}
 
 	if (dryRun) {
-		yield* Effect.log(
-			`[dry-run] Would UPDATE ${mapping.length} rows. No changes made.`,
-		)
+		yield* Effect.log(`[dry-run] Would UPDATE ${mapping.length} rows. No changes made.`)
 		return
 	}
 
@@ -101,20 +99,19 @@ const program = Effect.gen(function* () {
 		Effect.gen(function* () {
 			let touched = 0
 			for (const { workosId, clerkId } of mapping) {
-				const result = yield* db.makeQuery(
-					(execute, args: { workosId: string; clerkId: string }) =>
-						execute((client) =>
-							client
-								.update(schema.usersTable)
-								.set({ externalId: args.clerkId, updatedAt: new Date() })
-								.where(
-									and(
-										eq(schema.usersTable.externalId, args.workosId),
-										isNull(schema.usersTable.deletedAt),
-									),
-								)
-								.returning({ id: schema.usersTable.id }),
-						),
+				const result = yield* db.makeQuery((execute, args: { workosId: string; clerkId: string }) =>
+					execute((client) =>
+						client
+							.update(schema.usersTable)
+							.set({ externalId: args.clerkId, updatedAt: new Date() })
+							.where(
+								and(
+									eq(schema.usersTable.externalId, args.workosId),
+									isNull(schema.usersTable.deletedAt),
+								),
+							)
+							.returning({ id: schema.usersTable.id }),
+					),
 				)({ workosId, clerkId })
 				touched += result.length
 			}
@@ -155,9 +152,6 @@ const program = Effect.gen(function* () {
 			`${stillWorkOS.length} users still have WorkOS-shaped externalIds — investigate before re-opening writes.`,
 		)
 	}
-}).pipe(
-	Effect.provide(DatabaseLive),
-	Effect.provide(Logger.layer([Logger.consolePretty()])),
-)
+}).pipe(Effect.provide(DatabaseLive), Effect.provide(Logger.layer([Logger.consolePretty()])))
 
 Effect.runPromise(program as Effect.Effect<void>)

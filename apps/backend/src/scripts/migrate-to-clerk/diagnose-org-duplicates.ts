@@ -44,41 +44,38 @@ const program = Effect.gen(function* () {
 	for (const [name, list] of dupes) {
 		yield* Effect.log(`\n=== "${name}" — ${list.length} rows ===`)
 		for (const o of list.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
-			const memberCount = yield* db.makeQuery(
-				(execute, payload: { orgId: string }) =>
-					execute(
-						(client) =>
-							client.execute(sql`
+			const memberCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
+				execute(
+					(client) =>
+						client.execute(sql`
 								select count(*)::int as n
 								from organization_members
 								where "organizationId" = ${payload.orgId} and "deletedAt" is null
 							`) as unknown as Promise<Array<{ n: number }>>,
-					),
+				),
 			)({ orgId: o.id })
 
-			const channelCount = yield* db.makeQuery(
-				(execute, payload: { orgId: string }) =>
-					execute(
-						(client) =>
-							client.execute(sql`
+			const channelCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
+				execute(
+					(client) =>
+						client.execute(sql`
 								select count(*)::int as n
 								from channels
 								where "organizationId" = ${payload.orgId} and "deletedAt" is null
 							`) as unknown as Promise<Array<{ n: number }>>,
-					),
+				),
 			)({ orgId: o.id })
 
-			const messageCount = yield* db.makeQuery(
-				(execute, payload: { orgId: string }) =>
-					execute(
-						(client) =>
-							client.execute(sql`
+			const messageCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
+				execute(
+					(client) =>
+						client.execute(sql`
 								select count(*)::int as n
 								from messages m
 								join channels c on c.id = m."channelId"
 								where c."organizationId" = ${payload.orgId}
 							`) as unknown as Promise<Array<{ n: number }>>,
-					),
+				),
 			)({ orgId: o.id })
 
 			const clerkOrgId = (o.settings as any)?.clerkOrganizationId ?? "(none)"

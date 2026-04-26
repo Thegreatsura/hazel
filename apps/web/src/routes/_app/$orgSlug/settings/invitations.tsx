@@ -172,7 +172,9 @@ function InvitationsSettings() {
 													</Button>
 													<MenuContent placement="bottom end">
 														<MenuItem
-															onAction={() => handleRevokeInvitation(invitation)}
+															onAction={() =>
+																handleRevokeInvitation(invitation)
+															}
 															intent="danger"
 															isDisabled={revokingId === invitation.id}
 														>
@@ -193,9 +195,7 @@ function InvitationsSettings() {
 				</Card>
 			</div>
 
-			{organization && (
-				<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
-			)}
+			{organization && <EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />}
 		</>
 	)
 }

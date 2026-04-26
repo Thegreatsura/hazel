@@ -5,9 +5,5 @@ export type { Registry } from "./registry"
 
 // Auth exports
 export type { AuthenticatedClient, UserClient, BotClient, ActorConnectParams } from "./auth"
-export {
-	TokenValidationService,
-	TokenValidationLive,
-	TokenValidationConfigService,
-} from "./auth"
+export { TokenValidationService, TokenValidationLive, TokenValidationConfigService } from "./auth"
 export type { TokenValidationConfig } from "./auth"

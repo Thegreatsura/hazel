@@ -207,7 +207,9 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`, {
 			params: { orgId: OrganizationId },
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
+				page: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(Effect.succeed("1")),
+				),
 				perPage: Schema.optional(Schema.NumberFromString).pipe(
 					Schema.withDecodingDefault(Effect.succeed("30")),
 				),

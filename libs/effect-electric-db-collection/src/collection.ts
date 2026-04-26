@@ -6,7 +6,7 @@ import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collec
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection as tanstackCreateCollection } from "@tanstack/react-db"
 import { Effect, type ManagedRuntime, Option, Schema } from "effect"
-import { InvalidTxIdError, TxIdTimeoutError } from "./errors"
+import { AwaitTxIdError, InvalidTxIdError, MaxRetriesExceededError, TxIdTimeoutError } from "./errors"
 import { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
 import { CollectionInErrorEffectError, wrapTanStackError } from "./tanstack-errors"
 import type { BackoffConfig, EffectElectricCollectionConfig } from "./types"
@@ -64,11 +64,36 @@ function dispatchErrorStateChanged(collectionId: string | undefined, isError: bo
 }
 
 /**
+ * Run a fire-and-forget Effect via the provided runtime, falling back to a
+ * console-equivalent when no runtime is supplied.
+ */
+function logVia(
+	runtime: ManagedRuntime.ManagedRuntime<unknown, unknown> | undefined,
+	level: "warning" | "error" | "debug",
+	message: string,
+	annotations: Record<string, unknown>,
+): void {
+	if (runtime) {
+		const log =
+			level === "warning"
+				? Effect.logWarning(message)
+				: level === "error"
+					? Effect.logError(message)
+					: Effect.logDebug(message)
+		runtime.runFork(log.pipe(Effect.annotateLogs(annotations)))
+		return
+	}
+	const consoleFn = level === "error" ? console.error : level === "warning" ? console.warn : console.debug
+	consoleFn(message, annotations)
+}
+
+/**
  * Creates an onError handler with exponential backoff
  */
 function createBackoffOnError(
 	collectionId: string | undefined,
 	backoffConfig: Required<BackoffConfig>,
+	runtime: ManagedRuntime.ManagedRuntime<unknown, unknown> | undefined,
 	userOnError?: OnErrorHandler,
 ): OnErrorHandler {
 	let retryCount = 0
@@ -90,15 +115,16 @@ function createBackoffOnError(
 	return async (error) => {
 		retryCount++
 
-		const prefix = collectionId ? `[${collectionId}]` : "[electric]"
-
 		// Dispatch error state changed event
 		dispatchErrorStateChanged(collectionId, true)
 
 		// Check if this is a 401 auth error - stop retrying and trigger session expired
 		const errorStatus = (error as { status?: number })?.status
 		if (errorStatus === 401) {
-			console.warn(`${prefix} Authentication error (401), stopping sync and triggering logout`)
+			logVia(runtime, "warning", "Authentication error (401), stopping sync and triggering logout", {
+				collectionId,
+				status: 401,
+			})
 			// Dispatch session expired event - the app layout will handle redirect to login
 			if (typeof window !== "undefined") {
 				window.dispatchEvent(new CustomEvent("auth:session-expired"))
@@ -110,7 +136,10 @@ function createBackoffOnError(
 		// Check if this is a schema validation error - likely a stale cache after a deploy
 		const errorName = (error as Error)?.name || (error as { _tag?: string })?._tag
 		if (errorName === "SchemaValidationError") {
-			console.warn(`${prefix} Schema validation error, dispatching recovery event`)
+			logVia(runtime, "warning", "Schema validation error, dispatching recovery event", {
+				collectionId,
+				errorName,
+			})
 			if (typeof window !== "undefined") {
 				window.dispatchEvent(new CustomEvent("collection:schema-error"))
 			}
@@ -120,10 +149,12 @@ function createBackoffOnError(
 
 		// Check if max retries exceeded
 		if (retryCount > backoffConfig.maxRetries) {
-			console.error(
-				`${prefix} Max retries (${backoffConfig.maxRetries}) exceeded, stopping sync`,
-				error,
-			)
+			logVia(runtime, "error", "Max retries exceeded, stopping sync", {
+				collectionId,
+				maxRetries: backoffConfig.maxRetries,
+				retryCount,
+				cause: error,
+			})
 			// Return undefined to stop syncing
 			return
 		}
@@ -133,10 +164,14 @@ function createBackoffOnError(
 			? currentDelay * (0.5 + Math.random()) // Jitter between 50-150% of delay
 			: currentDelay
 
-		console.warn(
-			`${prefix} Connection error, retrying in ${Math.round(delay)}ms (attempt ${retryCount}/${backoffConfig.maxRetries === Number.POSITIVE_INFINITY ? "∞" : backoffConfig.maxRetries})`,
-			error,
-		)
+		logVia(runtime, "warning", "Connection error, retrying", {
+			collectionId,
+			delayMs: Math.round(delay),
+			retryCount,
+			maxRetries:
+				backoffConfig.maxRetries === Number.POSITIVE_INFINITY ? "∞" : backoffConfig.maxRetries,
+			cause: error,
+		})
 
 		// Wait for the delay
 		await new Promise((resolve) => setTimeout(resolve, delay))
@@ -177,7 +212,7 @@ export interface EffectElectricCollectionUtils extends ElectricCollectionUtils {
 	readonly awaitTxIdEffect: (
 		txid: Txid,
 		timeout?: number,
-	) => Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError>
+	) => Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError>
 
 	/**
 	 * Returns the last error that occurred during sync, if any.
@@ -221,7 +256,7 @@ export function effectElectricCollectionOptions<T extends StandardSchemaV1, R>(
 		R
 	> & {
 		schema: T
-		runtime: ManagedRuntime.ManagedRuntime<R, any>
+		runtime: ManagedRuntime.ManagedRuntime<R, unknown>
 	},
 ): CollectionConfig<InferSchemaOutput<T>, string | number, T> & {
 	id?: string
@@ -251,7 +286,7 @@ export function effectElectricCollectionOptions<T extends StandardSchemaV1>(
 export function effectElectricCollectionOptions<T extends Row<unknown>, R>(
 	config: EffectElectricCollectionConfig<T, string | number, never, Record<string, never>, R> & {
 		schema?: never
-		runtime: ManagedRuntime.ManagedRuntime<R, any>
+		runtime: ManagedRuntime.ManagedRuntime<R, unknown>
 	},
 ): CollectionConfig<T, string | number> & {
 	id?: string
@@ -292,7 +327,12 @@ export function effectElectricCollectionOptions(
 	const modifiedShapeOptions = backoffEnabled
 		? {
 				...config.shapeOptions,
-				onError: createBackoffOnError(config.id, backoffConfig, config.shapeOptions.onError),
+				onError: createBackoffOnError(
+					config.id,
+					backoffConfig,
+					config.runtime,
+					config.shapeOptions.onError,
+				),
 			}
 		: config.shapeOptions
 
@@ -304,21 +344,12 @@ export function effectElectricCollectionOptions(
 		onInsert: promiseOnInsert,
 		onUpdate: promiseOnUpdate,
 		onDelete: promiseOnDelete,
-	} as any)
+	})
 	const awaitTxIdEffect = (
 		txid: Txid,
 		timeout: number = 30000,
-	): Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError> => {
-		const collectionLabel = config.id ?? "unknown"
-		console.debug(
-			`[txid-debug] [${collectionLabel}] awaitTxIdEffect called with txid:`,
-			txid,
-			`type:`,
-			typeof txid,
-		)
-
+	): Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError> => {
 		if (typeof txid !== "number") {
-			console.debug(`[txid-debug] [${collectionLabel}] INVALID txid type: ${typeof txid}, value:`, txid)
 			return Effect.fail(
 				new InvalidTxIdError({
 					message: `Expected txid to be a number, got ${typeof txid}`,
@@ -327,28 +358,9 @@ export function effectElectricCollectionOptions(
 			)
 		}
 
-		// Log current state of seenTxids for debugging
-		console.debug(
-			`[txid-debug] [${collectionLabel}] Current seenTxids count:`,
-			standardConfig.utils.awaitTxId.length,
-			`Checking if txid ${txid} is already seen...`,
-		)
-
 		return Effect.tryPromise({
-			try: () => {
-				console.debug(
-					`[txid-debug] [${collectionLabel}] Calling underlying awaitTxId(${txid}, ${timeout})`,
-				)
-				return standardConfig.utils.awaitTxId(txid, timeout).then((result) => {
-					console.debug(
-						`[txid-debug] [${collectionLabel}] awaitTxId resolved for txid ${txid}, result:`,
-						result,
-					)
-					return result
-				})
-			},
+			try: () => standardConfig.utils.awaitTxId(txid, timeout),
 			catch: (error) => {
-				console.debug(`[txid-debug] [${collectionLabel}] awaitTxId FAILED for txid ${txid}:`, error)
 				if (error instanceof Error && error.message.toLowerCase().includes("timeout")) {
 					return new TxIdTimeoutError({
 						message: `Timeout waiting for txid ${txid}`,
@@ -356,37 +368,41 @@ export function effectElectricCollectionOptions(
 						timeout,
 					})
 				}
-				return new InvalidTxIdError({
-					message: `Invalid txid: ${error}`,
-					receivedType: typeof txid,
+				return new AwaitTxIdError({
+					message: `awaitTxId failed for txid ${txid}: ${error instanceof Error ? error.message : String(error)}`,
+					txid,
+					collectionId: config.id,
+					cause: error,
 				})
 			},
-		})
+		}).pipe(
+			Effect.withSpan("EffectElectricCollection.awaitTxId", {
+				attributes: { collectionId: config.id ?? "unknown", txid, timeout },
+			}),
+		)
 	}
 
 	// Error tracking utilities
-	const lastErrorEffect: Effect.Effect<Option.Option<CollectionSyncEffectError>> = Effect.sync(() => {
-		const lastError = standardConfig.utils.lastError
-		if (!lastError) {
-			return Option.none()
-		}
-		const wrappedError = wrapTanStackError(lastError, { collectionId: config.id })
-		return Option.some(
-			new CollectionSyncEffectError({
-				message: lastError instanceof Error ? lastError.message : String(lastError),
-				collectionId: config.id,
-				cause: wrappedError,
-			}),
-		)
-	})
+	const lastErrorEffect = Effect.sync(() =>
+		Option.fromNullishOr(standardConfig.utils.lastError).pipe(
+			Option.map(
+				(lastError) =>
+					new CollectionSyncEffectError({
+						message: lastError instanceof Error ? lastError.message : String(lastError),
+						collectionId: config.id,
+						cause: wrapTanStackError(lastError, { collectionId: config.id }),
+					}),
+			),
+		),
+	)
 
-	const isErrorEffect: Effect.Effect<boolean> = Effect.sync(() => standardConfig.utils.isError)
+	const isErrorEffect = Effect.sync(() => standardConfig.utils.isError)
 
-	const errorCountEffect: Effect.Effect<number> = Effect.sync(() => standardConfig.utils.errorCount)
+	const errorCountEffect = Effect.sync(() => standardConfig.utils.errorCount)
 
-	const statusEffect: Effect.Effect<CollectionStatus> = Effect.sync(() => standardConfig.utils.status)
+	const statusEffect = Effect.sync(() => standardConfig.utils.status)
 
-	const clearErrorEffect: Effect.Effect<void, CollectionSyncEffectError> = Effect.try({
+	const clearErrorEffect = Effect.try({
 		try: () => {
 			standardConfig.utils.clearError()
 			// Dispatch event after clearing error
@@ -452,13 +468,20 @@ export function createEffectCollection<A extends Row<unknown>, TRuntime>(
 		runtime: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
 	},
 ): EffectCollection<A> {
-	// Convert Effect Schema to StandardSchemaV1 internally
-	const standardSchema = Schema.toStandardSchemaV1(config.schema as any)
+	// Convert Effect Schema to StandardSchemaV1 internally.
+	// `Schema.Schema<A>` defaults `DecodingServices` to `unknown`, but the helper
+	// requires `Decoder<unknown, never>`. The Schemas we accept never carry real
+	// decoding services at runtime, so narrow via `Schema.Codec` to make the
+	// services explicit.
+	const standardSchema = Schema.toStandardSchemaV1(config.schema as Schema.Codec<A, A>)
 
+	// Overload resolution can't discriminate the four signatures from this generic
+	// call site, so cast through `Parameters` to pick the "with schema, with runtime"
+	// overload explicitly.
 	const options = effectElectricCollectionOptions({
 		...config,
 		schema: standardSchema,
-	} as any)
+	} as Parameters<typeof effectElectricCollectionOptions>[0])
 
 	// biome-ignore lint/suspicious/noExplicitAny: Type compatibility between tanstack/db versions
 	const collection = tanstackCreateCollection(options as any)

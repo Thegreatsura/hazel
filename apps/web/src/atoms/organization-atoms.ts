@@ -42,4 +42,3 @@ export const getOrgBySlugPublicQuery = (slug: string) =>
  * Mutation atom for joining an organization via public invite
  */
 export const joinViaPublicInviteMutation = HazelRpcClient.mutation("organization.joinViaPublicInvite")
-

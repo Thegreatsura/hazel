@@ -63,10 +63,7 @@ export class UserLookupCache extends Context.Service<UserLookupCache>()("@hazel/
 				return Option.none<UserLookupResult>()
 			}).pipe(Effect.withSpan("UserLookupCache.get"))
 
-		const set = (
-			externalId: string,
-			internalUserId: UserId,
-		): Effect.Effect<void, UserLookupCacheError> =>
+		const set = (externalId: string, internalUserId: UserId): Effect.Effect<void, UserLookupCacheError> =>
 			Effect.gen(function* () {
 				const startTime = Date.now()
 

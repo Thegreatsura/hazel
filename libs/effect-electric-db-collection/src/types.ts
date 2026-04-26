@@ -124,7 +124,7 @@ export interface EffectElectricCollectionConfig<
 	 * Optional ManagedRuntime that provides dependencies for handlers
 	 * When provided, handlers can use services without needing to provide them manually
 	 */
-	runtime?: ManagedRuntime.ManagedRuntime<R, any>
+	runtime?: ManagedRuntime.ManagedRuntime<R, unknown>
 
 	/**
 	 * Effect-based insert handler

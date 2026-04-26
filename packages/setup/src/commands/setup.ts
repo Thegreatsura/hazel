@@ -210,7 +210,9 @@ export const setupCommand = Command.make(
 			if (!existingConfig.clerkSecretKey) {
 				yield* Console.log(`Create a free account at ${pc.cyan("https://dashboard.clerk.com")}\n`)
 				yield* Console.log(pc.dim("1. Create a new application"))
-				yield* Console.log(pc.dim("2. API Keys \u2192 copy Publishable key (pk_test_...) + Secret (sk_test_...)"))
+				yield* Console.log(
+					pc.dim("2. API Keys \u2192 copy Publishable key (pk_test_...) + Secret (sk_test_...)"),
+				)
 				yield* Console.log(
 					pc.dim(
 						"3. Webhooks \u2192 endpoint http://localhost:3003/webhooks/clerk \u2192 copy signing secret (whsec_...)",

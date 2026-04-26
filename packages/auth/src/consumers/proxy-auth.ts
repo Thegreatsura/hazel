@@ -28,13 +28,19 @@ export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAu
 		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY")
 
 		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (externalId: string) {
-			const cached = yield* userLookupCache.get(externalId).pipe(
-				Effect.catch((error) =>
-					Effect.logWarning("User lookup cache error", error).pipe(
-						Effect.map(() => Option.none<{ internalUserId: (typeof schema.usersTable.$inferSelect)["id"] }>()),
+			const cached = yield* userLookupCache
+				.get(externalId)
+				.pipe(
+					Effect.catch((error) =>
+						Effect.logWarning("User lookup cache error", error).pipe(
+							Effect.map(() =>
+								Option.none<{
+									internalUserId: (typeof schema.usersTable.$inferSelect)["id"]
+								}>(),
+							),
+						),
 					),
-				),
-			)
+				)
 
 			if (Option.isSome(cached)) {
 				yield* Effect.annotateCurrentSpan("cache.result", "hit")
@@ -62,9 +68,9 @@ export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAu
 			const userOption = Option.fromNullishOr(userResult[0])
 
 			if (Option.isSome(userOption)) {
-				yield* userLookupCache.set(externalId, userOption.value.id).pipe(
-					Effect.catch((error) => Effect.logWarning("Failed to cache user lookup", error)),
-				)
+				yield* userLookupCache
+					.set(externalId, userOption.value.id)
+					.pipe(Effect.catch((error) => Effect.logWarning("Failed to cache user lookup", error)))
 			}
 
 			return Option.map(userOption, (user) => user.id)

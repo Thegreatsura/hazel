@@ -36,12 +36,7 @@ function Gate({ currentUrl }: { currentUrl: string }) {
 	const { isSignedIn } = useClerkAuth({ treatPendingAsSignedOut: false })
 	if (!isSignedIn) {
 		return (
-			<Navigate
-				to="/sign-in/$"
-				params={{ _splat: "" }}
-				search={{ redirect_url: currentUrl }}
-				replace
-			/>
+			<Navigate to="/sign-in/$" params={{ _splat: "" }} search={{ redirect_url: currentUrl }} replace />
 		)
 	}
 	return <AppShell />

@@ -91,11 +91,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 	const hasTrackedStepRef = useRef<Set<OnboardingStep>>(new Set())
 	{
 		const step = state.currentStep
-		if (
-			step !== "finalization" &&
-			step !== "completed" &&
-			!hasTrackedStepRef.current.has(step)
-		) {
+		if (step !== "finalization" && step !== "completed" && !hasTrackedStepRef.current.has(step)) {
 			hasTrackedStepRef.current.add(step)
 			posthog.capture("onboarding_step_viewed", {
 				step,

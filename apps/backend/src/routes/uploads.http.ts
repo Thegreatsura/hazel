@@ -54,7 +54,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ User Avatar Upload ============
 					Match.when({ type: "user-avatar" }, (req) =>
 						Effect.gen(function* () {
-							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+							if (
+								!ALLOWED_AVATAR_TYPES.includes(
+									req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number],
+								)
+							) {
 								return yield* Effect.fail(
 									new UploadError({
 										message: "Content type must be image/jpeg, image/png, or image/webp",
@@ -110,7 +114,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									new UploadError({ message: "botId is required for bot-avatar uploads" }),
 								)
 							}
-							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+							if (
+								!ALLOWED_AVATAR_TYPES.includes(
+									req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number],
+								)
+							) {
 								return yield* Effect.fail(
 									new UploadError({
 										message: "Content type must be image/jpeg, image/png, or image/webp",
@@ -188,7 +196,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 									}),
 								)
 							}
-							if (!ALLOWED_AVATAR_TYPES.includes(req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number])) {
+							if (
+								!ALLOWED_AVATAR_TYPES.includes(
+									req.contentType as (typeof ALLOWED_AVATAR_TYPES)[number],
+								)
+							) {
 								return yield* Effect.fail(
 									new UploadError({
 										message: "Content type must be image/jpeg, image/png, or image/webp",
@@ -256,10 +268,16 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 						Effect.gen(function* () {
 							if (!req.organizationId) {
 								return yield* Effect.fail(
-									new UploadError({ message: "organizationId is required for custom-emoji uploads" }),
+									new UploadError({
+										message: "organizationId is required for custom-emoji uploads",
+									}),
 								)
 							}
-							if (!ALLOWED_EMOJI_TYPES.includes(req.contentType as (typeof ALLOWED_EMOJI_TYPES)[number])) {
+							if (
+								!ALLOWED_EMOJI_TYPES.includes(
+									req.contentType as (typeof ALLOWED_EMOJI_TYPES)[number],
+								)
+							) {
 								return yield* Effect.fail(
 									new UploadError({
 										message: "Content type must be image/png, image/gif, or image/webp",
@@ -268,7 +286,9 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							}
 							if (req.fileSize > MAX_EMOJI_SIZE) {
 								return yield* Effect.fail(
-									new UploadError({ message: "File size must be between 1 byte and 256KB" }),
+									new UploadError({
+										message: "File size must be between 1 byte and 256KB",
+									}),
 								)
 							}
 
@@ -317,7 +337,8 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							if (!organizationId || !channelId || !fileName) {
 								return yield* Effect.fail(
 									new UploadError({
-										message: "organizationId, channelId, and fileName are required for attachment uploads",
+										message:
+											"organizationId, channelId, and fileName are required for attachment uploads",
 									}),
 								)
 							}

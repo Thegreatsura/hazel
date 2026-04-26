@@ -64,6 +64,31 @@ export class InvalidTxIdError extends Schema.TaggedErrorClass<InvalidTxIdError>(
 }) {}
 
 /**
+ * Error thrown when the underlying `awaitTxId` rejects for any reason other
+ * than a timeout. Carries the original rejection in `cause` so callers can
+ * inspect it without parsing error strings.
+ */
+export class AwaitTxIdError extends Schema.TaggedErrorClass<AwaitTxIdError>()("AwaitTxIdError", {
+	message: Schema.String,
+	txid: Schema.Number,
+	collectionId: Schema.optional(Schema.String),
+	cause: Schema.optional(Schema.Unknown),
+}) {}
+
+/**
+ * Error thrown when the backoff retry budget is exhausted for a collection.
+ */
+export class MaxRetriesExceededError extends Schema.TaggedErrorClass<MaxRetriesExceededError>()(
+	"MaxRetriesExceededError",
+	{
+		message: Schema.String,
+		collectionId: Schema.optional(Schema.String),
+		maxRetries: Schema.Number,
+		cause: Schema.optional(Schema.Unknown),
+	},
+) {}
+
+/**
  * Error thrown when sync configuration is invalid
  */
 export class SyncConfigError extends Schema.TaggedErrorClass<SyncConfigError>()("SyncConfigError", {

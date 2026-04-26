@@ -3,7 +3,13 @@ import type { Collection, Transaction } from "@tanstack/db"
 import { createTransaction } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
 import { Cause, Effect, Exit, type ManagedRuntime } from "effect"
-import { type InvalidTxIdError, OptimisticActionError, SyncError, type TxIdTimeoutError } from "./errors"
+import {
+	type AwaitTxIdError,
+	type InvalidTxIdError,
+	OptimisticActionError,
+	SyncError,
+	type TxIdTimeoutError,
+} from "./errors"
 
 /**
  * Collection with Effect-native utilities.
@@ -15,7 +21,7 @@ type EffectCollection = Collection<any, any> & {
 		awaitTxIdEffect: (
 			txid: Txid,
 			timeout?: number,
-		) => Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError>
+		) => Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError>
 	}
 }
 
@@ -127,7 +133,7 @@ function syncAllCollections(
 	collections: NormalizedCollection[],
 	txid: Txid,
 	timeout: number,
-): Effect.Effect<void, SyncError | TxIdTimeoutError | InvalidTxIdError> {
+): Effect.Effect<void, SyncError | TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError> {
 	return Effect.gen(function* () {
 		// Create sync effect for each collection
 		const syncEffects = collections.map(({ name, collection }) =>
@@ -253,19 +259,6 @@ export function optimisticAction<
 
 					mutationResult = exit.value
 
-					console.debug(
-						`[txid-debug] Mutation completed. transactionId:`,
-						mutationResult.transactionId,
-						`type:`,
-						typeof mutationResult.transactionId,
-					)
-					console.debug(
-						`[txid-debug] Starting sync on collections:`,
-						normalizedCollections.map((c) => c.name),
-						`with txid:`,
-						mutationResult.transactionId,
-					)
-
 					// Run automatic sync on ALL collections using Effect.all
 					const syncEffect = syncAllCollections(
 						normalizedCollections,
@@ -276,19 +269,13 @@ export function optimisticAction<
 					const syncExit = await runtime.runPromiseExit(
 						syncEffect as Effect.Effect<
 							void,
-							SyncError | TxIdTimeoutError | InvalidTxIdError,
+							SyncError | TxIdTimeoutError | InvalidTxIdError | AwaitTxIdError,
 							never
 						>,
 					)
 
 					if (Exit.isFailure(syncExit)) {
 						const cause = syncExit.cause
-						console.debug(
-							`[txid-debug] Sync FAILED for txid:`,
-							mutationResult.transactionId,
-							`cause:`,
-							Cause.pretty(cause),
-						)
 						const syncFailReason = cause.reasons.find(Cause.isFailReason)
 						if (syncFailReason) {
 							throw syncFailReason.error // SyncError
@@ -298,7 +285,6 @@ export function optimisticAction<
 							cause: Cause.pretty(cause),
 						})
 					}
-					console.debug(`[txid-debug] Sync SUCCEEDED for txid:`, mutationResult.transactionId)
 
 					return mutationResult.data
 				},

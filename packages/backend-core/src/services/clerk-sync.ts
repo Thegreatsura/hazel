@@ -66,9 +66,7 @@ export class ClerkSync extends Context.Service<ClerkSync>()("ClerkSync", {
 				const firstName = existing
 					? anyData.first_name || existing.firstName
 					: anyData.first_name || ""
-				const lastName = existing
-					? anyData.last_name || existing.lastName
-					: anyData.last_name || ""
+				const lastName = existing ? anyData.last_name || existing.lastName : anyData.last_name || ""
 
 				yield* userRepo.upsertClerkUser({
 					externalId: decodeClerkUserId(anyData.id),
@@ -116,7 +114,8 @@ export class ClerkSync extends Context.Service<ClerkSync>()("ClerkSync", {
 				const existing = byClerkId ?? bySlug
 
 				if (existing) {
-					const currentSettings = (existing.settings as { clerkOrganizationId?: string } | null) ?? null
+					const currentSettings =
+						(existing.settings as { clerkOrganizationId?: string } | null) ?? null
 					const needsClerkIdLink = currentSettings?.clerkOrganizationId !== anyData.id
 					yield* orgRepo.update({
 						id: existing.id,

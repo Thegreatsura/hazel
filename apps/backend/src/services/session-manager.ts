@@ -60,13 +60,11 @@ export class SessionManager extends Context.Service<SessionManager>()("SessionMa
 					const org = m.organization
 					if (!org.slug) continue
 
-					const existingOrg = yield* orgRepo
-						.findBySlug(org.slug)
-						.pipe(Effect.map(Option.getOrNull))
+					const existingOrg = yield* orgRepo.findBySlug(org.slug).pipe(Effect.map(Option.getOrNull))
 
 					const orgId = existingOrg
 						? existingOrg.id
-						: (yield* orgRepo
+						: yield* orgRepo
 								.insert({
 									name: org.name,
 									slug: org.slug,
@@ -75,7 +73,7 @@ export class SessionManager extends Context.Service<SessionManager>()("SessionMa
 									settings: { clerkOrganizationId: org.id },
 									deletedAt: null,
 								})
-								.pipe(Effect.map((rows) => rows[0]!.id)))
+								.pipe(Effect.map((rows) => rows[0]!.id))
 
 					yield* membershipRepo.upsertByOrgAndUser({
 						organizationId: orgId,
@@ -87,9 +85,7 @@ export class SessionManager extends Context.Service<SessionManager>()("SessionMa
 						deletedAt: null,
 					})
 				}
-			}).pipe(
-				Effect.catch((err) => Effect.logWarning(`[session] Clerk org sync failed: ${err}`)),
-			)
+			}).pipe(Effect.catch((err) => Effect.logWarning(`[session] Clerk org sync failed: ${err}`)))
 
 		const triggerLazySync = (currentUser: CurrentUser.Schema) =>
 			Effect.gen(function* () {

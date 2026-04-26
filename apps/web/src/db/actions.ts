@@ -483,11 +483,7 @@ export const updateUserAction = optimisticAction({
 	collections: [userCollection],
 	runtime: runtime,
 
-	onMutate: (props: {
-		userId: UserId
-		timezone?: string | null
-		settings?: User.UserSettings | null
-	}) => {
+	onMutate: (props: { userId: UserId; timezone?: string | null; settings?: User.UserSettings | null }) => {
 		userCollection.update(props.userId, (draft) => {
 			if (props.timezone !== undefined) draft.timezone = props.timezone
 			if (props.settings !== undefined) draft.settings = props.settings

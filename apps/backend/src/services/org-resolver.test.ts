@@ -96,9 +96,8 @@ const runEither = <A, E>(
 		) as Effect.Effect<any, never, never>,
 	)
 
-const use = <A, E, R>(
-	fn: (resolver: Context.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
-) => OrgResolver.use(fn)
+const use = <A, E, R>(fn: (resolver: Context.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>) =>
+	OrgResolver.use(fn)
 
 describe("OrgResolver", () => {
 	describe("requireScope", () => {

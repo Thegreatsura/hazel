@@ -8,11 +8,7 @@ export const Route = createFileRoute("/_app/onboarding/setup-organization")({
 function RouteComponent() {
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-bg p-4">
-			<CreateOrganization
-				routing="hash"
-				skipInvitationScreen
-				afterCreateOrganizationUrl="/"
-			/>
+			<CreateOrganization routing="hash" skipInvitationScreen afterCreateOrganizationUrl="/" />
 		</div>
 	)
 }

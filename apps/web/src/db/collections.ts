@@ -28,7 +28,7 @@ import { electricFetchClient } from "~/lib/electric-fetch"
 import { runtime } from "~/lib/services/common/runtime"
 import { createEffectCollection } from "../../../../libs/effect-electric-db-collection/src"
 
-const electricUrl: string = import.meta.env.VITE_ELECTRIC_URL
+const electricUrl = import.meta.env.VITE_ELECTRIC_URL
 
 export const organizationCollection = createEffectCollection({
 	id: "organizations",
@@ -63,8 +63,8 @@ export const messageCollection = createEffectCollection({
 		},
 		//// liveSse: true,
 		parser: {
-			timestamptz: (date: string) => new Date(date),
-		} as any,
+			timestamptz: (date) => new Date(date),
+		},
 		fetchClient: electricFetchClient,
 	},
 	schema: Message.Schema,
@@ -247,7 +247,7 @@ export const channelMemberCollection = createEffectCollection({
 	runtime: runtime,
 	backoff: false,
 	shapeOptions: {
-		url: `${electricUrl}`,
+		url: electricUrl,
 		//liveSse: true,
 		params: {
 			table: "channel_members",
@@ -418,8 +418,8 @@ export const botCollection = createEffectCollection({
 			table: "bots",
 		},
 		parser: {
-			timestamptz: (date: string) => new Date(date),
-		} as any,
+			timestamptz: (date) => new Date(date),
+		},
 		fetchClient: electricFetchClient,
 	},
 	schema: Bot.Schema,
@@ -435,9 +435,13 @@ export const botCommandCollection = createEffectCollection({
 		params: {
 			table: "bot_commands",
 		},
+		// Schema's nested array (`arguments`) narrows Electric's row extension to
+		// `never`, so `Parser<never>` requires return type `Value<never>` — impossible
+		// to satisfy. Widening via `as never` is the minimum cast needed; `Schema.JsonDate`
+		// already accepts string-form dates, so the parser is belt-and-suspenders.
 		parser: {
-			timestamptz: (date: string) => new Date(date),
-		} as any,
+			timestamptz: ((date: string) => new Date(date)) as never,
+		},
 		fetchClient: electricFetchClient,
 	},
 	schema: BotCommand.Schema,
@@ -454,8 +458,8 @@ export const botInstallationCollection = createEffectCollection({
 			table: "bot_installations",
 		},
 		parser: {
-			timestamptz: (date: string) => new Date(date),
-		} as any,
+			timestamptz: (date) => new Date(date),
+		},
 		fetchClient: electricFetchClient,
 	},
 	schema: BotInstallation.Schema,
@@ -472,8 +476,8 @@ export const customEmojiCollection = createEffectCollection({
 			table: "custom_emojis",
 		},
 		parser: {
-			timestamptz: (date: string) => new Date(date),
-		} as any,
+			timestamptz: (date) => new Date(date),
+		},
 		fetchClient: electricFetchClient,
 	},
 	schema: CustomEmoji.Schema,

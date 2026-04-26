@@ -71,7 +71,9 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 	.add(
 		HttpApiEndpoint.get("trending", "/trending", {
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
+				page: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(Effect.succeed("1")),
+				),
 				per_page: Schema.optional(Schema.NumberFromString).pipe(
 					Schema.withDecodingDefault(Effect.succeed("25")),
 				),
@@ -84,7 +86,9 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 		HttpApiEndpoint.get("search", "/search", {
 			query: {
 				q: Schema.String,
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(Effect.succeed("1"))),
+				page: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(Effect.succeed("1")),
+				),
 				per_page: Schema.optional(Schema.NumberFromString).pipe(
 					Schema.withDecodingDefault(Effect.succeed("25")),
 				),

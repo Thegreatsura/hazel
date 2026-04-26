@@ -68,11 +68,7 @@ function RouteComponent() {
 							Get started by creating or joining an organization.
 						</p>
 					</div>
-					<CreateOrganization
-						routing="hash"
-						skipInvitationScreen
-						afterCreateOrganizationUrl="/"
-					/>
+					<CreateOrganization routing="hash" skipInvitationScreen afterCreateOrganizationUrl="/" />
 				</div>
 			</div>
 		)

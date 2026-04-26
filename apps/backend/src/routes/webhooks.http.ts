@@ -75,12 +75,15 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 						)
 						.pipe(
 							Effect.catch((err) =>
-								Effect.logError("Failed to sync channel access after Clerk membership event", {
-									userId: result.membershipChange!.userId,
-									organizationId: result.membershipChange!.organizationId,
-									removed: result.membershipRemoved,
-									error: String(err),
-								}),
+								Effect.logError(
+									"Failed to sync channel access after Clerk membership event",
+									{
+										userId: result.membershipChange!.userId,
+										organizationId: result.membershipChange!.organizationId,
+										removed: result.membershipRemoved,
+										error: String(err),
+									},
+								),
 							),
 						)
 				}
@@ -249,9 +252,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 					return new GitHubWebhookResponse({ processed: true, messagesCreated: 0 })
 				}
 
-				const repository = payload.repository as
-					| { id: number; full_name: string }
-					| undefined
+				const repository = payload.repository as { id: number; full_name: string } | undefined
 				const installationId = (payload.installation as { id: number } | undefined)?.id
 
 				if (!installationId || !repository?.id || !repository?.full_name) {
